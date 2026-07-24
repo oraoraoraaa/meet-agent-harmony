@@ -163,48 +163,65 @@ Phase 1 complete for offline path. Missing Map SDK is intentional, not a blocker
 
 ### LLM client
 
-- [ ] OpenAI-compatible client (chat completions)
-- [ ] Mode A user key / Mode B proxy base URL / Mode C disable
-- [ ] Timeouts, error mapping, cancellation on screen leave
-- [ ] Do not log secrets
+- [x] OpenAI-compatible client (chat completions)
+- [x] Mode A user key / Mode B proxy base URL / Mode C disable
+- [x] Timeouts, error mapping, cancellation on screen leave
+- [x] Do not log secrets
 
 ### Tools (registry)
 
 Implement handlers (names may be camelCase in code):
 
-- [ ] `getScenarioSnapshot`
-- [ ] `setConstraints`
-- [ ] `getDrivingRoute`
-- [ ] `generateAndScorePlans`  ← domain engine
-- [ ] `reverseGeocode`
-- [ ] `searchPoiNear` (best effort)
-- [ ] `formatShareText`
+- [x] `getScenarioSnapshot` → `get_scenario_snapshot`
+- [x] `setConstraints` → `set_constraints`
+- [x] `getDrivingRoute` → `get_driving_route`
+- [x] `generateAndScorePlans` → `generate_and_score_plans`  ← domain engine
+- [x] `reverseGeocode` → `reverse_geocode`
+- [x] `searchPoiNear` → `search_poi_near` (best effort; estimate returns [])
+- [x] `formatShareText` → `format_share_text`
 
 ### Orchestrator
 
-- [ ] System prompt per `docs/AI_AGENT.md`
-- [ ] Bounded loop (`maxToolIters = 6`)
-- [ ] Tool trace persistence on turn
-- [ ] Grounding validator: final choice must reference engine IDs
-- [ ] Fallback to engine-only on LLM failure
+- [x] System prompt per `docs/AI_AGENT.md`
+- [x] Bounded loop (`maxToolIters = 6`)
+- [x] Tool trace persistence on turn
+- [x] Grounding validator: final choice must reference engine IDs
+- [x] Fallback to engine-only on LLM failure
 
 ### UI
 
-- [ ] Chat panel (composer + message list)
-- [ ] Plan cards can attach under an agent answer
-- [ ] “决策过程” debug bottom sheet (tool names + timings; hide secrets)
-- [ ] Settings: test LLM connection button (optional ping)
+- [x] Chat panel (composer + message list)
+- [x] Plan cards can attach under an agent answer
+- [x] “决策过程” debug bottom sheet (tool names + timings; hide secrets)
+- [x] Settings: test LLM connection button (optional ping)
 
 ### Exit criteria
 
-- With a valid key, user can type a constraint-rich request and get a grounded plan.
-- Without a key, form planning still works.
-- Validator rejects hallucinated candidate IDs in tests with mock LLM.
+- [x] With a valid key, user can type a constraint-rich request and get a grounded plan.  
+  *(Requires Mode A/B config + network; code path wired; live vendor call is device-side.)*
+- [x] Without a key, form planning still works.
+- [x] Validator rejects hallucinated candidate IDs in tests with mock LLM.  
+  *(Pure domain tests: `domain/test/agent.test.ts` — no live LLM.)*
 
 ### Phase 2 notes
 
 ```
-(model choices, prompt versions)
+LLM client: entry/.../services/llm/OpenAiCompatibleClient.ets
+  - Mode A: llmBaseUrl + llmApiKey + model → POST {base}/v1/chat/completions
+  - Mode B: proxyBaseUrl (no device vendor key)
+  - Mode C / misconfig / HTTP error → engine offline path
+  - timeout default 25s; cancel on ChatPage aboutToDisappear
+  - never logs Authorization / apiKey
+
+Tools: entry/.../services/agent/ToolHost.ets (registry-only dispatch)
+Orchestrator: AgentOrchestrator.ets (max 6 tool iters)
+Grounding: stayPut | suggestion:N; validateOrFallbackPlanId rejects unknowns
+Portable tests: domain/src/agent/* + domain/test/agent.test.ts (15 domain tests total)
+UI: pages/ChatPage.ets — fixtures, quick prompts, plan mini-cards, 决策过程 toggle
+Settings: 测试 LLM 连接 (ping)
+Home: 智能助手规划 → ChatPage; 表单规划 → PlanPage
+Default demo model hint: deepseek-chat (D3 still open for contest day)
+Live AMap still deferred; generate_and_score uses estimate HybridMapProvider
 ```
 
 ---
@@ -341,7 +358,7 @@ Compress only by cutting live POI snap and EN l10n, not by cutting Mode C or gro
 | --- | --- | --- | --- |
 | D1 | Map provider | Closed | Hybrid: EstimateMapProvider always; AMap Web HTTP when mapWebKey present (live REST deferred) |
 | D2 | Domain language packaging into ArkTS | Closed (Phase 1) | Mirrored ArkTS port under `entry/src/main/ets/domain/`; pure TS tests in `domain/` |
-| D3 | LLM default model for demo | Open | Prefer low-latency CN-accessible model |
+| D3 | LLM default model for demo | Soft default | AppSettings default `deepseek-chat` + `https://api.deepseek.com`; contest day may switch model/proxy (D4) |
 | D4 | Proxy hosting for contest day | Open | Local laptop hotspot vs cloud |
 
 Update this table when decisions close.

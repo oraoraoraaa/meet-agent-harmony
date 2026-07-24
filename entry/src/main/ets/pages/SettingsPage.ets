@@ -13,6 +13,7 @@ import {
 import { AppTheme } from '../common/AppTheme';
 import { StageBackground } from '../common/GlassChrome';
 import { SettingsStore } from '../services/settings/SettingsStore';
+import { LlmPingResult, OpenAiCompatibleClient } from '../services/llm/OpenAiCompatibleClient';
 
 @Entry
 @Component
@@ -20,6 +21,7 @@ struct SettingsPage {
   @State settings: AppSettings = new AppSettings();
   @State loaded: boolean = false;
   @State saving: boolean = false;
+  @State pinging: boolean = false;
   @State statusText: string = '';
 
   aboutToAppear(): void {
@@ -58,6 +60,31 @@ struct SettingsPage {
       promptAction.showToast({ message: '保存失败', duration: 2000 });
     } finally {
       this.saving = false;
+    }
+  }
+
+  private async onTestLlm(): Promise<void> {
+    if (this.pinging) {
+      return;
+    }
+    this.pinging = true;
+    this.statusText = '正在测试 LLM 连接…';
+    try {
+      // Persist draft so mode/url match what user sees
+      await SettingsStore.save(this.hostContext(), this.settings);
+      const client: OpenAiCompatibleClient = new OpenAiCompatibleClient(this.settings);
+      const ping: LlmPingResult = await client.ping();
+      this.statusText = ping.message;
+      promptAction.showToast({
+        message: ping.ok ? 'LLM 连接成功' : 'LLM 连接失败',
+        duration: 2200
+      });
+    } catch (e) {
+      const errObj: Object = e as Object;
+      this.statusText = `测试异常：${errObj}`;
+      promptAction.showToast({ message: '测试异常', duration: 2000 });
+    } finally {
+      this.pinging = false;
     }
   }
 
@@ -286,10 +313,22 @@ struct SettingsPage {
                   .margin({ top: 16 })
                   .width('100%')
 
+                Button(this.pinging ? '测试中…' : '测试 LLM 连接', { type: ButtonType.Capsule })
+                  .width('100%')
+                  .height(44)
+                  .margin({ top: 12 })
+                  .backgroundColor(AppTheme.glassBgLight)
+                  .fontColor(AppTheme.ink)
+                  .border({ width: 1, color: AppTheme.glassBorder })
+                  .enabled(!this.pinging && !this.saving)
+                  .onClick(() => {
+                    this.onTestLlm();
+                  })
+
                 Button(this.saving ? '保存中…' : '保存设置', { type: ButtonType.Capsule })
                   .width('100%')
                   .height(48)
-                  .margin({ top: 12, bottom: 8 })
+                  .margin({ top: 10, bottom: 8 })
                   .backgroundColor(AppTheme.accent)
                   .fontColor(Color.White)
                   .border({ width: 1, color: '#59FFFFFF' })

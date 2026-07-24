@@ -189,11 +189,17 @@ Mode C must always work.
 
 ## Current status
 
-**Phase 1 complete (offline estimate path).** Portable domain engine + unit tests (`domain/`), ArkTS mirror under `entry/src/main/ets/domain/`, `PlanningService` + estimate map provider, **会合规划** page with fixtures, mode toggles, recommendation cards, schematic polyline preview, `估算` badge, liquid-glass shell.
+**Phase 2 complete (agent layer).** Phase 0 shell + Phase 1 offline engine remain green (`cd domain && npm test` → 15 pass).
 
-**Map SDK:** not integrated yet — intentional. Live AMap Web HTTP / Map Kit deferred; Mode C estimate always works without keys.
+| Layer | Status |
+| --- | --- |
+| Domain engine | Offline multi-modal ranking + agent grounding helpers |
+| Form plan UI | `PlanPage` fixtures + schematic polylines |
+| Agent | OpenAI-compatible client, tool registry, orchestrator, ChatPage |
+| Map SDK | Not integrated — estimate / Hybrid stub (intentional) |
+| Session lock / share | Phase 3 |
 
-**Next:** Phase 2 AI agent layer (chat + tool loop). See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
+**Next:** Phase 3 session lock + share + open maps. See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
 ---
 

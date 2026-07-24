@@ -12,20 +12,22 @@ Portable, UI-free planning logic for MeetAgent.
 | `src/estimate.ts` | Straight-line route + speed-model ETAs |
 | `src/engine.ts` | candidates, scoring, ranking, stay-put decision |
 | `src/runAnalysis.ts` | orchestrate route + ETAs → `RecommendationSet` |
+| `src/agent/` | grounding, tool catalog, offline reply, offline orchestrator helpers |
 | `src/index.ts` | public exports |
 
 ## Rules
 
 - No ArkUI imports.
-- No LLM calls.
 - No secret material.
 - Pure functions preferred; inject IO via interfaces.
+- LLM HTTP clients live in the app (`entry/.../services/llm/`), not here.
+- Agent grounding / offline reply helpers are pure and unit-tested here.
 
 ## Packaging into Harmony app
 
-ArkTS cannot import this Node package directly. Phase 1 keeps a **mirrored port** under
-`entry/src/main/ets/domain/` (and services that call it). Keep contracts aligned with
-`src/models.ts` / engine defaults when either side changes.
+ArkTS cannot import this Node package directly. Keep a **mirrored port** under
+`entry/src/main/ets/domain/` (engine) and `entry/src/main/ets/services/agent/`
+(agent runtime). Keep contracts aligned when either side changes.
 
 ## Commands
 
@@ -38,4 +40,4 @@ npm test
 
 ## Status
 
-Phase 1 engine implemented with estimate providers + unit tests.
+Phase 1 engine + Phase 2 agent grounding helpers implemented with unit tests.

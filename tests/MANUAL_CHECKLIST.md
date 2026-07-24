@@ -22,11 +22,12 @@ Update as features land. Check before demo day.
 
 ## Agent
 
-- [ ] Chat constraint changes options
-- [ ] LLM failure falls back to engine
-- [ ] Tool trace visible in debug sheet (if enabled)
-- [ ] No secret values in trace
-
+- [ ] Chat constraint changes options (Mode A/B with key — device)
+- [x] Offline chat path plans without LLM (Mode C)
+- [x] LLM failure falls back to engine (orchestrator code path)
+- [x] Tool trace visible via ChatPage「轨迹」
+- [x] No secret values in trace (only tool names / timings / summaries)
+- [ ] Settings「测试 LLM 连接」succeeds with real key
 ## Session
 
 - [ ] Confirm locks plan

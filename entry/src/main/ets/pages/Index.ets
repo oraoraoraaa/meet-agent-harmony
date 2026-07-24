@@ -69,6 +69,13 @@ struct Index {
     });
   }
 
+  private openChat(): void {
+    router.pushUrl({ url: 'pages/ChatPage' }).then(() => {
+    }).catch(() => {
+      this.settingsSummary = '无法打开助手页';
+    });
+  }
+
   onPageShow(): void {
     this.refreshSettings();
   }
@@ -221,7 +228,7 @@ struct Index {
           .fontColor(AppTheme.inkSoft)
           .width('100%')
 
-        Button('开始路线优化', { type: ButtonType.Capsule })
+        Button('智能助手规划', { type: ButtonType.Capsule })
           .width('100%')
           .height(50)
           .fontSize(16)
@@ -235,6 +242,17 @@ struct Index {
             offsetX: 0,
             offsetY: 10
           })
+          .onClick(() => {
+            this.openChat();
+          })
+
+        Button('表单规划（离线引擎）', { type: ButtonType.Capsule })
+          .width('100%')
+          .height(44)
+          .fontSize(14)
+          .backgroundColor(AppTheme.glassBgLight)
+          .fontColor(AppTheme.ink)
+          .border({ width: 1, color: AppTheme.glassBorder })
           .onClick(() => {
             this.openPlan();
           })
