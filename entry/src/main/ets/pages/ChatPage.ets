@@ -19,13 +19,17 @@ import {
   RecommendationSet,
   Scenario,
   StayPutSuggestion,
-  Suggestion
+  Suggestion,
+  TripSession
 } from '../domain/Models';
 import { AgentOrchestrator } from '../services/agent/AgentOrchestrator';
 import { AgentTurnResult, ToolTraceEntry } from '../services/agent/AgentTypes';
 import { MapProvider, PlanningService } from '../services/map/MapProvider';
 import { FixtureCatalog, FixtureScenario } from '../services/planning/FixtureCatalog';
 import { SettingsStore } from '../services/settings/SettingsStore';
+import { TripSessionStore } from '../services/session/TripSessionStore';
+import { ShareService } from '../services/session/ShareService';
+import { MapLinkService } from '../services/map/MapLinkService';
 
 class ChatBubble {
   id: string = '';
@@ -70,6 +74,8 @@ struct ChatPage {
   @State showTrace: boolean = false;
   @State traceLines: string[] = [];
   @State modeLabel: string = 'Offline';
+  @State lastRec: RecommendationSet | null = null;
+  @State confirming: boolean = false;
   private orch: AgentOrchestrator | null = null;
   private msgSeq: number = 0;
 
@@ -186,6 +192,7 @@ struct ChatPage {
   }
 
   private applyRecommendation(rec: RecommendationSet, selectedPlanId: string): void {
+    this.lastRec = rec;
     this.dataSourceBadge = dataSourceLabelZh(rec.dataSource);
     const cards: PlanMiniCard[] = [];
 
@@ -228,6 +235,7 @@ struct ChatPage {
     }
     this.selectedPlanId = pick;
     this.planCards = cards;
+    TripSessionStore.beginPlanning(this.buildScenario(), rec, pick);
   }
 
   private applyTrace(entries: ToolTraceEntry[]): void {
@@ -302,10 +310,83 @@ struct ChatPage {
       next.push(copy);
     }
     this.planCards = next;
+    TripSessionStore.selectPlan(id);
     promptAction.showToast({
       message: id === 'stayPut' ? '已选择：原地等待' : `已选择：${id}`,
       duration: 1200
     });
+  }
+
+  private async onConfirmLock(): Promise<void> {
+    if (this.confirming) {
+      return;
+    }
+    if (this.lastRec === null || this.selectedPlanId.length === 0) {
+      promptAction.showToast({ message: '请先生成并选择方案', duration: 1800 });
+      return;
+    }
+    this.confirming = true;
+    try {
+      if (TripSessionStore.getPlanning() === null) {
+        TripSessionStore.beginPlanning(this.buildScenario(), this.lastRec, this.selectedPlanId);
+      } else {
+        TripSessionStore.selectPlan(this.selectedPlanId);
+      }
+      let meetName: string = '';
+      if (this.selectedPlanId === 'stayPut') {
+        meetName = this.lastRec.stayPut.meetingPoint.name;
+      } else if (this.selectedPlanId.indexOf('suggestion:') === 0) {
+        const idx: number = Number(this.selectedPlanId.substring('suggestion:'.length));
+        if (!isNaN(idx) && idx >= 0 && idx < this.lastRec.suggestions.length) {
+          meetName = this.lastRec.suggestions[idx].meetingPoint.name;
+        }
+      }
+      const locked: TripSession | null = TripSessionStore.confirm(this.selectedPlanId, meetName, '');
+      if (locked === null) {
+        promptAction.showToast({ message: '锁定失败', duration: 1800 });
+        return;
+      }
+      promptAction.showToast({ message: '方案已锁定', duration: 1500 });
+      router.pushUrl({ url: 'pages/LockedSessionPage' }).catch(() => {
+        promptAction.showToast({ message: '无法打开锁定页', duration: 2000 });
+      });
+    } finally {
+      this.confirming = false;
+    }
+  }
+
+  private async onShareSelected(): Promise<void> {
+    if (this.lastRec === null) {
+      promptAction.showToast({ message: '请先生成方案', duration: 1800 });
+      return;
+    }
+    const text: string = ShareService.buildShareTextFromRec(this.lastRec, this.selectedPlanId);
+    await ShareService.copyText(text);
+  }
+
+  private async onOpenMapSelected(): Promise<void> {
+    if (this.lastRec === null) {
+      promptAction.showToast({ message: '请先生成方案', duration: 1800 });
+      return;
+    }
+    let lon: number = this.lastRec.stayPut.meetingPoint.lon;
+    let lat: number = this.lastRec.stayPut.meetingPoint.lat;
+    let name: string = this.lastRec.stayPut.meetingPoint.name;
+    if (this.selectedPlanId.indexOf('suggestion:') === 0) {
+      const idx: number = Number(this.selectedPlanId.substring('suggestion:'.length));
+      if (!isNaN(idx) && idx >= 0 && idx < this.lastRec.suggestions.length) {
+        lon = this.lastRec.suggestions[idx].meetingPoint.lon;
+        lat = this.lastRec.suggestions[idx].meetingPoint.lat;
+        name = this.lastRec.suggestions[idx].meetingPoint.name;
+      }
+    }
+    await MapLinkService.openMeeting(
+      this.hostContext(),
+      lon,
+      lat,
+      name.length > 0 ? name : '会合点',
+      this.settings.mapApp
+    );
   }
 
   private openSettings(): void {
@@ -317,6 +398,12 @@ struct ChatPage {
   private openPlanForm(): void {
     router.pushUrl({ url: 'pages/PlanPage' }).catch(() => {
       promptAction.showToast({ message: '无法打开规划页', duration: 2000 });
+    });
+  }
+
+  private openLockedPage(): void {
+    router.pushUrl({ url: 'pages/LockedSessionPage' }).catch(() => {
+      promptAction.showToast({ message: '无法打开锁定页', duration: 2000 });
     });
   }
 
@@ -449,6 +536,51 @@ struct ChatPage {
               ForEach(this.planCards, (c: PlanMiniCard) => {
                 this.planCardView(c)
               }, (c: PlanMiniCard) => `${c.id}|${this.selectedPlanId}|${c.selected ? '1' : '0'}`)
+
+              Button(this.confirming ? '锁定中…' : '确认并锁定所选方案', { type: ButtonType.Capsule })
+                .width('100%')
+                .height(46)
+                .margin({ top: 8 })
+                .backgroundColor(AppTheme.success)
+                .fontColor(Color.White)
+                .enabled(!this.confirming && !this.busy)
+                .onClick(() => {
+                  this.onConfirmLock();
+                })
+
+              Row({ space: 8 }) {
+                Button('复制分享', { type: ButtonType.Capsule })
+                  .layoutWeight(1)
+                  .height(40)
+                  .backgroundColor('#BF5AF2')
+                  .fontColor(Color.White)
+                  .enabled(!this.busy)
+                  .onClick(() => {
+                    this.onShareSelected();
+                  })
+                Button('打开地图', { type: ButtonType.Capsule })
+                  .layoutWeight(1)
+                  .height(40)
+                  .backgroundColor(AppTheme.accent)
+                  .fontColor(Color.White)
+                  .enabled(!this.busy)
+                  .onClick(() => {
+                    this.onOpenMapSelected();
+                  })
+              }
+              .width('100%')
+              .margin({ top: 6 })
+
+              Button('查看已锁定方案', { type: ButtonType.Capsule })
+                .width('100%')
+                .height(38)
+                .margin({ top: 6 })
+                .backgroundColor(AppTheme.glassBgLight)
+                .fontColor(AppTheme.ink)
+                .border({ width: 1, color: AppTheme.glassBorder })
+                .onClick(() => {
+                  this.openLockedPage();
+                })
             }
           }
           .width('100%')

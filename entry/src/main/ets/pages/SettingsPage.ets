@@ -8,7 +8,12 @@ import {
   LLM_MODE_OFFLINE,
   LLM_MODE_PROXY,
   LLM_MODE_USER_KEY,
-  LlmMode
+  LlmMode,
+  MAP_APP_AMAP,
+  MAP_APP_APPLE,
+  MAP_APP_BAIDU,
+  MAP_APP_BROWSER,
+  MapAppChoice
 } from '../common/AppSettings';
 import { AppTheme } from '../common/AppTheme';
 import { StageBackground } from '../common/GlassChrome';
@@ -100,6 +105,12 @@ struct SettingsPage {
     this.settings = next;
   }
 
+  private setMapApp(app: MapAppChoice): void {
+    const next: AppSettings = this.settings.clone();
+    next.mapApp = app;
+    this.settings = next;
+  }
+
   @Builder
   sectionTitle(title: string) {
     Text(title)
@@ -171,13 +182,13 @@ struct SettingsPage {
 
                 this.sectionTitle('默认地图应用')
                 Column({ space: 8 }) {
-                  this.placeholderRow('高德地图 (AMap)', false)
-                  this.placeholderRow('Apple 地图', false)
-                  this.placeholderRow('百度地图', false)
-                  this.placeholderRow('浏览器', false)
+                  this.mapAppRow(MAP_APP_AMAP, '高德地图 (AMap)')
+                  this.mapAppRow(MAP_APP_APPLE, 'Apple 地图')
+                  this.mapAppRow(MAP_APP_BAIDU, '百度地图')
+                  this.mapAppRow(MAP_APP_BROWSER, '浏览器网页地图')
                 }
                 .width('100%')
-                Text('打开地图跳转 · Phase 3 接入')
+                Text('打开会合点：优先所选 App 深链，失败则回退高德网页 marker（GCJ-02）。')
                   .fontSize(11)
                   .fontColor(AppTheme.inkSoft)
                   .margin({ top: 6 })
@@ -398,6 +409,27 @@ struct SettingsPage {
       .onClick(() => {
         this.setLanguage(lang);
       })
+  }
+
+  @Builder
+  mapAppRow(app: MapAppChoice, label: string) {
+    Row() {
+      Text(label)
+        .fontSize(14)
+        .fontColor(AppTheme.ink)
+        .layoutWeight(1)
+      Text(this.settings.mapApp === app ? '✓' : '·')
+        .fontSize(14)
+        .fontColor(this.settings.mapApp === app ? AppTheme.link : AppTheme.inkSoft)
+    }
+    .width('100%')
+    .padding({ left: 12, right: 12, top: 12, bottom: 12 })
+    .borderRadius(14)
+    .backgroundColor(this.settings.mapApp === app ? AppTheme.accentSoft : AppTheme.fieldBg)
+    .border({ width: 1, color: this.settings.mapApp === app ? AppTheme.lineFocus : AppTheme.line })
+    .onClick(() => {
+      this.setMapApp(app);
+    })
   }
 
   @Builder

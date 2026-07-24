@@ -8,7 +8,12 @@ import {
   LLM_MODE_OFFLINE,
   LLM_MODE_PROXY,
   LLM_MODE_USER_KEY,
-  LlmMode
+  LlmMode,
+  MAP_APP_AMAP,
+  MAP_APP_APPLE,
+  MAP_APP_BAIDU,
+  MAP_APP_BROWSER,
+  MapAppChoice
 } from '../../common/AppSettings';
 
 const STORE_NAME: string = 'meet_agent_settings';
@@ -23,6 +28,7 @@ const KEY_LLM_MODE: string = 'llmMode';
 const KEY_LANG: string = 'language';
 const KEY_FIXTURES: string = 'demoFixtures';
 const KEY_TRACE: string = 'verboseAgentTrace';
+const KEY_MAP_APP: string = 'mapApp';
 
 function asLlmMode(raw: string): LlmMode {
   if (raw === LLM_MODE_USER_KEY) {
@@ -39,6 +45,19 @@ function asLanguage(raw: string): AppLanguage {
     return LANG_EN;
   }
   return LANG_ZH_CN;
+}
+
+function asMapApp(raw: string): MapAppChoice {
+  if (raw === MAP_APP_AMAP) {
+    return MAP_APP_AMAP;
+  }
+  if (raw === MAP_APP_BAIDU) {
+    return MAP_APP_BAIDU;
+  }
+  if (raw === MAP_APP_APPLE) {
+    return MAP_APP_APPLE;
+  }
+  return MAP_APP_BROWSER;
 }
 
 async function readString(
@@ -82,6 +101,7 @@ export class SettingsStore {
     settings.language = asLanguage(await readString(store, KEY_LANG, LANG_ZH_CN));
     settings.demoFixtures = await readBool(store, KEY_FIXTURES, true);
     settings.verboseAgentTrace = await readBool(store, KEY_TRACE, false);
+    settings.mapApp = asMapApp(await readString(store, KEY_MAP_APP, MAP_APP_BROWSER));
     return settings;
   }
 
@@ -97,6 +117,7 @@ export class SettingsStore {
     await store.put(KEY_LANG, settings.language);
     await store.put(KEY_FIXTURES, settings.demoFixtures);
     await store.put(KEY_TRACE, settings.verboseAgentTrace);
+    await store.put(KEY_MAP_APP, settings.mapApp);
     await store.flush();
   }
 }

@@ -3,6 +3,7 @@
     "pages/Index",
     "pages/SettingsPage",
     "pages/PlanPage",
-    "pages/ChatPage"
+    "pages/ChatPage",
+    "pages/LockedSessionPage"
   ]
 }

@@ -232,24 +232,24 @@ Live AMap still deferred; generate_and_score uses estimate HybridMapProvider
 
 ### Session
 
-- [ ] `TripSession` state machine: `planning → confirmed → closed`
-- [ ] Confirm action freezes selected meeting point + polylines + ETAs snapshot
-- [ ] Explicit **Re-plan** creates a new planning attempt (does not mutate locked session; archives or closes old)
-- [ ] In-memory session store (persist optional)
+- [x] `TripSession` state machine: `planning → confirmed → closed`
+- [x] Confirm action freezes selected meeting point + polylines + ETAs snapshot
+- [x] Explicit **Re-plan** creates a new planning attempt (does not mutate locked session; archives or closes old)
+- [x] In-memory session store (persist optional)
 
 ### Share & navigate
 
-- [ ] Clipboard share text (zh-CN template): meeting name, coords, both ETAs, mode, short why
-- [ ] Open in Maps: system/map deep link strategy for HarmonyOS (document chosen schemes)
-- [ ] Web fallback map link if app scheme unavailable
+- [x] Clipboard share text (zh-CN template): meeting name, coords, both ETAs, mode, short why
+- [x] Open in Maps: system/map deep link strategy for HarmonyOS (document chosen schemes)
+- [x] Web fallback map link if app scheme unavailable
 
 ### Practical quality upgrades
 
-- [ ] Apply UI + chat constraints end-to-end (`maxPassengerWalkMin`, `avoidTransit`, allow-list)
-- [ ] Reverse-geocode meeting point for human names
-- [ ] Optional: snap meeting label to nearby POI name without moving coordinates beyond a small radius policy (document policy)
-- [ ] Confidence / dataSource surfaces on locked session screen
-- [ ] Empty states: missing passenger point, equal points, zero candidates
+- [x] Apply UI + chat constraints end-to-end (`maxPassengerWalkMin`, `avoidTransit`, allow-list)
+- [x] Reverse-geocode meeting point for human names
+- [x] Optional: snap meeting label to nearby POI name without moving coordinates beyond a small radius policy (document policy)
+- [x] Confidence / dataSource surfaces on locked session screen
+- [x] Empty states: missing passenger point, equal points, zero candidates
 
 ### Explicitly not in this phase
 
@@ -267,7 +267,49 @@ Live AMap still deferred; generate_and_score uses estimate HybridMapProvider
 ### Phase 3 notes
 
 ```
-(share payload example, map scheme list)
+Session:
+  - domain/src/session.ts + entry/.../services/session/SessionLogic.ets
+    createPlanningSession / confirmSession / closeSession / resolveLockedPlan
+  - TripSessionStore (in-memory): planning + locked + archived closed copies
+  - Re-plan closes locked (archive) and clears planning; never mutates locked fields
+  - LockedSessionPage reads TripSessionStore.getLocked()
+
+Share text:
+  - formatShareText (OfflineReply) — zh-CN clipboard payload
+  - ShareService.copyText via pasteboard
+  - Example:
+    【会合助手】会合方案
+    乘客方式：骑行
+    会合点：…
+    坐标：108.xxxxx, 34.xxxxx
+    司机 ETA：约 N 分钟
+    乘客 ETA：约 M 分钟
+    会合完成：约 T 分钟
+    说明：…
+    数据：估算
+
+Map open schemes (Settings.mapApp, default browser):
+  - amap:   androidamap://viewMap?sourceApplication=MeetAgent&poiname=&lat=&lon=&dev=0
+  - baidu:  baidumap://map/marker?location=lat,lon&title=&coord_type=gcj02&src=MeetAgent
+  - apple:  http://maps.apple.com/?ll=lat,lon&q=
+  - browser / fallback: https://uri.amap.com/marker?position=lon,lat&name=
+  - App scheme failure → web fallback toast
+  - Coords treated as GCJ-02 end-to-end
+
+POI snap policy (name only):
+  - DEFAULT_POI_SNAP_RADIUS_M = 80
+  - Accept POI name only if haversine ≤ 80 m; never move coordinates
+  - Estimate MapProvider returns empty POI list → label stays reverse-geocode / coord text
+  - Confirm path best-effort reverseGeocode when name empty (estimate → lat,lon string)
+
+UI:
+  - PlanPage + ChatPage: 确认并锁定 → LockedSessionPage
+  - Share / 打开地图 wired (no longer Phase 3 placeholders)
+  - Empty hints: missing passenger, equal points, zero move candidates
+  - Constraints already engine-enforced (allowedModes, avoidTransit, maxPassengerWalkMin)
+
+Verify: cd domain && npm test → 20 pass (incl. session machine)
+Live AMap REST still deferred; Mode C offline fixtures remain demo path.
 ```
 
 ---
@@ -342,11 +384,11 @@ Compress only by cutting live POI snap and EN l10n, not by cutting Mode C or gro
 ## Definition of done (v1 product)
 
 - [ ] HarmonyOS HAP runs on phone
-- [ ] Plan from two points with multi-modal options
-- [ ] AI chat path works with user key (or proxy)
-- [ ] Offline engine path works without LLM
-- [ ] Confirm locks plan; no auto meeting-point change
-- [ ] Share + open maps
+- [x] Plan from two points with multi-modal options
+- [x] AI chat path works with user key (or proxy)
+- [x] Offline engine path works without LLM
+- [x] Confirm locks plan; no auto meeting-point change
+- [x] Share + open maps
 - [ ] Fixture demo path
 - [ ] Docs + AGENTS.md consistent with code
 

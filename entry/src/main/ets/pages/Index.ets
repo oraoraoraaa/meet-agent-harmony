@@ -76,6 +76,13 @@ struct Index {
     });
   }
 
+  private openLocked(): void {
+    router.pushUrl({ url: 'pages/LockedSessionPage' }).then(() => {
+    }).catch(() => {
+      this.settingsSummary = '无法打开锁定方案页';
+    });
+  }
+
   onPageShow(): void {
     this.refreshSettings();
   }
@@ -257,7 +264,18 @@ struct Index {
             this.openPlan();
           })
 
-        Text('无 Key 时使用离线估算 · 密钥仅存本机')
+        Button('已锁定方案', { type: ButtonType.Capsule })
+          .width('100%')
+          .height(42)
+          .fontSize(14)
+          .backgroundColor(AppTheme.glassBg)
+          .fontColor(AppTheme.inkMuted)
+          .border({ width: 1, color: AppTheme.glassBorder })
+          .onClick(() => {
+            this.openLocked();
+          })
+
+        Text('无 Key 时使用离线估算 · 确认后锁定会合点 · 密钥仅存本机')
           .fontSize(11)
           .fontColor(AppTheme.inkSoft)
           .width('100%')

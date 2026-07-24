@@ -15,6 +15,12 @@ export const LLM_MODE_OFFLINE: LlmMode = 'offline';
 export const LANG_ZH_CN: AppLanguage = 'zh-CN';
 export const LANG_EN: AppLanguage = 'en';
 
+export type MapAppChoice = string;
+export const MAP_APP_AMAP: MapAppChoice = 'amap';
+export const MAP_APP_BAIDU: MapAppChoice = 'baidu';
+export const MAP_APP_APPLE: MapAppChoice = 'apple';
+export const MAP_APP_BROWSER: MapAppChoice = 'browser';
+
 export class AppSettings {
   mapApiKey: TextValue = '';
   mapWebKey: TextValue = '';
@@ -26,6 +32,8 @@ export class AppSettings {
   language: AppLanguage = LANG_ZH_CN;
   demoFixtures: boolean = true;
   verboseAgentTrace: boolean = false;
+  /** Preferred map app for open-meeting deep links. */
+  mapApp: MapAppChoice = MAP_APP_BROWSER;
 
   clone(): AppSettings {
     const copy: AppSettings = new AppSettings();
@@ -39,6 +47,7 @@ export class AppSettings {
     copy.language = this.language;
     copy.demoFixtures = this.demoFixtures;
     copy.verboseAgentTrace = this.verboseAgentTrace;
+    copy.mapApp = this.mapApp;
     return copy;
   }
 

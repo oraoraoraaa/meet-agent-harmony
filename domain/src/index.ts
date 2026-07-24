@@ -90,3 +90,17 @@ export {
 
 export { runOfflineAgentTurn, finalizeLlmTurn } from './agent/orchestrator.ts';
 export type { EngineOnlyPlanFn } from './agent/orchestrator.ts';
+
+export type { LockedPlanSnapshot } from './session.ts';
+export {
+  DEFAULT_POI_SNAP_RADIUS_M,
+  planIdFromSelected,
+  selectedFromPlanId,
+  createPlanningSession,
+  confirmSession,
+  closeSession,
+  isTerminalStatus,
+  isLockedStatus,
+  resolveLockedPlan,
+  shouldAcceptPoiName,
+} from './session.ts';

@@ -21,12 +21,16 @@ import {
   RecommendationSet,
   Scenario,
   StayPutSuggestion,
-  Suggestion
+  Suggestion,
+  TripSession
 } from '../domain/Models';
 import { MapProvider, PlanningService } from '../services/map/MapProvider';
 import { FixtureCatalog, FixtureScenario } from '../services/planning/FixtureCatalog';
 import { LocationService } from '../services/location/LocationService';
 import { SettingsStore } from '../services/settings/SettingsStore';
+import { TripSessionStore } from '../services/session/TripSessionStore';
+import { ShareService } from '../services/session/ShareService';
+import { MapLinkService } from '../services/map/MapLinkService';
 
 class PlanCardModel {
   id: string = '';
@@ -83,6 +87,9 @@ struct PlanPage {
   @State summaryTitle: string = '';
   @State summaryBody: string = '';
   @State showForm: boolean = true;
+  @State lastRec: RecommendationSet | null = null;
+  @State confirming: boolean = false;
+  @State emptyHint: string = '';
 
   aboutToAppear(): void {
     this.reloadSettings();
@@ -192,23 +199,55 @@ struct PlanPage {
     }
     this.planning = true;
     this.errorText = '';
+    this.emptyHint = '';
     this.statusText = '正在估算路线与会合方案…';
     try {
       if (!this.settingsLoaded) {
         await this.reloadSettings();
       }
       const scenario: Scenario = this.buildScenario();
+      const passengerMissing: boolean =
+        this.passengerLonText.trim().length === 0 || this.passengerLatText.trim().length === 0;
+      if (passengerMissing) {
+        this.errorText = '请填写乘客坐标';
+        this.emptyHint = '缺少乘客点：填写经纬度或选择示例场景。';
+        this.statusText = '缺少乘客点';
+        this.planning = false;
+        return;
+      }
       const sameLon: boolean = Math.abs(scenario.driver.lon - scenario.passenger.lon) < 1e-7;
       const sameLat: boolean = Math.abs(scenario.driver.lat - scenario.passenger.lat) < 1e-7;
       if (sameLon && sameLat) {
         this.errorText = '司机与乘客坐标不能相同';
+        this.emptyHint = '起终点重合时无法生成会合方案，请调整坐标。';
         this.statusText = '请调整坐标';
         this.planning = false;
         return;
       }
       const provider: MapProvider = PlanningService.createProvider(this.settings.mapWebKey);
       const rec: RecommendationSet = await PlanningService.plan(scenario, provider);
+      this.lastRec = rec;
+      // Begin planning session (in-memory). Prefer engine recommended id.
+      let preferredId: string = 'stayPut';
+      if (rec.stayPut.recommended) {
+        preferredId = 'stayPut';
+      } else {
+        for (let i = 0; i < rec.suggestions.length; i++) {
+          if (rec.suggestions[i].recommended) {
+            preferredId = `suggestion:${i}`;
+            break;
+          }
+        }
+      }
+      TripSessionStore.beginPlanning(scenario, rec, preferredId);
       this.applyRecommendation(rec);
+      if (rec.suggestions.length === 0 && !rec.stayPut.recommended) {
+        this.emptyHint = '仅有原地等待可选（当前约束下无移动会合候选）。';
+      } else if (rec.suggestions.length === 0) {
+        this.emptyHint = '无移动会合候选，推荐乘客原地等待。';
+      } else {
+        this.emptyHint = '';
+      }
       this.statusText = `规划完成 · ${dataSourceLabelZh(rec.dataSource)}`;
       this.hasResult = true;
       this.showForm = false;
@@ -217,6 +256,7 @@ struct PlanPage {
       this.errorText = '规划失败，请重试';
       this.statusText = '规划出错';
       this.hasResult = false;
+      this.emptyHint = '规划失败：请检查坐标或稍后重试。';
     } finally {
       this.planning = false;
     }
@@ -316,15 +356,34 @@ struct PlanPage {
         if (c.kind === 'stayPut') {
           this.summaryBody =
             `乘客原地等待；司机约 ${c.driverEtaMin.toFixed(0)} 分钟到达。`;
+          TripSessionStore.selectPlan('stayPut');
         } else {
           this.summaryBody =
             `乘客：${c.modeLabel}到 ${c.meeting.name.length > 0 ? c.meeting.name : '会合点'}\n` +
             `司机：约 ${c.driverEtaMin.toFixed(0)} 分钟` +
             (c.driverSavedMin > 0.4 ? `，节省约 ${c.driverSavedMin.toFixed(0)} 分钟车程` : '');
+          if (c.suggestionIndex >= 0) {
+            TripSessionStore.selectPlan(`suggestion:${c.suggestionIndex}`);
+          }
         }
         break;
       }
     }
+  }
+
+  private currentPlanId(): string {
+    for (let i = 0; i < this.cards.length; i++) {
+      if (this.cards[i].id === this.selectedCardId) {
+        const c: PlanCardModel = this.cards[i];
+        if (c.kind === 'stayPut') {
+          return 'stayPut';
+        }
+        if (c.suggestionIndex >= 0) {
+          return `suggestion:${c.suggestionIndex}`;
+        }
+      }
+    }
+    return 'stayPut';
   }
 
   private modeIcon(modeKey: string): string {
@@ -346,12 +405,93 @@ struct PlanPage {
     });
   }
 
-  private onSharePlaceholder(): void {
-    promptAction.showToast({ message: '分享 · 即将接入（Phase 3）', duration: 2000 });
+  private async onShare(): Promise<void> {
+    if (this.lastRec === null) {
+      promptAction.showToast({ message: '请先规划方案', duration: 1800 });
+      return;
+    }
+    const text: string = ShareService.buildShareTextFromRec(this.lastRec, this.currentPlanId());
+    await ShareService.copyText(text);
   }
 
-  private onOpenMapPlaceholder(): void {
-    promptAction.showToast({ message: '在地图中打开 · 即将接入（Phase 3）', duration: 2000 });
+  private async onOpenMap(): Promise<void> {
+    const meet: NamedPoint = this.previewMeeting;
+    if (meet.lon === 0 && meet.lat === 0 && this.cards.length === 0) {
+      promptAction.showToast({ message: '请先选择方案', duration: 1800 });
+      return;
+    }
+    const name: string = meet.name.length > 0 ? meet.name : '会合点';
+    await MapLinkService.openMeeting(
+      this.hostContext(),
+      meet.lon,
+      meet.lat,
+      name,
+      this.settings.mapApp
+    );
+  }
+
+  private async onConfirmLock(): Promise<void> {
+    if (this.confirming) {
+      return;
+    }
+    if (this.lastRec === null) {
+      promptAction.showToast({ message: '请先规划方案', duration: 1800 });
+      return;
+    }
+    this.confirming = true;
+    try {
+      // Ensure planning session exists (may have been cleared)
+      if (TripSessionStore.getPlanning() === null) {
+        TripSessionStore.beginPlanning(this.buildScenario(), this.lastRec, this.currentPlanId());
+      } else {
+        TripSessionStore.selectPlan(this.currentPlanId());
+      }
+      const meet: NamedPoint = this.previewMeeting;
+      let meetName: string = meet.name;
+      let meetAddress: string = meet.address;
+      // Best-effort reverse-geocode label when estimate left name empty / coord-only.
+      if (meetName.length === 0 || meetName === '会合点') {
+        try {
+          const provider: MapProvider = PlanningService.createProvider(this.settings.mapWebKey);
+          const label: string = await provider.reverseGeocode(new GeoPoint(meet.lon, meet.lat));
+          if (label.length > 0) {
+            meetName = label;
+            if (meetAddress.length === 0) {
+              meetAddress = label;
+            }
+          }
+        } catch (e) {
+          const _ignored: Object = e as Object;
+        }
+      }
+      const locked: TripSession | null = TripSessionStore.confirm(
+        this.currentPlanId(),
+        meetName,
+        meetAddress
+      );
+      if (locked === null) {
+        promptAction.showToast({ message: '锁定失败', duration: 1800 });
+        return;
+      }
+      promptAction.showToast({ message: '方案已锁定', duration: 1500 });
+      router.pushUrl({ url: 'pages/LockedSessionPage' }).catch(() => {
+        promptAction.showToast({ message: '无法打开锁定页', duration: 2000 });
+      });
+    } finally {
+      this.confirming = false;
+    }
+  }
+
+  private onReplanForm(): void {
+    TripSessionStore.replan();
+    this.showForm = true;
+    this.statusText = '已关闭锁定会话（如有），可调整约束后重新规划';
+  }
+
+  private openLockedPage(): void {
+    router.pushUrl({ url: 'pages/LockedSessionPage' }).catch(() => {
+      promptAction.showToast({ message: '无法打开锁定页', duration: 2000 });
+    });
   }
 
   build() {
@@ -865,15 +1005,27 @@ struct PlanPage {
       .backgroundColor('#F0121620')
       .border({ width: 1, color: AppTheme.glassBorder })
 
-      // placeholder actions
+      // actions: confirm lock + share + maps
+      Button(this.confirming ? '锁定中…' : '确认并锁定方案', { type: ButtonType.Capsule })
+        .width('100%')
+        .height(50)
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .backgroundColor(AppTheme.success)
+        .fontColor(Color.White)
+        .enabled(!this.confirming)
+        .onClick(() => {
+          this.onConfirmLock();
+        })
+
       Row({ space: 10 }) {
-        Button('分享', { type: ButtonType.Capsule })
+        Button('复制分享', { type: ButtonType.Capsule })
           .layoutWeight(1)
           .height(46)
           .backgroundColor('#BF5AF2')
           .fontColor(Color.White)
           .onClick(() => {
-            this.onSharePlaceholder();
+            this.onShare();
           })
         Button('在地图中打开', { type: ButtonType.Capsule })
           .layoutWeight(1)
@@ -881,16 +1033,34 @@ struct PlanPage {
           .backgroundColor(AppTheme.accent)
           .fontColor(Color.White)
           .onClick(() => {
-            this.onOpenMapPlaceholder();
+            this.onOpenMap();
           })
       }
       .width('100%')
 
-      Text('分享 / 打开地图 · Phase 3 接入 · 当前为占位')
+      if (this.emptyHint.length > 0) {
+        Text(this.emptyHint)
+          .fontSize(12)
+          .fontColor(AppTheme.warn)
+          .width('100%')
+          .textAlign(TextAlign.Center)
+      }
+
+      Text('确认后方案锁定（v1 不自动改点）。分享复制文案；地图用设置中的应用或网页回退。')
         .fontSize(11)
         .fontColor(AppTheme.inkSoft)
         .width('100%')
         .textAlign(TextAlign.Center)
+
+      Button('查看已锁定方案', { type: ButtonType.Capsule })
+        .width('100%')
+        .height(40)
+        .backgroundColor(AppTheme.glassBgLight)
+        .fontColor(AppTheme.ink)
+        .border({ width: 1, color: AppTheme.glassBorder })
+        .onClick(() => {
+          this.openLockedPage();
+        })
 
       Button('重新规划', { type: ButtonType.Capsule })
         .width('100%')
@@ -899,7 +1069,7 @@ struct PlanPage {
         .fontColor(AppTheme.inkMuted)
         .border({ width: 1, color: AppTheme.glassBorder })
         .onClick(() => {
-          this.showForm = true;
+          this.onReplanForm();
         })
     }
     .width('100%')
