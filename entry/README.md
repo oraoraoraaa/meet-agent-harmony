@@ -1,46 +1,30 @@
-# HarmonyOS app module notes
+# entry module notes
 
-The **DevEco / HarmonyOS project lives at the repository root**, not under a nested `app/` folder.
+DevEco opens the **repository root**. This module is the main HAP.
 
-## Key paths
-
-| Path | Role |
-| --- | --- |
-| `AppScope/` | App-level bundle id, icon, label |
-| `entry/` | Main HAP module (ArkTS UI, abilities, resources) |
-| `entry/src/main/ets/pages/` | UI pages |
-| `entry/src/main/ets/entryability/` | UIAbility entry |
-| `build-profile.json5` | Products, SDK versions, modules |
-| `oh-package.json5` | OHPM dependencies |
-| `hvigorfile.ts` | Build entry |
-| `local.properties` | **Local only** (gitignored); DevEco regenerates |
-
-## Feature code placement (as we build)
-
-Prefer under `entry/src/main/ets/`:
+## Layout
 
 ```text
 entry/src/main/ets/
-  pages/
-  features/
-    home/
-    chat/
-    map_plan/
-    session/
-    settings/
+  common/           # AppSettings, DomainTypes
+  pages/            # Index (home), SettingsPage
   services/
-    agent/
-    llm/
-    map/
-    location/
-    share/
-  common/
+    settings/       # Preferences-backed SettingsStore
+    location/       # one-shot LocationService
+    agent/          # (Phase 2)
+    llm/            # (Phase 2)
+    map/            # (Phase 1)
+  entryability/
+  entrybackupability/
 ```
 
-Pure planning math stays in repo-root `domain/` (portable TS). Wire/port into ArkTS as decided in Phase 1 (see `docs/IMPLEMENTATION_PLAN.md` decision D2).
+## Phase 0 surfaces
 
-## Do not commit
+- Home: status summary, one-shot locate, entry to Settings
+- Settings: map keys, LLM mode A/B/C fields, language, fixture/trace toggles
+- Permissions declared: INTERNET, LOCATION, APPROXIMATELY_LOCATION
 
-- `local.properties`
-- `.idea/`, `.hvigor/`, `oh_modules/`, `**/build/`
-- API keys
+## Rules
+
+- Do not commit keys.
+- Prefer pure planning math in repo-root `domain/` (TS tests); port/call from here later.

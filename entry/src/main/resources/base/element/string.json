@@ -11,6 +11,14 @@
     {
       "name": "EntryAbility_label",
       "value": "MeetAgent"
+    },
+    {
+      "name": "permission_location_reason",
+      "value": "用于获取一次当前位置作为司机或乘客起点（可选）"
+    },
+    {
+      "name": "permission_internet_reason",
+      "value": "用于访问地图路线服务与可选的大模型 API"
     }
   ]
 }

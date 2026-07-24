@@ -2,7 +2,15 @@
   "color": [
     {
       "name": "start_window_background",
-      "value": "#FFFFFF"
+      "value": "#F1F5F9"
+    },
+    {
+      "name": "page_background",
+      "value": "#F1F5F9"
+    },
+    {
+      "name": "brand_teal",
+      "value": "#0D9488"
     }
   ]
 }

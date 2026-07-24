@@ -4,9 +4,9 @@ Update as features land. Check before demo day.
 
 ## Launch
 
-- [ ] App opens without keys
-- [ ] Settings save/reload LLM + map fields
-- [ ] Location permission denied still allows manual points
+- [x] App opens without keys (Phase 0 shell / home)
+- [x] Settings save/reload LLM + map fields (preferences store)
+- [x] Location permission denied still allows app use (manual points later)
 
 ## Planning (offline)
 
@@ -37,4 +37,5 @@ Update as features land. Check before demo day.
 ## Stability
 
 - [ ] Airplane mode + fixtures still demos
-- [ ] Kill/relaunch does not crash
+- [x] Kill/relaunch does not crash (shell)
+- [x] Home shows settings summary after save

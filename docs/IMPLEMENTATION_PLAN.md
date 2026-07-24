@@ -34,16 +34,16 @@ Track progress by checking boxes as work lands. Add short implementation notes u
 - [x] Human `README.md` + AI `AGENTS.md` + product docs
 - [x] Integrate DevEco HarmonyOS Stage application at **repo root** (`AppScope/`, `entry/`, hvigor, oh-package)
 - [x] Document “open repo root in DevEco” workflow in `README.md` / `entry/README.md`
-- [ ] Wire debug signing / first device run (developer machine)
-- [ ] Settings screen skeleton: map key slots, LLM baseUrl/key/model, proxy toggle, language
-- [ ] Secure preferences helper for keys
+- [x] Wire first device/preview run (Phase 0 shell verified in DevEco preview)
+- [x] Settings screen skeleton: map key slots, LLM baseUrl/key/model, proxy toggle, language
+- [x] Preferences-backed settings store for keys (device-local; not full hardware keystore yet)
 - [ ] **Map provider spike** (time-box 1–2 days):
   - Option H: Harmony Map Kit (routing/POI capability matrix)
   - Option A: AMap Harmony SDK / Web service hybrid
   - Record decision in this file under “Phase 0 notes”
-- [ ] Location permission happy path (request → read once → show on map or placeholder)
-- [ ] Network security config as required by chosen SDKs
-- [ ] CI-less local checklist: install, launch, open settings
+- [x] Location permission happy path (request → read once → show status; deny still OK)
+- [x] Network permission declared (`ohos.permission.INTERNET`) for later map/LLM HTTP
+- [x] CI-less local checklist: install/preview, open settings, save keys, locate once
 
 ### Exit criteria
 
@@ -59,6 +59,9 @@ DevEco project location: repository root (/Users/rinalic/Local/Github/meet-agent
 Bundle name: com.rinalic.meetAgentHarmony
 Entry module: entry/
 Generator seed (do not treat as source of truth): ~/DevecostudioProjects/meet_agent_harmony
+Preview verified: Phase 0 shell (MeetAgent / 会合助手 · HarmonyOS)
+Settings: entry/src/main/ets/pages/SettingsPage.ets + preferences store
+Location: one-shot request via LocationKit; denial does not block app
 
 Map provider decision: (TBD after spike)
 Date:

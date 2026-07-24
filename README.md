@@ -191,6 +191,8 @@ Mode C must always work.
 
 **DevEco Stage project integrated at repo root** (`AppScope/`, `entry/`, hvigor + oh-package configs) plus product docs, `AGENTS.md`, domain stubs, fixtures, and server placeholder.
 
+Phase 0 progress: home shell, **Settings** (map/LLM keys, modes, language), preferences persistence, one-shot location permission path, INTERNET/LOCATION permissions declared. Map provider spike still open.
+
 Implementation follows [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) — **Plan B: Session AI Agent**, with v1 locking the meeting plan after initial confirmation (no dual-phone sync, no automatic mid-trip meeting-point change).
 
 ---
