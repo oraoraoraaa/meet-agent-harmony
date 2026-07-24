@@ -831,7 +831,7 @@ struct PlanPage {
       .backgroundColor(this.summaryTitle === '最快方案' ? AppTheme.accent : AppTheme.glassBgStrong)
       .border({ width: 1, color: AppTheme.glassBorder })
 
-      // meeting point
+      // meeting point — solid dark glass only (no white/light fills)
       Column({ space: 8 }) {
         Text('会合地点')
           .fontSize(13)
@@ -856,14 +856,13 @@ struct PlanPage {
         .width('100%')
         .padding(12)
         .borderRadius(12)
-        .backgroundColor(AppTheme.fieldBg)
+        .backgroundColor('#E61A2030')
         .border({ width: 1, color: AppTheme.lineStrong })
       }
       .width('100%')
       .padding(14)
       .borderRadius(16)
-      .backgroundColor(AppTheme.glassBg)
-      .backdropBlur(AppTheme.blurSoft)
+      .backgroundColor('#F0121620')
       .border({ width: 1, color: AppTheme.glassBorder })
 
       // placeholder actions

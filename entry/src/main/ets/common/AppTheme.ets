@@ -37,10 +37,11 @@ export class AppTheme {
   static readonly warn: string = '#FF9F0A';
   static readonly danger: string = '#FF453A';
 
-  // Controls — keep fields readable over photo stage
-  static readonly fieldBg: string = '#3DFFFFFF'; // ~24% white
-  static readonly chipBg: string = '#2EFFFFFF';
-  static readonly cardSelected: string = '#CC0A84FF'; // solid-enough selected card
+  // Controls — dark translucent fields (never near-opaque white)
+  // White-alpha fills wash out to solid white over bright stage photos.
+  static readonly fieldBg: string = '#99141820';
+  static readonly chipBg: string = '#661A2030';
+  static readonly cardSelected: string = '#E60A84FF'; // solid-enough selected card
 
   // Shape
   static readonly radiusSm: number = 12;

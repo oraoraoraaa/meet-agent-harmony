@@ -1,6 +1,6 @@
 /**
  * Liquid-glass stage + panel helpers (ArkUI port of liquid-glass).
- * Avoid discrete blurred circles — they render as hard “orbs” on Harmony.
+ * Keep stage layers full-bleed only — no orbs, no half-screen color blocks.
  */
 
 import { AppTheme } from './AppTheme';
@@ -14,28 +14,16 @@ export struct StageBackground {
         .height('100%')
         .objectFit(ImageFit.Cover)
 
-      // Full-bleed dark veil only (no positioned circle orbs)
+      // Single full-bleed dark veil (no blue half-panel, no circular orbs)
       Column()
         .width('100%')
         .height('100%')
         .linearGradient({
           angle: 180,
           colors: [
-            ['#D105060A', 0.0],
-            ['#B80C0E14', 0.42],
+            ['#CC05060A', 0.0],
+            ['#B80A0C12', 0.5],
             ['#F005060A', 1.0]
-          ]
-        })
-
-      // Soft top accent wash (rectangle, not a circle)
-      Column()
-        .width('100%')
-        .height('38%')
-        .linearGradient({
-          angle: 180,
-          colors: [
-            ['#3D0A84FF', 0.0],
-            ['#000A84FF', 1.0]
           ]
         })
     }
