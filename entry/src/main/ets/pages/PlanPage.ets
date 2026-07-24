@@ -813,7 +813,7 @@ struct PlanPage {
               : `${this.previewMeeting.lat.toFixed(5)}, ${this.previewMeeting.lon.toFixed(5)}`
           )
             .fontSize(12)
-            .fontColor(AppTheme.inkSecondary)
+            .fontColor(AppTheme.inkMuted)
             .width('100%')
         }
         .width('100%')
