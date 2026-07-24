@@ -6,6 +6,7 @@ import {
   PolylineBounds,
   projectPolyline
 } from '../common/PolylineMath';
+import { AppTheme } from '../common/AppTheme';
 import { AppSettings } from '../common/AppSettings';
 import {
   dataSourceLabelZh,
@@ -29,14 +30,22 @@ import { SettingsStore } from '../services/settings/SettingsStore';
 class PlanCardModel {
   id: string = '';
   title: string = '';
-  subtitle: string = '';
+  modeLabel: string = '';
+  placeLine: string = '';
+  totalMinText: string = '';
+  saveLine: string = '';
   rationale: string = '';
   recommended: boolean = false;
   kind: string = 'stayPut';
   suggestionIndex: number = -1;
+  modeKey: string = '';
   driverPolyline: GeoPoint[] = [];
   passengerPolyline: GeoPoint[] = [];
   meeting: NamedPoint = new NamedPoint();
+  passengerEtaMin: number = 0;
+  driverEtaMin: number = 0;
+  driverSavedMin: number = 0;
+  completionMin: number = 0;
 }
 
 @Entry
@@ -58,7 +67,7 @@ struct PlanPage {
   @State avoidTransit: boolean = false;
   @State maxWalkMin: number = 12;
   @State planning: boolean = false;
-  @State statusText: string = '选择示例或填写坐标后点击「开始规划」';
+  @State statusText: string = '选择示例后点击「开始优化」';
   @State errorText: string = '';
   @State hasResult: boolean = false;
   @State dataSourceBadge: string = '';
@@ -68,8 +77,11 @@ struct PlanPage {
   @State previewPassenger: GeoPoint[] = [];
   @State previewMeeting: NamedPoint = new NamedPoint();
   @State mapW: number = 320;
-  @State mapH: number = 200;
+  @State mapH: number = 180;
   @State settingsLoaded: boolean = false;
+  @State summaryTitle: string = '';
+  @State summaryBody: string = '';
+  @State showForm: boolean = true;
 
   aboutToAppear(): void {
     this.reloadSettings();
@@ -198,6 +210,7 @@ struct PlanPage {
       this.applyRecommendation(rec);
       this.statusText = `规划完成 · ${dataSourceLabelZh(rec.dataSource)}`;
       this.hasResult = true;
+      this.showForm = false;
     } catch (e) {
       const _ignored: Object = e as Object;
       this.errorText = '规划失败，请重试';
@@ -216,14 +229,21 @@ struct PlanPage {
     const stayCard: PlanCardModel = new PlanCardModel();
     stayCard.id = 'stayPut';
     stayCard.kind = 'stayPut';
-    stayCard.title = stay.recommended ? '推荐 · 原地等待' : '原地等待';
-    stayCard.subtitle =
-      `司机 ${stay.driverEtaMin.toFixed(0)} 分钟 · 完成 ${stay.completionMin.toFixed(0)} 分钟`;
+    stayCard.modeKey = 'stay';
+    stayCard.modeLabel = '原地等待';
+    stayCard.title = '原地等待';
+    stayCard.placeLine = '等待司机直接来接你';
+    stayCard.totalMinText = `${stay.completionMin.toFixed(0)} 分钟`;
+    stayCard.saveLine = '基准';
     stayCard.rationale = stay.rationale;
     stayCard.recommended = stay.recommended;
     stayCard.driverPolyline = stay.driverRoutePolyline;
     stayCard.passengerPolyline = [];
     stayCard.meeting = stay.meetingPoint;
+    stayCard.driverEtaMin = stay.driverEtaMin;
+    stayCard.passengerEtaMin = 0;
+    stayCard.completionMin = stay.completionMin;
+    stayCard.driverSavedMin = 0;
     cards.push(stayCard);
 
     for (let i = 0; i < rec.suggestions.length; i++) {
@@ -232,27 +252,47 @@ struct PlanPage {
       card.id = `s-${i}-${s.mode}`;
       card.kind = 'suggestion';
       card.suggestionIndex = i;
-      const recPrefix: string = s.recommended ? '推荐 · ' : '';
-      card.title = `${recPrefix}乘客${modeLabelZh(s.mode)}`;
-      let sub: string =
-        `司机 ${s.driverEtaMin.toFixed(0)}′ · 乘客 ${s.passengerEtaMin.toFixed(0)}′ · 完成 ${s.completionMin.toFixed(0)}′`;
+      card.modeKey = s.mode;
+      card.modeLabel = `${modeLabelZh(s.mode)} ${s.passengerEtaMin.toFixed(0)} 分钟`;
+      card.title = card.modeLabel;
+      const meetName: string = s.meetingPoint.name.length > 0 ? s.meetingPoint.name : '会合点';
+      card.placeLine = `在 ${meetName} 会合`;
+      card.totalMinText = `${s.completionMin.toFixed(0)} 分钟`;
       if (s.driverSavedMin > 0.4) {
-        sub = `${sub} · 省 ${s.driverSavedMin.toFixed(0)}′`;
+        card.saveLine = `司机省 ${s.driverSavedMin.toFixed(0)} 分钟`;
+      } else {
+        card.saveLine = '节省有限';
       }
-      card.subtitle = sub;
       card.rationale = s.rationale;
       card.recommended = s.recommended;
       card.driverPolyline = s.driverRoutePolyline;
       card.passengerPolyline = s.passengerPathPolyline;
       card.meeting = s.meetingPoint;
+      card.driverEtaMin = s.driverEtaMin;
+      card.passengerEtaMin = s.passengerEtaMin;
+      card.completionMin = s.completionMin;
+      card.driverSavedMin = s.driverSavedMin;
       cards.push(card);
     }
 
-    this.cards = cards;
-    let selectId: string = stayCard.id;
+    // keep recommended first-ish: sort recommended to top but preserve relative order
+    const ordered: PlanCardModel[] = [];
     for (let i = 0; i < cards.length; i++) {
       if (cards[i].recommended) {
-        selectId = cards[i].id;
+        ordered.push(cards[i]);
+      }
+    }
+    for (let i = 0; i < cards.length; i++) {
+      if (!cards[i].recommended) {
+        ordered.push(cards[i]);
+      }
+    }
+    this.cards = ordered;
+
+    let selectId: string = ordered.length > 0 ? ordered[0].id : '';
+    for (let i = 0; i < ordered.length; i++) {
+      if (ordered[i].recommended) {
+        selectId = ordered[i].id;
         break;
       }
     }
@@ -267,9 +307,36 @@ struct PlanPage {
         this.previewDriver = c.driverPolyline;
         this.previewPassenger = c.passengerPolyline;
         this.previewMeeting = c.meeting;
+        if (c.recommended) {
+          this.summaryTitle = '最快方案';
+        } else {
+          this.summaryTitle = '备选方案';
+        }
+        if (c.kind === 'stayPut') {
+          this.summaryBody =
+            `乘客原地等待；司机约 ${c.driverEtaMin.toFixed(0)} 分钟到达。`;
+        } else {
+          this.summaryBody =
+            `乘客：${c.modeLabel}到 ${c.meeting.name.length > 0 ? c.meeting.name : '会合点'}\n` +
+            `司机：约 ${c.driverEtaMin.toFixed(0)} 分钟` +
+            (c.driverSavedMin > 0.4 ? `，节省约 ${c.driverSavedMin.toFixed(0)} 分钟车程` : '');
+        }
         break;
       }
     }
+  }
+
+  private modeIcon(modeKey: string): string {
+    if (modeKey === MODE_WALKING) {
+      return '🚶';
+    }
+    if (modeKey === MODE_BICYCLE) {
+      return '🚲';
+    }
+    if (modeKey === MODE_TRANSIT) {
+      return '🚌';
+    }
+    return '🧍';
   }
 
   private openSettings(): void {
@@ -278,317 +345,88 @@ struct PlanPage {
     });
   }
 
+  private onSharePlaceholder(): void {
+    promptAction.showToast({ message: '分享 · 即将接入（Phase 3）', duration: 2000 });
+  }
+
+  private onOpenMapPlaceholder(): void {
+    promptAction.showToast({ message: '在地图中打开 · 即将接入（Phase 3）', duration: 2000 });
+  }
+
   build() {
     Column() {
+      // header
       Row() {
         Button({ type: ButtonType.Normal }) {
-          Text('‹ 返回')
-            .fontSize(16)
-            .fontColor('#0F766E')
+          Text('‹')
+            .fontSize(24)
+            .fontColor(AppTheme.text)
         }
+        .width(40)
+        .height(40)
         .backgroundColor(Color.Transparent)
         .onClick(() => {
-          router.back();
+          if (!this.showForm && this.hasResult) {
+            this.showForm = true;
+          } else {
+            router.back();
+          }
         })
 
-        Text('会合规划')
+        Text(this.hasResult && !this.showForm ? '优化结果' : '会合规划')
           .fontSize(18)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#0F172A')
+          .fontColor(AppTheme.text)
           .layoutWeight(1)
           .textAlign(TextAlign.Center)
 
-        Button('设置', { type: ButtonType.Capsule })
-          .fontSize(12)
-          .height(30)
-          .backgroundColor('#CCFBF1')
-          .fontColor('#0F766E')
-          .onClick(() => {
-            this.openSettings();
-          })
+        if (this.hasResult && !this.showForm) {
+          Text(this.dataSourceBadge.length > 0 ? this.dataSourceBadge : '估算')
+            .fontSize(11)
+            .fontColor(AppTheme.text)
+            .padding({ left: 10, right: 10, top: 5, bottom: 5 })
+            .backgroundColor('#1F2937')
+            .borderRadius(999)
+            .border({ width: 1, color: AppTheme.border })
+        } else {
+          Button('设置', { type: ButtonType.Capsule })
+            .fontSize(12)
+            .height(30)
+            .backgroundColor('#1F2937')
+            .fontColor(AppTheme.text)
+            .onClick(() => {
+              this.openSettings();
+            })
+        }
       }
       .width('100%')
-      .padding({ left: 8, right: 12, top: 8, bottom: 4 })
+      .padding({ left: 8, right: 12, top: 10, bottom: 8 })
 
       Scroll() {
         Column({ space: 12 }) {
-          Column({ space: 8 }) {
-            Text('示例场景')
-              .fontSize(13)
-              .fontWeight(FontWeight.Medium)
-              .fontColor('#0F766E')
-              .width('100%')
-            Row({ space: 8 }) {
-              ForEach(FixtureCatalog.all(), (f: FixtureScenario) => {
-                Button(f.title, { type: ButtonType.Capsule })
-                  .fontSize(11)
-                  .height(30)
-                  .constraintSize({ maxWidth: 160 })
-                  .backgroundColor(this.fixtureId === f.id ? '#0D9488' : '#E2E8F0')
-                  .fontColor(this.fixtureId === f.id ? Color.White : '#334155')
-                  .onClick(() => {
-                    this.applyFixture(f);
-                  })
-              }, (f: FixtureScenario) => f.id)
-            }
-            .width('100%')
+          if (this.showForm || !this.hasResult) {
+            this.formSection()
           }
-          .width('100%')
-          .padding(14)
-          .borderRadius(14)
-          .backgroundColor(Color.White)
-
-          Column({ space: 8 }) {
-            Text('起终点')
-              .fontSize(13)
-              .fontWeight(FontWeight.Medium)
-              .fontColor('#0F766E')
-              .width('100%')
-            Text('司机经度 / 纬度')
-              .fontSize(12)
-              .fontColor('#64748B')
-              .width('100%')
-            Row({ space: 8 }) {
-              TextInput({ text: this.driverLonText, placeholder: 'lon' })
-                .layoutWeight(1)
-                .onChange((v: string) => {
-                  this.driverLonText = v;
-                })
-              TextInput({ text: this.driverLatText, placeholder: 'lat' })
-                .layoutWeight(1)
-                .onChange((v: string) => {
-                  this.driverLatText = v;
-                })
-            }
-            .width('100%')
-            TextInput({ text: this.driverName, placeholder: '司机名称' })
-              .onChange((v: string) => {
-                this.driverName = v;
-              })
-            Button('用当前定位作为司机起点')
-              .width('100%')
-              .height(36)
-              .backgroundColor('#CCFBF1')
-              .fontColor('#0F766E')
-              .onClick(() => {
-                this.onUseGpsDriver();
-              })
-
-            Text('乘客经度 / 纬度')
-              .fontSize(12)
-              .fontColor('#64748B')
-              .margin({ top: 8 })
-              .width('100%')
-            Row({ space: 8 }) {
-              TextInput({ text: this.passengerLonText, placeholder: 'lon' })
-                .layoutWeight(1)
-                .onChange((v: string) => {
-                  this.passengerLonText = v;
-                })
-              TextInput({ text: this.passengerLatText, placeholder: 'lat' })
-                .layoutWeight(1)
-                .onChange((v: string) => {
-                  this.passengerLatText = v;
-                })
-            }
-            .width('100%')
-            TextInput({ text: this.passengerName, placeholder: '乘客名称' })
-              .onChange((v: string) => {
-                this.passengerName = v;
-              })
-            TextInput({ text: this.city, placeholder: '城市（公交可选）' })
-              .onChange((v: string) => {
-                this.city = v;
-              })
-          }
-          .width('100%')
-          .padding(14)
-          .borderRadius(14)
-          .backgroundColor(Color.White)
-
-          Column({ space: 8 }) {
-            Text('乘客可用方式')
-              .fontSize(13)
-              .fontWeight(FontWeight.Medium)
-              .fontColor('#0F766E')
-              .width('100%')
-            Row({ space: 8 }) {
-              Button('步行', { type: ButtonType.Capsule })
-                .fontSize(12)
-                .height(32)
-                .backgroundColor(this.allowWalk ? '#0D9488' : '#E2E8F0')
-                .fontColor(this.allowWalk ? Color.White : '#334155')
-                .onClick(() => {
-                  this.allowWalk = !this.allowWalk;
-                })
-              Button('骑行', { type: ButtonType.Capsule })
-                .fontSize(12)
-                .height(32)
-                .backgroundColor(this.allowBike ? '#0D9488' : '#E2E8F0')
-                .fontColor(this.allowBike ? Color.White : '#334155')
-                .onClick(() => {
-                  this.allowBike = !this.allowBike;
-                })
-              Button('公交', { type: ButtonType.Capsule })
-                .fontSize(12)
-                .height(32)
-                .backgroundColor(this.allowTransit ? '#0D9488' : '#E2E8F0')
-                .fontColor(this.allowTransit ? Color.White : '#334155')
-                .onClick(() => {
-                  this.allowTransit = !this.allowTransit;
-                })
-            }
-            .width('100%')
-            Row() {
-              Text('避免公交')
-                .fontSize(14)
-                .fontColor('#0F172A')
-                .layoutWeight(1)
-              Toggle({ type: ToggleType.Switch, isOn: this.avoidTransit })
-                .selectedColor('#0D9488')
-                .onChange((on: boolean) => {
-                  this.avoidTransit = on;
-                })
-            }
-            .width('100%')
-            Text(`步行上限约 ${this.maxWalkMin.toFixed(0)} 分钟`)
-              .fontSize(12)
-              .fontColor('#64748B')
-              .width('100%')
-            Slider({
-              value: this.maxWalkMin,
-              min: 5,
-              max: 25,
-              step: 1,
-              style: SliderStyle.OutSet
-            })
-              .selectedColor('#0D9488')
-              .trackColor('#E2E8F0')
-              .onChange((v: number) => {
-                this.maxWalkMin = v;
-              })
-          }
-          .width('100%')
-          .padding(14)
-          .borderRadius(14)
-          .backgroundColor(Color.White)
-
-          Button(this.planning ? '规划中…' : '开始规划')
-            .width('100%')
-            .height(46)
-            .backgroundColor('#0D9488')
-            .fontColor(Color.White)
-            .enabled(!this.planning)
-            .onClick(() => {
-              this.onPlan();
-            })
-
-          Text(this.statusText)
-            .fontSize(12)
-            .fontColor('#64748B')
-            .width('100%')
 
           if (this.errorText.length > 0) {
             Text(this.errorText)
               .fontSize(13)
-              .fontColor('#DC2626')
+              .fontColor(AppTheme.danger)
               .width('100%')
+              .padding({ left: 4 })
           }
 
           if (this.hasResult) {
-            Column({ space: 8 }) {
-              Row() {
-                Text('路线示意')
-                  .fontSize(13)
-                  .fontWeight(FontWeight.Medium)
-                  .fontColor('#0F766E')
-                  .layoutWeight(1)
-                Text(this.dataSourceBadge)
-                  .fontSize(11)
-                  .fontColor('#0F766E')
-                  .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-                  .backgroundColor('#CCFBF1')
-                  .borderRadius(999)
-              }
+            this.resultsSection()
+          } else {
+            Text(this.statusText)
+              .fontSize(12)
+              .fontColor(AppTheme.textSecondary)
               .width('100%')
-
-              Stack() {
-                Column()
-                  .width('100%')
-                  .height(200)
-                  .borderRadius(12)
-                  .backgroundColor('#E2E8F0')
-                PolylinePreview({
-                  driverLine: this.previewDriver,
-                  passengerLine: this.previewPassenger,
-                  meeting: this.previewMeeting,
-                  widthPx: this.mapW,
-                  heightPx: this.mapH
-                })
-                  .width('100%')
-                  .height(200)
-              }
-              .width('100%')
-              .onAreaChange((_oldValue: Area, area: Area) => {
-                const w: number = Number(area.width);
-                if (!isNaN(w) && w > 0) {
-                  this.mapW = w;
-                }
-              })
-
-              Text('青绿=司机 · 琥珀=乘客 · 红点=会合点（示意，非真实道路）')
-                .fontSize(11)
-                .fontColor('#94A3B8')
-                .width('100%')
-            }
-            .width('100%')
-            .padding(14)
-            .borderRadius(14)
-            .backgroundColor(Color.White)
-
-            Column({ space: 8 }) {
-              Text('方案')
-                .fontSize(13)
-                .fontWeight(FontWeight.Medium)
-                .fontColor('#0F766E')
-                .width('100%')
-              ForEach(this.cards, (card: PlanCardModel) => {
-                Column({ space: 4 }) {
-                  Text(card.title)
-                    .fontSize(15)
-                    .fontWeight(FontWeight.Medium)
-                    .fontColor('#0F172A')
-                    .width('100%')
-                  Text(card.subtitle)
-                    .fontSize(12)
-                    .fontColor('#0F766E')
-                    .width('100%')
-                  Text(card.rationale)
-                    .fontSize(12)
-                    .fontColor('#475569')
-                    .width('100%')
-                }
-                .width('100%')
-                .padding(12)
-                .borderRadius(12)
-                .backgroundColor(this.selectedCardId === card.id ? '#F0FDFA' : '#F8FAFC')
-                .border({
-                  width: this.selectedCardId === card.id ? 1.5 : 1,
-                  color: this.selectedCardId === card.id ? '#0D9488' : '#E2E8F0'
-                })
-                .onClick(() => {
-                  this.selectCard(card.id);
-                })
-              }, (card: PlanCardModel) => card.id)
-            }
-            .width('100%')
-            .padding(14)
-            .borderRadius(14)
-            .backgroundColor(Color.White)
-            .margin({ bottom: 28 })
+              .padding({ left: 4, bottom: 20 })
           }
         }
-        .padding({ left: 16, right: 16, bottom: 24, top: 4 })
+        .padding({ left: 14, right: 14, bottom: 28, top: 4 })
         .width('100%')
       }
       .layoutWeight(1)
@@ -598,7 +436,427 @@ struct PlanPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F1F5F9')
+    .backgroundColor(AppTheme.bg)
+  }
+
+  @Builder
+  formSection() {
+    Column({ space: 12 }) {
+      // fixtures
+      Column({ space: 8 }) {
+        Text('示例场景')
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(AppTheme.teal)
+          .width('100%')
+        Flex({ wrap: FlexWrap.Wrap }) {
+          ForEach(FixtureCatalog.all(), (f: FixtureScenario) => {
+            Button(f.title, { type: ButtonType.Capsule })
+              .fontSize(11)
+              .height(30)
+              .margin({ right: 8, bottom: 8 })
+              .backgroundColor(this.fixtureId === f.id ? AppTheme.tealDeep : AppTheme.card)
+              .fontColor(this.fixtureId === f.id ? AppTheme.textOnPrimary : AppTheme.textSecondary)
+              .onClick(() => {
+                this.applyFixture(f);
+              })
+          }, (f: FixtureScenario) => f.id)
+        }
+        .width('100%')
+      }
+      .width('100%')
+      .padding(14)
+      .borderRadius(16)
+      .backgroundColor(AppTheme.card)
+
+      // points — glass-ish light card like mock input
+      Column({ space: 8 }) {
+        Text('起终点')
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(AppTheme.tealDeep)
+          .width('100%')
+        Text('司机经度 / 纬度')
+          .fontSize(12)
+          .fontColor(AppTheme.textMuted)
+          .width('100%')
+        Row({ space: 8 }) {
+          TextInput({ text: this.driverLonText, placeholder: 'lon' })
+            .layoutWeight(1)
+            .backgroundColor(Color.White)
+            .onChange((v: string) => {
+              this.driverLonText = v;
+            })
+          TextInput({ text: this.driverLatText, placeholder: 'lat' })
+            .layoutWeight(1)
+            .backgroundColor(Color.White)
+            .onChange((v: string) => {
+              this.driverLatText = v;
+            })
+        }
+        .width('100%')
+        TextInput({ text: this.driverName, placeholder: '司机名称' })
+          .backgroundColor(Color.White)
+          .onChange((v: string) => {
+            this.driverName = v;
+          })
+        Button('用当前定位作为司机起点', { type: ButtonType.Capsule })
+          .width('100%')
+          .height(36)
+          .backgroundColor('#CCFBF1')
+          .fontColor(AppTheme.tealDeep)
+          .onClick(() => {
+            this.onUseGpsDriver();
+          })
+
+        Text('乘客经度 / 纬度')
+          .fontSize(12)
+          .fontColor(AppTheme.textMuted)
+          .margin({ top: 4 })
+          .width('100%')
+        Row({ space: 8 }) {
+          TextInput({ text: this.passengerLonText, placeholder: 'lon' })
+            .layoutWeight(1)
+            .backgroundColor(Color.White)
+            .onChange((v: string) => {
+              this.passengerLonText = v;
+            })
+          TextInput({ text: this.passengerLatText, placeholder: 'lat' })
+            .layoutWeight(1)
+            .backgroundColor(Color.White)
+            .onChange((v: string) => {
+              this.passengerLatText = v;
+            })
+        }
+        .width('100%')
+        TextInput({ text: this.passengerName, placeholder: '乘客名称' })
+          .backgroundColor(Color.White)
+          .onChange((v: string) => {
+            this.passengerName = v;
+          })
+        TextInput({ text: this.city, placeholder: '城市（公交可选）' })
+          .backgroundColor(Color.White)
+          .onChange((v: string) => {
+            this.city = v;
+          })
+        Text('地点搜索 / 地图点选 · 即将接入')
+          .fontSize(11)
+          .fontColor(AppTheme.textMuted)
+          .width('100%')
+      }
+      .width('100%')
+      .padding(14)
+      .borderRadius(16)
+      .backgroundColor(AppTheme.glass)
+
+      Column({ space: 8 }) {
+        Text('乘客可用方式')
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(AppTheme.teal)
+          .width('100%')
+        Row({ space: 8 }) {
+          Button('步行', { type: ButtonType.Capsule })
+            .fontSize(12)
+            .height(32)
+            .backgroundColor(this.allowWalk ? AppTheme.tealDeep : AppTheme.cardMuted)
+            .fontColor(AppTheme.text)
+            .onClick(() => {
+              this.allowWalk = !this.allowWalk;
+            })
+          Button('骑行', { type: ButtonType.Capsule })
+            .fontSize(12)
+            .height(32)
+            .backgroundColor(this.allowBike ? AppTheme.tealDeep : AppTheme.cardMuted)
+            .fontColor(AppTheme.text)
+            .onClick(() => {
+              this.allowBike = !this.allowBike;
+            })
+          Button('公交', { type: ButtonType.Capsule })
+            .fontSize(12)
+            .height(32)
+            .backgroundColor(this.allowTransit ? AppTheme.tealDeep : AppTheme.cardMuted)
+            .fontColor(AppTheme.text)
+            .onClick(() => {
+              this.allowTransit = !this.allowTransit;
+            })
+        }
+        .width('100%')
+        Row() {
+          Text('避免公交')
+            .fontSize(14)
+            .fontColor(AppTheme.text)
+            .layoutWeight(1)
+          Toggle({ type: ToggleType.Switch, isOn: this.avoidTransit })
+            .selectedColor(AppTheme.tealDeep)
+            .onChange((on: boolean) => {
+              this.avoidTransit = on;
+            })
+        }
+        .width('100%')
+        Text(`步行上限约 ${this.maxWalkMin.toFixed(0)} 分钟`)
+          .fontSize(12)
+          .fontColor(AppTheme.textSecondary)
+          .width('100%')
+        Slider({
+          value: this.maxWalkMin,
+          min: 5,
+          max: 25,
+          step: 1,
+          style: SliderStyle.OutSet
+        })
+          .selectedColor(AppTheme.teal)
+          .trackColor(AppTheme.cardMuted)
+          .onChange((v: number) => {
+            this.maxWalkMin = v;
+          })
+      }
+      .width('100%')
+      .padding(14)
+      .borderRadius(16)
+      .backgroundColor(AppTheme.card)
+
+      Button(this.planning ? '优化中…' : '开始路线优化', { type: ButtonType.Capsule })
+        .width('100%')
+        .height(50)
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .backgroundColor(AppTheme.primary)
+        .fontColor(AppTheme.textOnPrimary)
+        .enabled(!this.planning)
+        .onClick(() => {
+          this.onPlan();
+        })
+
+      if (this.hasResult) {
+        Button('查看优化结果', { type: ButtonType.Capsule })
+          .width('100%')
+          .height(42)
+          .backgroundColor(AppTheme.card)
+          .fontColor(AppTheme.text)
+          .border({ width: 1, color: AppTheme.border })
+          .onClick(() => {
+            this.showForm = false;
+          })
+      }
+    }
+    .width('100%')
+  }
+
+  @Builder
+  resultsSection() {
+    Column({ space: 12 }) {
+      // map card
+      Column({ space: 8 }) {
+        Stack() {
+          Column()
+            .width('100%')
+            .height(180)
+            .borderRadius(16)
+            .linearGradient({
+              angle: 140,
+              colors: [['#DCE8F2', 0], ['#E8F5E9', 0.5], ['#E2E8F0', 1]]
+            })
+          PolylinePreview({
+            driverLine: this.previewDriver,
+            passengerLine: this.previewPassenger,
+            meeting: this.previewMeeting,
+            widthPx: this.mapW,
+            heightPx: this.mapH
+          })
+            .width('100%')
+            .height(180)
+          Column() {
+            Text(this.selectedModeBadge())
+              .fontSize(11)
+              .fontColor(AppTheme.textOnPrimary)
+              .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+              .backgroundColor('#2563EB')
+              .borderRadius(999)
+          }
+          .position({ x: 10, y: 10 })
+          Text('示意路线 · 非真实道路')
+            .fontSize(10)
+            .fontColor(AppTheme.textMuted)
+            .position({ x: 10, y: 155 })
+        }
+        .width('100%')
+        .height(180)
+        .clip(true)
+        .borderRadius(16)
+        .onAreaChange((_oldValue: Area, area: Area) => {
+          const w: number = Number(area.width);
+          if (!isNaN(w) && w > 0) {
+            this.mapW = w;
+          }
+        })
+      }
+      .width('100%')
+
+      Text('推荐方案')
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(AppTheme.textSecondary)
+        .width('100%')
+
+      ForEach(this.cards, (card: PlanCardModel) => {
+        Row() {
+          Text(this.modeIcon(card.modeKey))
+            .fontSize(22)
+            .width(36)
+            .textAlign(TextAlign.Center)
+
+          Column({ space: 3 }) {
+            Row({ space: 6 }) {
+              Text(card.modeLabel)
+                .fontSize(15)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(this.selectedCardId === card.id ? AppTheme.textOnPrimary : AppTheme.text)
+              if (card.recommended) {
+                Text('最快方案')
+                  .fontSize(10)
+                  .fontColor(AppTheme.textOnPrimary)
+                  .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                  .backgroundColor(AppTheme.primary)
+                  .borderRadius(999)
+              }
+            }
+            .width('100%')
+            Text(card.placeLine)
+              .fontSize(12)
+              .fontColor(this.selectedCardId === card.id ? '#CCFBF1' : AppTheme.textSecondary)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .width('100%')
+          }
+          .layoutWeight(1)
+          .alignItems(HorizontalAlign.Start)
+          .margin({ left: 8, right: 8 })
+
+          Column({ space: 2 }) {
+            Text(card.totalMinText)
+              .fontSize(15)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.selectedCardId === card.id ? AppTheme.textOnPrimary : AppTheme.text)
+            Text(card.saveLine)
+              .fontSize(11)
+              .fontColor(this.selectedCardId === card.id ? '#A7F3D0' : AppTheme.textSecondary)
+          }
+          .alignItems(HorizontalAlign.End)
+        }
+        .width('100%')
+        .padding(14)
+        .borderRadius(14)
+        .backgroundColor(this.selectedCardId === card.id ? AppTheme.cardSelected : AppTheme.card)
+        .border({
+          width: this.selectedCardId === card.id ? 0 : 1,
+          color: AppTheme.borderSoft
+        })
+        .onClick(() => {
+          this.selectCard(card.id);
+        })
+      }, (card: PlanCardModel) => card.id)
+
+      // summary card
+      Column({ space: 6 }) {
+        Text(this.summaryTitle)
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.summaryTitle === '最快方案' ? AppTheme.textOnPrimary : AppTheme.text)
+          .width('100%')
+        Text(this.summaryBody)
+          .fontSize(13)
+          .fontColor(this.summaryTitle === '最快方案' ? '#ECFDF5' : AppTheme.textSecondary)
+          .width('100%')
+      }
+      .width('100%')
+      .padding(16)
+      .borderRadius(16)
+      .backgroundColor(this.summaryTitle === '最快方案' ? AppTheme.primaryDeep : AppTheme.cardMuted)
+
+      // meeting point
+      Column({ space: 8 }) {
+        Text('会合地点')
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#9D174D')
+          .width('100%')
+        Column({ space: 4 }) {
+          Text(this.previewMeeting.name.length > 0 ? this.previewMeeting.name : '会合点')
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(AppTheme.textOnLight)
+            .width('100%')
+          Text(
+            this.previewMeeting.address.length > 0
+              ? this.previewMeeting.address
+              : `${this.previewMeeting.lat.toFixed(5)}, ${this.previewMeeting.lon.toFixed(5)}`
+          )
+            .fontSize(12)
+            .fontColor(AppTheme.textOnLightSecondary)
+            .width('100%')
+        }
+        .width('100%')
+        .padding(12)
+        .borderRadius(12)
+        .backgroundColor(Color.White)
+      }
+      .width('100%')
+      .padding(14)
+      .borderRadius(16)
+      .backgroundColor(AppTheme.pinkSoft)
+
+      // placeholder actions
+      Row({ space: 10 }) {
+        Button('分享', { type: ButtonType.Capsule })
+          .layoutWeight(1)
+          .height(46)
+          .backgroundColor(AppTheme.purple)
+          .fontColor(AppTheme.textOnLight)
+          .onClick(() => {
+            this.onSharePlaceholder();
+          })
+        Button('在地图中打开', { type: ButtonType.Capsule })
+          .layoutWeight(1)
+          .height(46)
+          .backgroundColor(AppTheme.blue)
+          .fontColor(AppTheme.textOnLight)
+          .onClick(() => {
+            this.onOpenMapPlaceholder();
+          })
+      }
+      .width('100%')
+
+      Text('分享 / 打开地图 · Phase 3 接入 · 当前为占位')
+        .fontSize(11)
+        .fontColor(AppTheme.textMuted)
+        .width('100%')
+        .textAlign(TextAlign.Center)
+
+      Button('重新规划', { type: ButtonType.Capsule })
+        .width('100%')
+        .height(42)
+        .backgroundColor(AppTheme.card)
+        .fontColor(AppTheme.textSecondary)
+        .border({ width: 1, color: AppTheme.border })
+        .onClick(() => {
+          this.showForm = true;
+        })
+    }
+    .width('100%')
+  }
+
+  private selectedModeBadge(): string {
+    for (let i = 0; i < this.cards.length; i++) {
+      if (this.cards[i].id === this.selectedCardId) {
+        const c: PlanCardModel = this.cards[i];
+        if (c.recommended) {
+          return `${c.modeLabel} · 推荐`;
+        }
+        return c.modeLabel;
+      }
+    }
+    return '方案预览';
   }
 }
 
@@ -608,7 +866,7 @@ struct PolylinePreview {
   @Prop passengerLine: GeoPoint[] = [];
   @Prop meeting: NamedPoint = new NamedPoint();
   @Prop widthPx: number = 320;
-  @Prop heightPx: number = 200;
+  @Prop heightPx: number = 180;
 
   private bounds(): PolylineBounds {
     const lines: GeoPoint[][] = [];
@@ -673,22 +931,16 @@ struct PolylinePreview {
 
   build() {
     Stack() {
-      Column()
-        .width('100%')
-        .height('100%')
-        .borderRadius(12)
-        .backgroundColor('#0F172A0D')
-
       ForEach(this.projectedDriverSamples(), (p: CanvasPoint, idx: number) => {
         Circle({ width: idx === 0 ? 8 : 4, height: idx === 0 ? 8 : 4 })
-          .fill(idx === 0 ? '#0D9488' : '#14B8A6')
+          .fill(idx === 0 ? AppTheme.tealDeep : AppTheme.teal)
           .position({ x: p.x - (idx === 0 ? 4 : 2), y: p.y - (idx === 0 ? 4 : 2) })
       }, (p: CanvasPoint, idx: number) => `d-${idx}-${p.x.toFixed(1)}-${p.y.toFixed(1)}`)
 
       ForEach(this.projectedPassengerSamples(), (p: CanvasPoint, idx: number) => {
         Circle({ width: 4, height: 4 })
-          .fill('#F59E0B')
-          .opacity(0.9)
+          .fill(AppTheme.amber)
+          .opacity(0.95)
           .position({ x: p.x - 2, y: p.y - 2 })
       }, (p: CanvasPoint, idx: number) => `p-${idx}-${p.x.toFixed(1)}-${p.y.toFixed(1)}`)
 
@@ -704,6 +956,6 @@ struct PolylinePreview {
     .width('100%')
     .height('100%')
     .clip(true)
-    .borderRadius(12)
+    .borderRadius(16)
   }
 }
