@@ -1,4 +1,9 @@
-import { abilityAccessCtrl, common, Permissions } from '@kit.AbilityKit';
+import {
+  abilityAccessCtrl,
+  common,
+  PermissionRequestResult,
+  Permissions
+} from '@kit.AbilityKit';
 import { geoLocationManager } from '@kit.LocationKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 
@@ -11,7 +16,7 @@ export interface LocationSnapshot {
   lat?: number;
 }
 
-const LOCATION_PERMISSIONS: Permissions[] = [
+const LOCATION_PERMISSIONS: Array<Permissions> = [
   'ohos.permission.APPROXIMATELY_LOCATION',
   'ohos.permission.LOCATION'
 ];
@@ -23,9 +28,10 @@ export class LocationService {
   static async ensurePermission(context: common.UIAbilityContext): Promise<LocationPermissionState> {
     try {
       const atManager: abilityAccessCtrl.AtManager = abilityAccessCtrl.createAtManager();
-      const result: abilityAccessCtrl.PermissionRequestResult =
+      // PermissionRequestResult is a top-level AbilityKit export (not abilityAccessCtrl.*).
+      const result: PermissionRequestResult =
         await atManager.requestPermissionsFromUser(context, LOCATION_PERMISSIONS);
-      const authResults: number[] = result.authResults;
+      const authResults: Array<number> = result.authResults;
       if (authResults.length === 0) {
         return 'denied';
       }
