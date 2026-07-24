@@ -41,21 +41,32 @@ Not a generic chatbot. Not a full ride-hailing network. Not a dual-phone realtim
 8. **Do not add dual-phone realtime, continuous auto re-meeting, or multi-agent negotiation** unless `docs/ROADMAP.md` is updated and a human explicitly asks.
 9. **Prefer OpenAI-compatible LLM HTTP** (`baseUrl` + `apiKey` + `model`) so DeepSeek/Qwen/OpenAI/custom gateways all work.
 10. **Keep domain pure.** Scoring / candidate generation / stay-put decision stay free of UI and free of raw HTTP where possible (`domain/`).
-11. **Git: local commits OK; push only after human confirmation.** See [Git workflow](#git-workflow) below. Never `git push` mid-debug or “just to share.”
+11. **Git: do not commit half-working work.** See [Git workflow](#git-workflow). Local commits only after the slice is verified (DevEco Preview/Run for UI; domain tests for engine/agent pure logic). Push only after human confirmation. Never `git push` mid-debug or “just to share.”
 12. **Verify before claiming done.** Prefer DevEco Preview/device run for UI and ArkTS compile errors; ad-hoc scripts are not a substitute for a green Preview when platform APIs are involved.
-13. **Keep commit history clean.** If a local commit is later found broken (Preview/build/runtime fail), **do not stack fix commits on a known-bad tip as the permanent story** — undo that local commit (prefer `git reset --soft HEAD~1` while unpushed, or equivalent) and recommit a corrected single logical change. Do not rewrite history that is already on `origin` without explicit human approval.
+13. **Keep commit history clean.** Prefer **one coherent commit per feature slice** (not `feat` then a chain of `fix` commits for the same slice). If a local commit is later found broken (Preview/build/runtime fail), **do not stack fix commits on a known-bad tip as the permanent story** — undo that local commit (prefer `git reset --soft HEAD~1` while unpushed, or equivalent) and recommit a corrected single logical change. Do not rewrite history that is already on `origin` without explicit human approval.
 
 ---
 
 ## Git workflow
 
-This project keeps **`origin` history clean**. Agents must follow:
+This project keeps **`origin` history clean and readable**. Agents must follow:
+
+### When **not** to commit yet
+
+- Feature/fix is only partially implemented.
+- DevEco Preview/Run still fails, or the main user path for this slice is untested.
+- You are still iterating on layout/compile/runtime issues for the **same** slice.
+- You would need a follow-up `fix:` commit immediately after a `feat:` for the same change.
+
+**Rule of thumb:** if a human checking out the tip would hit a broken UI, compile error, or “half-feature,” **do not commit yet**. Keep working in the working tree (or WIP only if the human explicitly asks for a checkpoint).
 
 ### When to commit (local)
 
-- After a coherent feature or fix slice is implemented (Conventional Commits: `feat:`, `fix:`, `docs:`, …).
-- Prefer **one logical change per commit** over giant mixed dumps.
-- Local commits are encouraged so work is checkpointed on the machine.
+- The slice is **implemented and verified** for its scope:
+  - Domain/engine/agent pure logic → `cd domain && npm test` green when touched.
+  - ArkTS/UI → DevEco Preview and/or device Run exercised for the changed screens.
+- One **logical** change per commit (Conventional Commits: `feat:`, `fix:`, `docs:`, …).
+- Prefer **squash-as-you-go while unpushed**: one finished slice = one commit, not `feat` + many `fix` patches.
 
 ### When **not** to push
 
@@ -68,7 +79,7 @@ This project keeps **`origin` history clean**. Agents must follow:
 1. Stop. Do **not** push the bad commit.
 2. Fix the code.
 3. **Rewrite the local tip** so the broken commit is not left as permanent history:
-   - Preferred while unpushed: `git reset --soft HEAD~1` (keeps changes staged) → fix → `git commit` again with an accurate message.
+   - Preferred while unpushed: `git reset --soft HEAD~1` (keeps changes staged) → fix → `git commit` again with an accurate message covering the whole slice.
    - Or amend only if the bad commit was the latest, unpushed, and the human is fine with amend for that tip.
 4. Re-verify (DevEco Preview/Run when ArkTS/UI is involved).
 5. Only after human confirmation → push.
@@ -76,14 +87,23 @@ This project keeps **`origin` history clean**. Agents must follow:
 ### If history is already on remote
 
 - Do **not** force-push or rewrite shared history unless the human explicitly asks.
-- Use a normal follow-up `fix:` commit instead.
+- Use a normal follow-up `fix:` commit instead (and keep it focused).
+
+### Pre-commit checklist (agents)
+
+- [ ] Slice works end-to-end for its intended path (not only “files written”)
+- [ ] Domain tests green if `domain/` or pure agent grounding changed
+- [ ] DevEco Preview/Run OK if ArkTS/UI/services HTTP changed
+- [ ] No secrets in the tree
+- [ ] Docs/`AGENTS.md` updated if contracts/workflow changed
+- [ ] Commit message describes the **finished** slice (avoid promising unfinished work)
 
 ### Pre-push checklist (agents)
 
 - [ ] Feature works in DevEco Preview and/or device run (as applicable)
 - [ ] No secrets in the tree
 - [ ] Docs/`AGENTS.md` updated if contracts changed
-- [ ] Local history is intentional (no known-broken tip commits)
+- [ ] Local history is intentional (no known-broken tip; no needless feat+fix chains for one slice)
 - [ ] Human said to push
 
 ---
@@ -277,7 +297,8 @@ A complete contribution:
 5. Builds/lints as far as the current toolchain allows (DevEco Preview/Run for ArkTS UI).
 6. Leaves docs consistent.
 7. **Does not `git push` unless the human explicitly confirmed** after verifying the feature works.
-8. If a local commit was bad, **reverted/recommitted cleanly** (see [Git workflow](#git-workflow)) rather than leaving a broken tip in history.
+8. **Does not leave a half-broken tip as permanent history** — if a local commit was bad, soft-reset/recommit (while unpushed) rather than stacking fix commits for the same slice.
+9. If history is already on remote, use a normal `fix:` commit (no force-push without explicit human approval).
 
 ---
 

@@ -108,7 +108,7 @@ DevEco Studio opens the **repository root** (not a nested `app/` folder).
 | Client OS | HarmonyOS (phone) |
 | UI | ArkTS + ArkUI (Stage model) |
 | Domain / engine | TypeScript-first portable core under `domain/` (mirrored or imported into the app as practical) |
-| Maps & routing | Provider interface; implement with Harmony Map Kit and/or AMap Harmony SDK (decision in Phase 0 spike) |
+| Maps & routing | Provider interface; **estimate** now; AMap Web HTTP when mapWebKey wired (live REST deferred); Map Kit optional later for rendering |
 | LLM | OpenAI-compatible HTTP API (DeepSeek / Qwen / OpenAI / custom gateway) |
 | Optional server | Lightweight proxy (`server/`) to hold a demo key |
 | Tests | Domain unit tests + app UI smoke + fixture replay |

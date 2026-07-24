@@ -1,8 +1,9 @@
 /**
- * Map / routing provider surface (Phase 1).
+ * Map / routing provider surface.
  *
- * Current runtime: estimate-only (Mode C). HybridMapProvider keeps mapWebKey so
- * Phase 2/3 can branch to AMap Web HTTP without changing PlanningService callers.
+ * Runtime today: estimate-only (Mode C). HybridMapProvider keeps mapWebKey so
+ * a later AMap Web HTTP branch can land without changing PlanningService callers.
+ * Live REST is intentionally deferred (not a missing Phase 2 dependency).
  */
 
 import {
@@ -82,7 +83,7 @@ export class HybridMapProvider implements MapProvider {
 
   constructor(mapWebKey: string = '') {
     this.mapWebKey = mapWebKey.trim();
-    // mapWebKey reserved for live AMap REST branch (not wired in Phase 1).
+    // mapWebKey reserved for live AMap REST (still deferred; estimate path only).
     void this.mapWebKey;
   }
 

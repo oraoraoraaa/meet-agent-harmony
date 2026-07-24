@@ -6,32 +6,36 @@ DevEco opens the **repository root**. This module is the main HAP.
 
 ```text
 entry/src/main/ets/
-  common/           # AppSettings, AppTheme, GlassChrome, PolylineMath
+  common/           # AppSettings, AppTheme, GlassChrome, PolylineMath, ReplyFormat
   domain/           # ArkTS mirror of repo-root domain/ engine
-  pages/            # Index, PlanPage, SettingsPage
+  pages/            # Index, ChatPage, PlanPage, SettingsPage
   services/
     settings/       # Preferences-backed SettingsStore
     location/       # one-shot LocationService
     map/            # MapProvider + PlanningService (estimate Mode C)
     planning/       # FixtureCatalog
-    agent/          # (Phase 2)
-    llm/            # (Phase 2)
+    agent/          # orchestrator, tools, grounding, offline reply
+    llm/            # OpenAI-compatible client (Mode A/B)
   entryability/
   entrybackupability/
 ```
 
-## Phase 1 surfaces
+## Surfaces (through Phase 2)
 
-- Home: liquid-glass stage shell → plan entry, settings, one-shot locate
-- Plan: fixtures + coords + mode constraints → offline RecommendationSet + cards
-- Settings: map keys, LLM mode A/B/C fields, language, fixture/trace toggles
+- Home: liquid-glass stage shell → chat / form plan / settings / one-shot locate
+- Chat: agent tool loop or offline engine; plan mini-cards; 决策过程 trace
+- Plan: fixtures + coords + mode constraints → offline RecommendationSet + schematic polylines
+- Settings: map keys, LLM mode A/B/C, test LLM ping, language, fixture/trace toggles
 - Permissions: INTERNET, LOCATION, APPROXIMATELY_LOCATION
 
 ## Map status
 
-**No vendor Map SDK in Phase 1.** Planning uses the estimate engine (straight-line + speed model) via `EstimateMapProvider` / `HybridMapProvider` shell. Live AMap Web HTTP is intentionally deferred; keys can still be stored in Settings for later.
+**No vendor Map SDK yet (intentional).** Planning uses the estimate engine
+(straight-line + speed model) via `EstimateMapProvider` / `HybridMapProvider` shell.
+Live AMap Web HTTP is deferred; keys can still be stored in Settings for later.
 
 ## Rules
 
 - Do not commit keys.
 - Pure planning math also lives in repo-root `domain/` (Node unit tests). Keep ArkTS `entry/.../domain/` contracts aligned.
+- Do not commit half-working UI; verify Preview/device before committing (see root `AGENTS.md`).

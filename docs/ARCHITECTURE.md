@@ -48,24 +48,20 @@ Responsibilities:
 - Agent orchestration wiring
 - Share sheet / deep links
 
-Suggested feature folders (create as implementation proceeds):
+Suggested layout (as of Phase 2; `features/` folders optional later):
 
 ```text
 entry/src/main/ets/
-  pages/
-  features/
-    home/
-    chat/
-    map_plan/
-    session/
-    settings/
+  pages/          # Index, ChatPage, PlanPage, SettingsPage
+  common/
+  domain/         # ArkTS engine mirror
   services/
     agent/
     llm/
     map/
     location/
-    share/
-  common/
+    settings/
+    planning/
 ```
 
 ### `domain/` — pure planning core
