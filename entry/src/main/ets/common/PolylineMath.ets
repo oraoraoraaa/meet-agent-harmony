@@ -2,7 +2,7 @@
  * Pure geometry helpers for schematic polyline preview (no Map Kit required).
  */
 
-import { GeoPoint } from '../../domain/Models';
+import { GeoPoint } from '../domain/Models';
 
 export class CanvasPoint {
   x: number = 0;
