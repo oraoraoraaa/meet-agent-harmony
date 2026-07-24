@@ -1,5 +1,6 @@
 /**
  * Liquid-glass stage + panel helpers (ArkUI port of liquid-glass).
+ * Avoid discrete blurred circles — they render as hard “orbs” on Harmony.
  */
 
 import { AppTheme } from './AppTheme';
@@ -13,38 +14,34 @@ export struct StageBackground {
         .height('100%')
         .objectFit(ImageFit.Cover)
 
+      // Full-bleed dark veil only (no positioned circle orbs)
       Column()
         .width('100%')
         .height('100%')
         .linearGradient({
-          angle: 165,
+          angle: 180,
           colors: [
-            ['#C705060A', 0.0],
-            ['#B80C0E14', 0.45],
-            ['#E005060A', 1.0]
+            ['#D105060A', 0.0],
+            ['#B80C0E14', 0.42],
+            ['#F005060A', 1.0]
           ]
         })
 
-      // ambient blue glow
+      // Soft top accent wash (rectangle, not a circle)
       Column()
-        .width('80%')
-        .height('40%')
-        .borderRadius(999)
-        .backgroundColor('#330A84FF')
-        .blur(48)
-        .position({ x: '-10%', y: '-6%' })
-
-      // ambient violet glow
-      Column()
-        .width('70%')
-        .height('36%')
-        .borderRadius(999)
-        .backgroundColor('#285E5CE6')
-        .blur(52)
-        .position({ x: '45%', y: '6%' })
+        .width('100%')
+        .height('38%')
+        .linearGradient({
+          angle: 180,
+          colors: [
+            ['#3D0A84FF', 0.0],
+            ['#000A84FF', 1.0]
+          ]
+        })
     }
     .width('100%')
     .height('100%')
+    .clip(true)
   }
 }
 
