@@ -189,11 +189,11 @@ Mode C must always work.
 
 ## Current status
 
-**DevEco Stage project integrated at repo root** (`AppScope/`, `entry/`, hvigor + oh-package configs) plus product docs, `AGENTS.md`, domain stubs, fixtures, and server placeholder.
+**Phase 0 complete** (DevEco Stage at repo root, Settings + preferences, one-shot location, map provider decision).
 
-Phase 0 progress: home shell, **Settings** (map/LLM keys, modes, language), preferences persistence, one-shot location permission path, INTERNET/LOCATION permissions declared. Map provider spike still open.
+**Phase 1 landed:** portable domain engine + unit tests (`domain/`), ArkTS mirror under `entry/src/main/ets/domain/`, `PlanningService` + estimate map provider, **会合规划** page with fixtures, mode toggles, recommendation cards, schematic polyline preview, `估算` badge. Live AMap HTTP still deferred (estimate Mode C always works).
 
-Implementation follows [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) — **Plan B: Session AI Agent**, with v1 locking the meeting plan after initial confirmation (no dual-phone sync, no automatic mid-trip meeting-point change).
+Next: Phase 2 AI agent layer (chat + tool loop). See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
 ---
 

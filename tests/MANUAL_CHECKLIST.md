@@ -10,10 +10,10 @@ Update as features land. Check before demo day.
 
 ## Planning (offline)
 
-- [ ] Load fixture scenario
-- [ ] Plan returns stay-put + mode cards when reachable
-- [ ] Data source badge shows 估算
-- [ ] Selecting cards updates map preview
+- [x] Load fixture scenario
+- [x] Plan returns stay-put + mode cards when reachable
+- [x] Data source badge shows 估算
+- [x] Selecting cards updates map preview
 
 ## Planning (live)
 

@@ -3,12 +3,17 @@ import test from 'node:test';
 
 import {
   bestPerMode,
+  buildStraightDrivingRoute,
   decideSwitch,
+  generateRouteCandidates,
+  haversineM,
   rankOptions,
   reachableModes,
+  runEstimateAnalysis,
   scoreOption,
   type EvaluatedOption,
   type MobilityMode,
+  type Scenario,
 } from '../src/index.ts';
 
 function opt(mode: MobilityMode, score: number, driver = score, passenger = 1): EvaluatedOption {
@@ -63,11 +68,8 @@ test('bestPerMode keeps first occurrence in rank order', () => {
 });
 
 test('decideSwitch respects improvement margin', () => {
-  // baseline 12; option score must be <= 10.5 with default minImprovement 1.5
-  const strong = opt('walking', 8, 7, 5);
-  // recompute realistic score
   const scored = {
-    ...strong,
+    ...opt('walking', 8, 7, 5),
     score: scoreOption(7, 5, 'walking'),
   };
   assert.ok(decideSwitch(12, [scored]));
@@ -77,4 +79,101 @@ test('decideSwitch respects improvement margin', () => {
     score: scoreOption(11.5, 6, 'walking'),
   };
   assert.equal(decideSwitch(12, [marginal]), null);
+});
+
+test('haversineM is symmetric and zero for same point', () => {
+  const a = { lon: 108.94, lat: 34.26 };
+  const b = { lon: 108.95, lat: 34.27 };
+  assert.equal(haversineM(a, a), 0);
+  assert.ok(Math.abs(haversineM(a, b) - haversineM(b, a)) < 1e-6);
+  assert.ok(haversineM(a, b) > 1000 && haversineM(a, b) < 2000);
+});
+
+test('generateRouteCandidates enforces spacing and max count', () => {
+  const from = { lon: 108.89, lat: 34.23 };
+  const to = { lon: 108.95, lat: 34.26 };
+  const { route } = buildStraightDrivingRoute(from, to, { segmentM: 80 });
+  const passenger = to;
+  const candidates = generateRouteCandidates(route, passenger, {
+    maxCandidates: 4,
+    minCandidateSpacingM: 250,
+    minPassengerMoveM: 120,
+    walkReachM: 1200,
+    bicycleReachM: 3500,
+    transitReachM: 8000,
+    transitMinM: 2000,
+    minDriverSavingSecs: 60,
+    passengerBurdenWeight: 0.15,
+    bicyclePenaltyMin: 1,
+    transitPenaltyMin: 2.5,
+    minImprovementMin: 1.5,
+  });
+  assert.ok(candidates.length > 0);
+  assert.ok(candidates.length <= 4);
+  for (const c of candidates) {
+    assert.ok(c.passengerStraightM >= 120);
+    assert.ok(c.driverEtaMin >= 0);
+  }
+  // Spacing along route indices should not collapse to one point only if long route
+  if (candidates.length >= 2) {
+    assert.ok(candidates[candidates.length - 1]!.routeIndex > candidates[0]!.routeIndex);
+  }
+});
+
+test('xian fixture estimate analysis produces stable multi-option set', async () => {
+  const scenario: Scenario = {
+    driver: { name: '高新', lon: 108.8905, lat: 34.2324 },
+    passenger: { name: '钟楼', lon: 108.9465, lat: 34.261 },
+    city: '西安',
+    constraints: {
+      allowedModes: ['walking', 'bicycle', 'transit'],
+      maxPassengerWalkMin: 12,
+      avoidTransit: false,
+    },
+  };
+
+  const result = await runEstimateAnalysis(scenario, {
+    now: () => new Date('2026-07-24T12:00:00.000Z'),
+  });
+
+  assert.equal(result.dataSource, 'estimate');
+  assert.equal(result.generatedAt, '2026-07-24T12:00:00.000Z');
+  assert.ok(result.stayPut.driverEtaMin > 5);
+  assert.ok(result.stayPut.driverRoutePolyline.length >= 2);
+
+  const recommendedFlags =
+    (result.stayPut.recommended ? 1 : 0) + result.suggestions.filter((s) => s.recommended).length;
+  assert.equal(recommendedFlags, 1, 'exactly one recommended option');
+
+  // At least stay-put always present; suggestions depend on reach
+  for (const s of result.suggestions) {
+    assert.ok(s.driverRoutePolyline.length >= 1);
+    assert.ok(s.passengerPathPolyline.length >= 2);
+    assert.ok(s.passengerEtaMin > 0);
+    assert.ok(s.score > 0);
+  }
+
+  // Re-run is deterministic for scores/modes
+  const again = await runEstimateAnalysis(scenario, {
+    now: () => new Date('2026-07-24T12:00:00.000Z'),
+  });
+  assert.equal(again.suggestions.length, result.suggestions.length);
+  assert.equal(again.stayPut.recommended, result.stayPut.recommended);
+  if (result.suggestions[0]) {
+    assert.equal(again.suggestions[0]!.mode, result.suggestions[0]!.mode);
+    assert.ok(Math.abs(again.suggestions[0]!.score - result.suggestions[0]!.score) < 1e-9);
+  }
+});
+
+test('avoidTransit filters transit suggestions', async () => {
+  const scenario: Scenario = {
+    driver: { lon: 108.89, lat: 34.23 },
+    passenger: { lon: 108.95, lat: 34.26 },
+    constraints: {
+      allowedModes: ['walking', 'bicycle', 'transit'],
+      avoidTransit: true,
+    },
+  };
+  const result = await runEstimateAnalysis(scenario);
+  assert.ok(result.suggestions.every((s) => s.mode !== 'transit'));
 });

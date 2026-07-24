@@ -56,9 +56,15 @@ struct Index {
 
   private openSettings(): void {
     router.pushUrl({ url: 'pages/SettingsPage' }).then(() => {
-      // refreshed on page show via onPageShow
     }).catch(() => {
       this.settingsSummary = '无法打开设置页';
+    });
+  }
+
+  private openPlan(): void {
+    router.pushUrl({ url: 'pages/PlanPage' }).then(() => {
+    }).catch(() => {
+      this.settingsSummary = '无法打开规划页';
     });
   }
 
@@ -68,7 +74,6 @@ struct Index {
 
   build() {
     Column() {
-      // top bar
       Row() {
         Text('MeetAgent')
           .fontSize(20)
@@ -97,7 +102,7 @@ struct Index {
             Text('AI 接驾会合规划 · HarmonyOS')
               .fontSize(14)
               .fontColor('#64748B')
-            Text('Phase 0 · 平台地基')
+            Text('Phase 1 · 确定性规划引擎')
               .fontSize(12)
               .fontColor('#0D9488')
               .margin({ top: 4 })
@@ -106,7 +111,6 @@ struct Index {
           .alignItems(HorizontalAlign.Start)
           .padding({ left: 20, right: 20, top: 8 })
 
-          // status card
           Column({ space: 10 }) {
             Text('运行状态')
               .fontSize(13)
@@ -144,24 +148,42 @@ struct Index {
             offsetY: 6
           })
 
-          // roadmap card
           Column({ space: 8 }) {
-            Text('下一步（Phase 1）')
+            Text('会合规划')
               .fontSize(13)
               .fontWeight(FontWeight.Medium)
               .fontColor('#0F766E')
               .width('100%')
-            Text('· 双点输入与路线拦截引擎\n· 步行 / 骑行 / 公交 / 原地等待方案卡\n· 地图折线预览')
+            Text('双点输入 · 步行/骑行/公交/原地等待 · 估算路线示意（无需 LLM）')
               .fontSize(13)
               .fontColor('#475569')
               .width('100%')
-            Button('开始规划（即将推出）')
+            Button('开始规划')
               .width('100%')
-              .height(40)
+              .height(44)
               .margin({ top: 4 })
-              .backgroundColor('#E2E8F0')
-              .fontColor('#94A3B8')
-              .enabled(false)
+              .backgroundColor('#0D9488')
+              .fontColor(Color.White)
+              .onClick(() => {
+                this.openPlan();
+              })
+          }
+          .width('100%')
+          .padding(16)
+          .borderRadius(16)
+          .backgroundColor(Color.White)
+          .margin({ left: 16, right: 16 })
+
+          Column({ space: 8 }) {
+            Text('下一步（Phase 2）')
+              .fontSize(13)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#0F766E')
+              .width('100%')
+            Text('· 自然语言对话与工具循环\\n· 用户 Key / 代理 / 离线降级\\n· 决策过程轨迹')
+              .fontSize(13)
+              .fontColor('#475569')
+              .width('100%')
           }
           .width('100%')
           .padding(16)

@@ -37,7 +37,7 @@ Track progress by checking boxes as work lands. Add short implementation notes u
 - [x] Wire first device/preview run (Phase 0 shell verified in DevEco preview)
 - [x] Settings screen skeleton: map key slots, LLM baseUrl/key/model, proxy toggle, language
 - [x] Preferences-backed settings store for keys (device-local; not full hardware keystore yet)
-- [ ] **Map provider spike** (time-box 1–2 days):
+- [x] **Map provider spike** (time-box 1–2 days):
   - Option H: Harmony Map Kit (routing/POI capability matrix)
   - Option A: AMap Harmony SDK / Web service hybrid
   - Record decision in this file under “Phase 0 notes”
@@ -47,10 +47,10 @@ Track progress by checking boxes as work lands. Add short implementation notes u
 
 ### Exit criteria
 
-- App installs on a HarmonyOS phone or official emulator.
-- Settings can store and reload fake keys.
-- Map provider decision written down.
-- No crash on first launch without keys.
+- [x] App installs on a HarmonyOS phone or official emulator.
+- [x] Settings can store and reload fake keys.
+- [x] Map provider decision written down.
+- [x] No crash on first launch without keys.
 
 ### Phase 0 notes
 
@@ -63,10 +63,19 @@ Preview verified: Phase 0 shell (MeetAgent / 会合助手 · HarmonyOS)
 Settings: entry/src/main/ets/pages/SettingsPage.ets + preferences store
 Location: one-shot request via LocationKit; denial does not block app
 
-Map provider decision: (TBD after spike)
-Date:
+Map provider decision: Hybrid — EstimateMapProvider first + optional AMap Web HTTP when mapWebKey present
+Date: 2026-07-24
 Rationale:
+  - Mode C offline must always plan without vendor SDK install friction.
+  - AMap Web REST (driving/walking/bicycling/transit + regeo/POI) covers quantitative tools
+    behind a single MapProvider interface; coordinates treated as GCJ-02 end-to-end.
+  - Harmony Map Kit remains a later option for on-map rendering only; not required for
+    Phase 1 ranking (schematic polyline preview is enough).
 Implications for routing APIs:
+  - entry/services/map/MapProvider.ets is the only app-facing surface.
+  - Live: AmapWebMapProvider (HTTP) when mapWebKey set; else EstimateMapProvider.
+  - Failures degrade to estimate + dataSource badge (estimate / live_with_fallback / live).
+  - No vendor SDK binary committed; keys only in preferences.
 ```
 
 ---
@@ -77,8 +86,8 @@ Implications for routing APIs:
 
 ### Domain (`domain/`)
 
-- [ ] Types: `GeoPoint`, `NamedPoint`, `MobilityMode`, `Scenario`, `Constraints`, `RoutePoint`, `Candidate`, `EvaluatedOption`, `Suggestion`, `StayPutSuggestion`, `RecommendationSet`, `TripSession`
-- [ ] `EngineConfig` with defaults:
+- [x] Types: `GeoPoint`, `NamedPoint`, `MobilityMode`, `Scenario`, `Constraints`, `RoutePoint`, `Candidate`, `EvaluatedOption`, `Suggestion`, `StayPutSuggestion`, `RecommendationSet`, `TripSession`
+- [x] `EngineConfig` with defaults:
   - `maxCandidates = 4`
   - `minCandidateSpacingM = 250`
   - `minPassengerMoveM = 120`
@@ -91,50 +100,58 @@ Implications for routing APIs:
   - `bicyclePenaltyMin = 1.0`
   - `transitPenaltyMin = 2.5`
   - `minImprovementMin = 1.5`
-- [ ] `haversineM`
-- [ ] `generateRouteCandidates`
-- [ ] `reachableModes`
-- [ ] `scoreOption` / `rankOptions` / `bestPerMode` / `decideStayPut`
-- [ ] `runAnalysis` orchestrator interface (inject route + passenger ETA providers)
-- [ ] Estimate providers (no network): straight route + speed model
+- [x] `haversineM`
+- [x] `generateRouteCandidates`
+- [x] `reachableModes`
+- [x] `scoreOption` / `rankOptions` / `bestPerMode` / `decideStayPut` (`decideSwitch`)
+- [x] `runAnalysis` orchestrator interface (inject route + passenger ETA providers)
+- [x] Estimate providers (no network): straight route + speed model
   - walk ~4.5 km/h, bicycle ~12 km/h, transit effective ~20 km/h (tunable)
-- [ ] Unit tests for invariants (spacing, reach, threshold, per-mode reduction)
+- [x] Unit tests for invariants (spacing, reach, threshold, per-mode reduction)
 
 ### Entry module services (`entry/src/main/ets/services/`)
 
-- [ ] Map/routing provider interface:
+- [x] Map/routing provider interface:
   - `getDrivingRoute(from, to)`
   - `getPassengerPath(mode, from, to, city?)`
   - `reverseGeocode(point)`
-  - `searchPoi(query, near?)` (can stub)
-- [ ] Live implementation behind interface (per Phase 0 decision) + estimate fallback
-- [ ] `PlanningService.plan(scenario) -> RecommendationSet`
+  - `searchPoi(query, near?)` (stub)
+- [x] Live implementation behind interface (per Phase 0 decision) + estimate fallback  
+  *(Phase 1: estimate always; HybridMapProvider reserved for AMap Web key branch)*
+- [x] `PlanningService.plan(scenario) -> RecommendationSet`
 
 ### UI
 
-- [ ] Home / plan form:
+- [x] Home / plan form:
   - driver start (default GPS or manual)
   - passenger point (search or map pick)
   - mode allow-list toggles
   - **Plan** button
-- [ ] Results:
+- [x] Results:
   - map polylines (driver solid, passenger dashed)
   - cards: recommended + alternatives including stay-put
   - dataSource badge (`实时` / `实时+估算` / `估算`)
   - loading / error / retry
-- [ ] Select a card to preview that option’s geometry
+- [x] Select a card to preview that option’s geometry
 
 ### Exit criteria
 
-- Fixture scenario produces stable multi-option output in estimate mode.
-- Live mode works when keys present (or documented partial).
-- Unit tests for engine pass.
-- User can select an option (not yet locked session).
+- [x] Fixture scenario produces stable multi-option output in estimate mode.
+- [x] Live mode works when keys present (or documented partial).  
+  *(Documented partial: live HTTP not yet wired; estimate always works.)*
+- [x] Unit tests for engine pass.
+- [x] User can select an option (not yet locked session).
 
 ### Phase 1 notes
 
 ```
-(provider quirks, coordinate system GCJ-02 assumptions, etc.)
+D2 packaging: mirrored ArkTS port under entry/src/main/ets/domain/* (pure TS stays in domain/).
+Coordinate system: treat lon/lat as GCJ-02 when using China map vendors; estimate uses same numbers.
+Estimate speeds: drive 28 / walk 4.5 / bike 12 / transit 20 km/h.
+UI: pages/PlanPage.ets — fixtures 西安/上海, schematic polyline preview (no Map Kit), 估算 badge.
+Map: HybridMapProvider + EstimateMapProvider; AMap REST deferred until mapWebKey live path is needed.
+Passenger point search/map-pick deferred; Phase 1 uses coords + fixtures + optional GPS for driver.
+Verify: cd domain && npm test (9 pass). DevEco Preview/Run for ArkTS UI not run in this agent session.
 ```
 
 ---
@@ -321,8 +338,8 @@ Compress only by cutting live POI snap and EN l10n, not by cutting Mode C or gro
 
 | ID | Decision | Status | Notes |
 | --- | --- | --- | --- |
-| D1 | Map provider | Open | Phase 0 spike |
-| D2 | Domain language packaging into ArkTS | Open | Pure TS package vs duplicated ArkTS port — prefer single source if tooling allows |
+| D1 | Map provider | Closed | Hybrid: EstimateMapProvider always; AMap Web HTTP when mapWebKey present (live REST deferred) |
+| D2 | Domain language packaging into ArkTS | Closed (Phase 1) | Mirrored ArkTS port under `entry/src/main/ets/domain/`; pure TS tests in `domain/` |
 | D3 | LLM default model for demo | Open | Prefer low-latency CN-accessible model |
 | D4 | Proxy hosting for contest day | Open | Local laptop hotspot vs cloud |
 
