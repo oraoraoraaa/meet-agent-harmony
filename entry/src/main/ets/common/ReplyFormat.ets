@@ -50,9 +50,33 @@ export function formatReplyForBubble(raw: string): string {
     if (t.indexOf('PLAN_ID:') === 0 || t.indexOf('plan_id:') === 0) {
       continue;
     }
-    cleaned.push(collapsed[i]);
+    cleaned.push(softBreakLongTokens(collapsed[i]));
   }
   return cleaned.join('\n').trim();
+}
+
+/** Insert soft breaks so long Latin tokens wrap in ArkUI Text. */
+function softBreakLongTokens(line: string): string {
+  let out: string = '';
+  let runLen: number = 0;
+  for (let i = 0; i < line.length; i++) {
+    const ch: string = line.charAt(i);
+    const code: number = line.charCodeAt(i);
+    const isCjk: boolean = code >= 0x4E00 && code <= 0x9FFF;
+    const isSpace: boolean = ch === ' ' || ch === '\t' || ch === '\n';
+    if (isSpace || isCjk) {
+      out += ch;
+      runLen = 0;
+    } else {
+      out += ch;
+      runLen += 1;
+      if (runLen >= 14) {
+        out += ' ';
+        runLen = 0;
+      }
+    }
+  }
+  return out;
 }
 
 function isMarkdownTableLine(trimmed: string): boolean {

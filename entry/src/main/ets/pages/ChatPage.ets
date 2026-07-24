@@ -98,8 +98,8 @@ struct ChatPage {
     this.applyFixture(FixtureCatalog.byId(this.fixtureId));
     this.resetOrchestrator();
     this.pushSystem(
-      '你好，我是会合助手。描述接驾约束（例如「我可以骑车，别走太远」），' +
-        '或直接点快捷语。无 Key 时使用本地引擎估算。'
+      '你好，我是会合助手。用快捷语或描述约束即可规划。' +
+        '无 Key 时用本地引擎估算。'
     );
     this.statusLine = this.settings.llmConfigured()
       ? `LLM ${this.settings.modeLabel()} · ${this.settings.llmModel}`
@@ -546,24 +546,35 @@ struct ChatPage {
 
   @Builder
   bubbleView(b: ChatBubble) {
+    // Fixed side gutters + layoutWeight bubble: avoids % width + Blank fighting
+    // (unconstrained Text measuring past the screen edge).
     Row() {
       if (b.role === 'user') {
-        Blank().layoutWeight(1)
+        Blank().width(40)
+      } else {
+        Blank().width(0)
       }
+
       Column({ space: 4 }) {
         Text(b.role === 'user' ? '你' : (b.role === 'system' ? '系统' : '会合助手'))
           .fontSize(10)
           .fontColor(AppTheme.inkSoft)
           .width('100%')
           .textAlign(b.role === 'user' ? TextAlign.End : TextAlign.Start)
+
         Text(b.text)
           .fontSize(14)
           .fontColor(AppTheme.ink)
+          .fontWeight(FontWeight.Regular)
           .width('100%')
-          .constraintSize({ maxWidth: '100%' })
+          .textAlign(TextAlign.Start)
+          .maxLines(40)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .copyOption(CopyOptions.LocalDevice)
       }
-      .width(b.role === 'user' ? '78%' : '88%')
-      .padding(12)
+      .layoutWeight(1)
+      .constraintSize({ minWidth: 0 })
+      .padding({ left: 12, right: 12, top: 10, bottom: 10 })
       .borderRadius(16)
       .backgroundColor(b.role === 'user' ? AppTheme.accentSoft : AppTheme.glassBg)
       .border({
@@ -572,12 +583,17 @@ struct ChatPage {
       })
       .backdropBlur(AppTheme.blurSoft)
       .clip(true)
-      if (b.role !== 'user') {
-        Blank().layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
+
+      if (b.role === 'user') {
+        Blank().width(0)
+      } else {
+        Blank().width(40)
       }
     }
     .width('100%')
     .alignItems(VerticalAlign.Top)
+    .padding({ left: 2, right: 2 })
   }
 
   @Builder
