@@ -6,7 +6,7 @@ MeetAgent is a **client-centric** HarmonyOS app with an optional demo proxy.
 
 ```text
 ┌─────────────────────────────────────────────────────────┐
-│                   HarmonyOS App (app/)                  │
+│           HarmonyOS App (repo root / entry module)      │
 │  ┌────────────┐  ┌─────────────┐  ┌──────────────────┐  │
 │  │ ArkUI      │  │ Session VM  │  │ Settings store   │  │
 │  │ Chat/Map/  │◄─┤ Plan lock   │  │ keys · prefs     │  │
@@ -35,7 +35,9 @@ MeetAgent is a **client-centric** HarmonyOS app with an optional demo proxy.
 
 ## Modules
 
-### `app/` — HarmonyOS application
+### Repo-root HarmonyOS project (`AppScope/` + `entry/`)
+
+DevEco opens the **git repository root**. The main HAP module is `entry/`.
 
 Responsibilities:
 
@@ -49,8 +51,8 @@ Responsibilities:
 Suggested feature folders (create as implementation proceeds):
 
 ```text
-app/
-  entry/                 # generated DevEco entry module
+entry/src/main/ets/
+  pages/
   features/
     home/
     chat/
@@ -63,6 +65,7 @@ app/
     map/
     location/
     share/
+  common/
 ```
 
 ### `domain/` — pure planning core

@@ -53,18 +53,24 @@ Share text / open in maps
 
 ## Repository layout
 
+DevEco Studio opens the **repository root** (not a nested `app/` folder).
+
 ```text
 .
 ├── README.md                 # you are here
 ├── AGENTS.md                 # operating manual for AI coding agents
+├── AppScope/                 # HarmonyOS app metadata (bundle id, icon, label)
+├── entry/                    # Main HAP module (ArkTS UI, abilities, resources)
+├── build-profile.json5       # SDK products / modules
+├── oh-package.json5          # OHPM dependencies
+├── hvigorfile.ts             # Hvigor build entry
 ├── docs/
-│   ├── PRODUCT.md            # vision, users, scope
-│   ├── ARCHITECTURE.md       # modules, data flow, fallbacks
-│   ├── AI_AGENT.md           # tools, prompts, grounding rules
-│   ├── IMPLEMENTATION_PLAN.md# phased build plan (source of truth for delivery)
-│   ├── ROADMAP.md            # milestones & non-goals
-│   └── DEMO_SCRIPT.md        # stage demo script
-├── app/                      # HarmonyOS application (DevEco / ArkTS)
+│   ├── PRODUCT.md
+│   ├── ARCHITECTURE.md
+│   ├── AI_AGENT.md
+│   ├── IMPLEMENTATION_PLAN.md
+│   ├── ROADMAP.md
+│   └── DEMO_SCRIPT.md
 ├── domain/                   # portable domain models + engine (TS first)
 ├── server/                   # optional LLM proxy for demos
 ├── fixtures/                 # canned scenarios for offline / stage demos
@@ -107,23 +113,27 @@ Share text / open in maps
 | Optional server | Lightweight proxy (`server/`) to hold a demo key |
 | Tests | Domain unit tests + app UI smoke + fixture replay |
 
-Exact DevEco project files will be generated when the Harmony app scaffold is created in Phase 0.
-
 ---
 
-## Quick start (high level)
+## Quick start
 
-> Detailed commands land as the Harmony project is scaffolded. Until then, treat this as the intended workflow.
+### 1) Open in DevEco Studio
 
-### 1) Client
+1. **File → Open** and select this repository root:
+   - `/Users/rinalic/Local/Github/meet-agent-harmony`
+2. Let DevEco sync OHPM deps (`oh_modules/`, gitignored) and recreate `local.properties` if needed.
+3. Configure debug signing for your device/emulator.
+4. Run the `entry` module on a HarmonyOS phone or emulator.
 
-1. Open `app/` in **DevEco Studio**.
-2. Install SDK / sign the debug HAP for your device.
-3. Set map credentials in local config (never commit).
-4. (Optional) Set LLM base URL + API key + model in **Settings**.
-5. Run on a HarmonyOS phone or emulator.
+> Do **not** keep developing only under `~/DevecostudioProjects/meet_agent_harmony` — that folder was the generator seed. The GitHub path is the source of truth.
 
-### 2) Optional LLM proxy
+### 2) Client config (later phases)
+
+1. Set map credentials in app Settings / local config (never commit).
+2. (Optional) Set LLM base URL + API key + model in **Settings**.
+3. Run on device.
+
+### 3) Optional LLM proxy
 
 ```bash
 cd server
@@ -132,7 +142,7 @@ cd server
 
 Point the app’s Settings → **Proxy mode** at that base URL for stage demos without pasting a raw vendor key on the device.
 
-### 3) Offline / fixture demo
+### 4) Offline / fixture demo
 
 Load a scenario from `fixtures/scenarios/` to demo planning without live traffic.
 
@@ -179,7 +189,7 @@ Mode C must always work.
 
 ## Current status
 
-**Repository initialized** with product docs, agent guide, domain stubs, fixtures, and server placeholder.
+**DevEco Stage project integrated at repo root** (`AppScope/`, `entry/`, hvigor + oh-package configs) plus product docs, `AGENTS.md`, domain stubs, fixtures, and server placeholder.
 
 Implementation follows [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) — **Plan B: Session AI Agent**, with v1 locking the meeting plan after initial confirmation (no dual-phone sync, no automatic mid-trip meeting-point change).
 

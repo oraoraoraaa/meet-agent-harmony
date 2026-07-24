@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "MeetAgent entry module"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "MeetAgent main ability"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "MeetAgent"
+    }
+  ]
+}

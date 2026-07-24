@@ -6,4 +6,4 @@ HarmonyOS AI agent for pickup meeting-point planning.
 - Agent rules: `AGENTS.md`
 - Implementation plan: `docs/IMPLEMENTATION_PLAN.md`
 - Domain scaffold: `domain/`
-- App (DevEco): `app/` (to be generated in Phase 0)
+- HarmonyOS app: repo root (`AppScope/`, `entry/`) — open in DevEco Studio

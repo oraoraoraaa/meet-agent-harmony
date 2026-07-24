@@ -2,22 +2,27 @@
 .DS_Store
 .AppleDouble
 .LSOverride
+Thumbs.db
 
-# HarmonyOS / OpenHarmony / DevEco
-**/node_modules/
-**/oh_modules/
+# HarmonyOS / OpenHarmony / DevEco (machine-local)
+/node_modules/
+/oh_modules/
 **/.hvigor/
 **/build/
-**/BuildProfile.ets
+**/.preview/
+**/.cxx/
+**/.test/
+**/.clangd
+**/.clang-format
+**/.clang-tidy
+**/.appanalyzer/
+**/local.properties
 **/.idea/
 **/.deveco/
+**/BuildProfile.ets
 **/*.hap
 **/*.app
 **/*.har
-**/local.properties
-**/.cxx/
-**/oh-package-lock.json5
-!**/oh-package.json5
 
 # Keys & secrets
 .env
@@ -25,11 +30,10 @@
 !.env.example
 **/*secret*
 **/*credentials*
-**/local.properties
 **/keys/
 **/private/
 
-# Editor / IDE
+# Editor
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json.example
@@ -45,18 +49,17 @@ temp/
 coverage/
 .nyc_output/
 
-# Python proxy (optional server)
+# Optional server
 server/**/.venv/
 server/**/__pycache__/
 server/**/*.pyc
 server/**/.pytest_cache/
 server/**/.ruff_cache/
 server/**/uv.lock
-# keep pyproject if present; ignore local venv only
 
-# Test / fixture runtime dumps
+# Fixture runtime dumps
 fixtures/runtime/
 *.local.json
 
-# OS / misc
-Thumbs.db
+# Domain Node (if used for pure TS unit tests)
+domain/node_modules/

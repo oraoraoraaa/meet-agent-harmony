@@ -30,10 +30,11 @@ Track progress by checking boxes as work lands. Add short implementation notes u
 
 ### Tasks
 
-- [x] Initialize git-friendly layout (`app/`, `domain/`, `server/`, `fixtures/`, `docs/`, `tests/`)
+- [x] Initialize git-friendly layout (`domain/`, `server/`, `fixtures/`, `docs/`, `tests/`)
 - [x] Human `README.md` + AI `AGENTS.md` + product docs
-- [ ] Create DevEco HarmonyOS Stage application under `app/` (entry module, app metadata, icons placeholder)
-- [ ] Wire debug signing / device run instructions into `README.md`
+- [x] Integrate DevEco HarmonyOS Stage application at **repo root** (`AppScope/`, `entry/`, hvigor, oh-package)
+- [x] Document “open repo root in DevEco” workflow in `README.md` / `entry/README.md`
+- [ ] Wire debug signing / first device run (developer machine)
 - [ ] Settings screen skeleton: map key slots, LLM baseUrl/key/model, proxy toggle, language
 - [ ] Secure preferences helper for keys
 - [ ] **Map provider spike** (time-box 1–2 days):
@@ -54,6 +55,11 @@ Track progress by checking boxes as work lands. Add short implementation notes u
 ### Phase 0 notes
 
 ```
+DevEco project location: repository root (/Users/rinalic/Local/Github/meet-agent-harmony)
+Bundle name: com.rinalic.meetAgentHarmony
+Entry module: entry/
+Generator seed (do not treat as source of truth): ~/DevecostudioProjects/meet_agent_harmony
+
 Map provider decision: (TBD after spike)
 Date:
 Rationale:
@@ -91,7 +97,7 @@ Implications for routing APIs:
   - walk ~4.5 km/h, bicycle ~12 km/h, transit effective ~20 km/h (tunable)
 - [ ] Unit tests for invariants (spacing, reach, threshold, per-mode reduction)
 
-### App services
+### Entry module services (`entry/src/main/ets/services/`)
 
 - [ ] Map/routing provider interface:
   - `getDrivingRoute(from, to)`

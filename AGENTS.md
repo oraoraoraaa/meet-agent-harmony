@@ -27,7 +27,7 @@ Not a generic chatbot. Not a full ride-hailing network. Not a dual-phone realtim
 
 ## Hard rules
 
-1. **HarmonyOS client is the product surface.** Primary UI is ArkTS/ArkUI under `app/`. Do not introduce Flutter/React Native/Android-Java UI as the main app.
+1. **HarmonyOS client is the product surface.** Primary UI is ArkTS/ArkUI under `entry/` (DevEco project at **repo root**). Do not introduce Flutter/React Native/Android-Java UI as the main app.
 2. **LLM never invents ETAs, distances, or polylines.** All quantitative fields shown to users must come from tool/engine outputs. The model may only:
    - parse language into structured intent,
    - select among tool-returned candidate IDs,
@@ -46,8 +46,11 @@ Not a generic chatbot. Not a full ride-hailing network. Not a dual-phone realtim
 
 ## Repository map
 
+The HarmonyOS / DevEco project is the **repository root** (open this folder in DevEco Studio).
+
 ```text
-app/        HarmonyOS application (DevEco project; ArkTS UI + platform services)
+AppScope/   App-level bundle metadata, icons, label
+entry/      Main HAP module — ArkTS UI, abilities, resources, features/services
 domain/     Portable models + interception engine + pure ranking logic
 server/     Optional demo LLM proxy (not required for offline Mode C)
 fixtures/   Canned scenarios & golden tool outputs for demos/tests
@@ -59,10 +62,10 @@ tests/      Shared test notes / cross-layer cases
 
 | Change type | Put it in |
 | --- | --- |
-| UI screens, navigation, Harmony permissions | `app/` |
+| UI screens, navigation, Harmony permissions | `entry/src/main/ets/` |
 | Geo types, scoring, candidate gen, plan models | `domain/` |
-| LLM HTTP client, tool loop, prompts | `app/` agent layer and/or shared TS under `domain/agent` if pure |
-| Map vendor SDK wrappers | `app/` services behind a provider interface |
+| LLM HTTP client, tool loop, prompts | `entry/.../services/agent|llm/` and/or pure helpers under `domain/` |
+| Map vendor SDK wrappers | `entry/.../services/map/` behind a provider interface |
 | Demo key proxy | `server/` |
 | Stage scenarios | `fixtures/` |
 | Behavior contracts / phased tasks | `docs/` |
@@ -235,13 +238,14 @@ A complete contribution:
 ## Quick command cheatsheet (fill in as toolchain lands)
 
 ```bash
-# Domain tests (once test runner is wired)
-# cd domain && npm test   # or project-equivalent
+# Domain unit tests
+cd domain && node --experimental-strip-types --test test/**/*.test.ts
 
 # Optional proxy
 # cd server && <run per server/README.md>
 
-# Harmony app: open in DevEco Studio and Run on device
+# Harmony app: DevEco Studio → Open repository root → Run entry
+# /Users/rinalic/Local/Github/meet-agent-harmony
 ```
 
 If a command is missing, **add it to README + this section** when you wire it — do not leave tribal knowledge only in chat.

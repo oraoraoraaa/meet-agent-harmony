@@ -76,7 +76,7 @@ Keep the system prompt short and strict:
 6. Final answer must reference candidate IDs from tools.
 7. If tools fail, say you are using 估算模式.
 
-Full prompt text will live in code (`app/services/agent/prompts.*`) once implemented; update this doc if the contract changes.
+Full prompt text will live in code (`entry/src/main/ets/services/agent/prompts.*`) once implemented; update this doc if the contract changes.
 
 ## Tool catalog (v1)
 
