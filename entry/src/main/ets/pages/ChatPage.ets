@@ -7,6 +7,7 @@ import { promptAction, router } from '@kit.ArkUI';
 import { AppSettings } from '../common/AppSettings';
 import { AppTheme } from '../common/AppTheme';
 import { StageBackground } from '../common/GlassChrome';
+import { formatReplyForBubble } from '../common/ReplyFormat';
 import {
   dataSourceLabelZh,
   MODE_BICYCLE,
@@ -179,7 +180,7 @@ struct ChatPage {
     const b: ChatBubble = new ChatBubble();
     b.id = this.nextId('a');
     b.role = 'assistant';
-    b.text = text;
+    b.text = formatReplyForBubble(text);
     b.hasPlans = hasPlans;
     this.bubbles = this.bubbles.concat([b]);
   }
@@ -209,8 +210,24 @@ struct ChatPage {
       c.selected = selectedPlanId === c.id;
       cards.push(c);
     }
+    // Prefer engine recommended if model id empty
+    let pick: string = selectedPlanId;
+    if (pick.length === 0) {
+      for (let i = 0; i < cards.length; i++) {
+        if (cards[i].recommended) {
+          pick = cards[i].id;
+          break;
+        }
+      }
+      if (pick.length === 0 && cards.length > 0) {
+        pick = cards[0].id;
+      }
+    }
+    for (let i = 0; i < cards.length; i++) {
+      cards[i].selected = cards[i].id === pick;
+    }
+    this.selectedPlanId = pick;
     this.planCards = cards;
-    this.selectedPlanId = selectedPlanId;
   }
 
   private applyTrace(entries: ToolTraceEntry[]): void {
@@ -268,6 +285,10 @@ struct ChatPage {
   }
 
   private onSelectPlan(id: string): void {
+    if (id.length === 0 || this.planCards.length === 0) {
+      return;
+    }
+    // Drive UI from selectedPlanId (same pattern as PlanPage) so @Builder re-renders.
     this.selectedPlanId = id;
     const next: PlanMiniCard[] = [];
     for (let i = 0; i < this.planCards.length; i++) {
@@ -281,6 +302,10 @@ struct ChatPage {
       next.push(copy);
     }
     this.planCards = next;
+    promptAction.showToast({
+      message: id === 'stayPut' ? '已选择：原地等待' : `已选择：${id}`,
+      duration: 1200
+    });
   }
 
   private openSettings(): void {
@@ -415,7 +440,7 @@ struct ChatPage {
             }, (b: ChatBubble) => b.id)
 
             if (this.planCards.length > 0) {
-              Text('方案卡片（数值来自引擎）')
+              Text('方案卡片（点选切换 · 数值来自引擎）')
                 .fontSize(12)
                 .fontColor(AppTheme.inkSoft)
                 .width('100%')
@@ -423,7 +448,7 @@ struct ChatPage {
 
               ForEach(this.planCards, (c: PlanMiniCard) => {
                 this.planCardView(c)
-              }, (c: PlanMiniCard) => c.id)
+              }, (c: PlanMiniCard) => `${c.id}|${this.selectedPlanId}|${c.selected ? '1' : '0'}`)
             }
           }
           .width('100%')
@@ -535,8 +560,9 @@ struct ChatPage {
           .fontSize(14)
           .fontColor(AppTheme.ink)
           .width('100%')
+          .constraintSize({ maxWidth: '100%' })
       }
-      .constraintSize({ maxWidth: '86%' })
+      .width(b.role === 'user' ? '78%' : '88%')
       .padding(12)
       .borderRadius(16)
       .backgroundColor(b.role === 'user' ? AppTheme.accentSoft : AppTheme.glassBg)
@@ -545,11 +571,13 @@ struct ChatPage {
         color: b.role === 'user' ? AppTheme.lineFocus : AppTheme.glassBorder
       })
       .backdropBlur(AppTheme.blurSoft)
+      .clip(true)
       if (b.role !== 'user') {
         Blank().layoutWeight(1)
       }
     }
     .width('100%')
+    .alignItems(VerticalAlign.Top)
   }
 
   @Builder
@@ -559,33 +587,37 @@ struct ChatPage {
         Text(c.title)
           .fontSize(15)
           .fontWeight(FontWeight.Medium)
-          .fontColor(c.selected ? Color.White : AppTheme.ink)
+          .fontColor(this.selectedPlanId === c.id ? Color.White : AppTheme.ink)
           .layoutWeight(1)
         if (c.recommended) {
           Text('推荐')
             .fontSize(10)
-            .fontColor(c.selected ? Color.White : AppTheme.link)
+            .fontColor(this.selectedPlanId === c.id ? Color.White : AppTheme.link)
             .padding({ left: 8, right: 8, top: 2, bottom: 2 })
             .borderRadius(999)
-            .backgroundColor(c.selected ? '#33FFFFFF' : AppTheme.accentSoft)
+            .backgroundColor(this.selectedPlanId === c.id ? '#33FFFFFF' : AppTheme.accentSoft)
         }
       }
       .width('100%')
       Text(c.detail)
         .fontSize(12)
-        .fontColor(c.selected ? '#E6FFFFFF' : AppTheme.inkMuted)
+        .fontColor(this.selectedPlanId === c.id ? '#E6FFFFFF' : AppTheme.inkMuted)
         .width('100%')
       Text(c.id)
         .fontSize(10)
-        .fontColor(c.selected ? '#B3FFFFFF' : AppTheme.inkSoft)
+        .fontColor(this.selectedPlanId === c.id ? '#B3FFFFFF' : AppTheme.inkSoft)
         .width('100%')
     }
     .width('100%')
     .padding(12)
     .borderRadius(14)
-    .backgroundColor(c.selected ? AppTheme.cardSelected : AppTheme.glassBg)
-    .border({ width: 1, color: c.selected ? AppTheme.lineFocus : AppTheme.glassBorder })
+    .backgroundColor(this.selectedPlanId === c.id ? AppTheme.cardSelected : AppTheme.glassBgStrong)
+    .border({
+      width: this.selectedPlanId === c.id ? 2 : 1,
+      color: this.selectedPlanId === c.id ? AppTheme.lineFocus : AppTheme.glassBorder
+    })
     .backdropBlur(AppTheme.blurSoft)
+    .opacity(1)
     .onClick(() => {
       this.onSelectPlan(c.id);
     })

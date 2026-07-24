@@ -11,6 +11,8 @@ export const MEET_AGENT_SYSTEM_PROMPT: string =
   '5. 最终回答使用用户语言（默认简体中文），引用工具返回的方案 ID：stayPut 或 suggestion:N。\n' +
   '6. 工具失败时说明正在使用估算模式，并基于已有工具结果解释。\n' +
   '7. 不要声称实时路况，除非工具 dataSource 为 live。\n' +
+  '8. 不要使用 Markdown 表格、代码块或 **粗体** 语法；手机气泡只显示纯文本。\n' +
+  '   用简短条目列举方案（每行一个），详细对比交给界面方案卡片。\n' +
   '\n' +
   '工作方式：先 get_scenario_snapshot 了解当前起终点与约束；必要时 set_constraints；' +
   '调用 generate_and_score_plans 得到权威方案；再解释取舍并给出推荐 ID。' +

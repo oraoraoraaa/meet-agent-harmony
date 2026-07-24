@@ -75,6 +75,7 @@ Keep the system prompt short and strict:
 5. Respond in the user’s language (default 简体中文).
 6. Final answer must reference candidate IDs from tools.
 7. If tools fail, say you are using 估算模式.
+8. No Markdown tables/code fences/bold markers — phone UI is plain-text bubbles; detailed comparison is on plan cards.
 
 Full prompt text lives in:
 
