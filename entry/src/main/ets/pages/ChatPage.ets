@@ -6,6 +6,7 @@ import { common } from '@kit.AbilityKit';
 import { promptAction, router } from '@kit.ArkUI';
 import { AppSettings } from '../common/AppSettings';
 import { AppTheme } from '../common/AppTheme';
+import { AppLayout } from '../common/AppLayout';
 import { StageBackground } from '../common/GlassChrome';
 import { formatReplyForBubble } from '../common/ReplyFormat';
 import {
@@ -451,7 +452,7 @@ struct ChatPage {
             })
         }
         .width('100%')
-        .padding({ left: 8, right: 12, top: 10, bottom: 6 })
+        .padding({ left: 8, right: 12, top: AppLayout.headerTop(), bottom: 6 })
 
         // fixture chips
         Scroll() {

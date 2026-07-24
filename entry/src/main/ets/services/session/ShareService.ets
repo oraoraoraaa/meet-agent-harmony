@@ -1,5 +1,15 @@
 /**
  * Clipboard share for locked plans.
+ *
+ * Device API: @kit.BasicServicesKit pasteboard
+ *   pasteboard.getSystemPasteboard()
+ *   pasteboard.createData(MIMETYPE_TEXT_PLAIN, text)
+ *   systemPasteboard.setData(data)
+ *
+ * This is the official HarmonyOS system clipboard (works on physical phone /
+ * emulator). DevEco Preview on Mac often does not mirror guest clipboard to
+ * the host Mac pasteboard — toast can succeed while Cmd+V on Mac fails.
+ * Verify with Run on device: paste into Notes / Messages inside the phone.
  */
 
 import { pasteboard } from '@kit.BasicServicesKit';
@@ -9,6 +19,9 @@ import { RecommendationSet, TripSession } from '../../domain/Models';
 import { planIdFromSelected, resolveLockedPlan, LockedPlanSnapshot } from './SessionLogic';
 
 export class ShareService {
+  /** Last text successfully written (in-process; not a second clipboard). */
+  static lastCopiedText: string = '';
+
   static buildShareTextFromSession(session: TripSession): string {
     const planId: string = planIdFromSelected(session.selected);
     return formatShareText(session.recommendationSet, planId);
@@ -18,7 +31,10 @@ export class ShareService {
     return formatShareText(rec, planId);
   }
 
-  static async copyText(text: string, toastOk: string = '已复制分享文案'): Promise<boolean> {
+  /**
+   * Write plain text to the device system clipboard via pasteboard.setData.
+   */
+  static async copyText(text: string, toastOk: string = '已复制到剪贴板'): Promise<boolean> {
     if (text.length === 0) {
       promptAction.showToast({ message: '无可分享内容', duration: 1800 });
       return false;
@@ -26,12 +42,20 @@ export class ShareService {
     try {
       const sys: pasteboard.SystemPasteboard = pasteboard.getSystemPasteboard();
       const data: pasteboard.PasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text);
+      // Device system clipboard (pasteboard kit).
       await sys.setData(data);
-      promptAction.showToast({ message: toastOk, duration: 1800 });
+      ShareService.lastCopiedText = text;
+      promptAction.showToast({
+        message: toastOk,
+        duration: 1800
+      });
       return true;
     } catch (e) {
-      const _ignored: Object = e as Object;
-      promptAction.showToast({ message: '复制失败', duration: 1800 });
+      const errObj: Object = e as Object;
+      promptAction.showToast({
+        message: `复制失败：${errObj}`,
+        duration: 2200
+      });
       return false;
     }
   }

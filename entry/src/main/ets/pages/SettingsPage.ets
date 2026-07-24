@@ -16,6 +16,7 @@ import {
   MapAppChoice
 } from '../common/AppSettings';
 import { AppTheme } from '../common/AppTheme';
+import { AppLayout } from '../common/AppLayout';
 import { StageBackground } from '../common/GlassChrome';
 import { SettingsStore } from '../services/settings/SettingsStore';
 import { LlmPingResult, OpenAiCompatibleClient } from '../services/llm/OpenAiCompatibleClient';
@@ -158,7 +159,7 @@ struct SettingsPage {
           Blank().width(40)
         }
         .width('100%')
-        .padding({ left: 8, right: 8, top: 10, bottom: 4 })
+        .padding({ left: 8, right: 8, top: AppLayout.headerTop(), bottom: 4 })
 
         if (!this.loaded) {
           Text('加载中…')
@@ -430,23 +431,5 @@ struct SettingsPage {
     .onClick(() => {
       this.setMapApp(app);
     })
-  }
-
-  @Builder
-  placeholderRow(label: string, selected: boolean) {
-    Row() {
-      Text(label)
-        .fontSize(14)
-        .fontColor(AppTheme.ink)
-        .layoutWeight(1)
-      Text(selected ? '✓' : '·')
-        .fontSize(14)
-        .fontColor(selected ? AppTheme.link : AppTheme.inkSoft)
-    }
-    .width('100%')
-    .padding({ left: 12, right: 12, top: 12, bottom: 12 })
-    .borderRadius(14)
-    .backgroundColor(selected ? AppTheme.accentSoft : AppTheme.fieldBg)
-    .border({ width: 1, color: selected ? AppTheme.lineFocus : AppTheme.line })
   }
 }

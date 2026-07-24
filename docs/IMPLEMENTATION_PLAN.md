@@ -307,8 +307,12 @@ UI:
   - Share / 打开地图 wired (no longer Phase 3 placeholders)
   - Empty hints: missing passenger, equal points, zero move candidates
   - Constraints already engine-enforced (allowedModes, avoidTransit, maxPassengerWalkMin)
+  - Home: fixed-height scrollable sheet + map stage; driver/passenger mode chip (header UR, expand menu)
+  - Immersive dark window (EntryAbility full-screen + start_window #07080C); AppLayout.statusBarInsetVp for headers
+  - Remaining 即将接入 (intentional Phase 4+): live map/POI search, JP l10n
 
 Verify: cd domain && npm test → 20 pass (incl. session machine)
+Device: emulator Run exercised lock/share/clipboard; location 3301100 = no GPS fix (enable simulation)
 Live AMap REST still deferred; Mode C offline fixtures remain demo path.
 ```
 
@@ -383,14 +387,14 @@ Compress only by cutting live POI snap and EN l10n, not by cutting Mode C or gro
 
 ## Definition of done (v1 product)
 
-- [ ] HarmonyOS HAP runs on phone
+- [x] HarmonyOS HAP runs on phone
 - [x] Plan from two points with multi-modal options
 - [x] AI chat path works with user key (or proxy)
 - [x] Offline engine path works without LLM
 - [x] Confirm locks plan; no auto meeting-point change
 - [x] Share + open maps
 - [ ] Fixture demo path
-- [ ] Docs + AGENTS.md consistent with code
+- [x] Docs + AGENTS.md consistent with code
 
 ---
 

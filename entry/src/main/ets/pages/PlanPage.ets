@@ -7,6 +7,7 @@ import {
   projectPolyline
 } from '../common/PolylineMath';
 import { AppTheme } from '../common/AppTheme';
+import { AppLayout } from '../common/AppLayout';
 import { StageBackground } from '../common/GlassChrome';
 import { AppSettings } from '../common/AppSettings';
 import {
@@ -547,7 +548,7 @@ struct PlanPage {
           }
         }
         .width('100%')
-        .padding({ left: 8, right: 12, top: 10, bottom: 8 })
+        .padding({ left: 8, right: 12, top: AppLayout.headerTop(), bottom: 8 })
 
         Scroll() {
           Column({ space: 12 }) {

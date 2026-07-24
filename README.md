@@ -189,17 +189,18 @@ Mode C must always work.
 
 ## Current status
 
-**Phase 2 complete (agent layer).** Phase 0 shell + Phase 1 offline engine remain green (`cd domain && npm test` → 15 pass).
+**Phase 3 complete** (session lock, share, open maps). Phases 0–2 remain green.
 
 | Layer | Status |
 | --- | --- |
-| Domain engine | Offline multi-modal ranking + agent grounding helpers |
-| Form plan UI | `PlanPage` fixtures + schematic polylines |
-| Agent | OpenAI-compatible client, tool registry, orchestrator, ChatPage |
-| Map SDK | Not integrated — estimate / Hybrid stub (intentional) |
-| Session lock / share | Phase 3 |
+| Domain engine | Offline multi-modal ranking + agent grounding + session machine (`cd domain && npm test` → 20 pass) |
+| Form plan UI | `PlanPage` fixtures + schematic polylines + confirm/lock |
+| Agent | OpenAI-compatible client, tool registry, orchestrator, `ChatPage` |
+| Session lock / share | `TripSessionStore` + `LockedSessionPage` + clipboard + map deep links |
+| Home UX | Immersive dark stage, driver/passenger mode chip, fixed scroll sheet |
+| Map SDK | Live AMap REST deferred — estimate / Hybrid stub (intentional) |
 
-**Next:** Phase 3 session lock + share + open maps. See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
+**Next:** Phase 4 contest polish (demo fixtures, skeletons, checklist). See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
 ---
 
