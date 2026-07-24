@@ -22,7 +22,7 @@ const LOCATION_PERMISSIONS: Array<Permissions> = [
 ];
 
 /**
- * One-shot location helper for Phase 0 (no continuous tracking).
+ * One-shot location helper (no continuous tracking).
  */
 export class LocationService {
   static async ensurePermission(context: common.UIAbilityContext): Promise<LocationPermissionState> {

@@ -1,5 +1,5 @@
 /**
- * Serializable app settings for Phase 0+.
+ * Serializable app settings.
  * Secrets live only in preferences / UI — never commit real values.
  */
 

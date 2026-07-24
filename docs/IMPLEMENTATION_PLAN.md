@@ -151,7 +151,8 @@ Estimate speeds: drive 28 / walk 4.5 / bike 12 / transit 20 km/h.
 UI: pages/PlanPage.ets — fixtures 西安/上海, schematic polyline preview (no Map Kit), 估算 badge.
 Map: HybridMapProvider + EstimateMapProvider; AMap REST deferred until mapWebKey live path is needed.
 Passenger point search/map-pick deferred; Phase 1 uses coords + fixtures + optional GPS for driver.
-Verify: cd domain && npm test (9 pass). DevEco Preview/Run for ArkTS UI not run in this agent session.
+Verify: cd domain && npm test (9 pass). DevEco Preview used for ArkTS UI smoke.
+Phase 1 complete for offline path. Missing Map SDK is intentional, not a blocker for Phase 1 exit.
 ```
 
 ---

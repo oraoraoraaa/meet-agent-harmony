@@ -189,11 +189,11 @@ Mode C must always work.
 
 ## Current status
 
-**Phase 0 complete** (DevEco Stage at repo root, Settings + preferences, one-shot location, map provider decision).
+**Phase 1 complete (offline estimate path).** Portable domain engine + unit tests (`domain/`), ArkTS mirror under `entry/src/main/ets/domain/`, `PlanningService` + estimate map provider, **会合规划** page with fixtures, mode toggles, recommendation cards, schematic polyline preview, `估算` badge, liquid-glass shell.
 
-**Phase 1 landed:** portable domain engine + unit tests (`domain/`), ArkTS mirror under `entry/src/main/ets/domain/`, `PlanningService` + estimate map provider, **会合规划** page with fixtures, mode toggles, recommendation cards, schematic polyline preview, `估算` badge. Live AMap HTTP still deferred (estimate Mode C always works).
+**Map SDK:** not integrated yet — intentional. Live AMap Web HTTP / Map Kit deferred; Mode C estimate always works without keys.
 
-Next: Phase 2 AI agent layer (chat + tool loop). See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
+**Next:** Phase 2 AI agent layer (chat + tool loop). See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
 ---
 

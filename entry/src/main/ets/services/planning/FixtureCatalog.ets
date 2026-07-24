@@ -3,9 +3,7 @@ import {
   MODE_BICYCLE,
   MODE_TRANSIT,
   MODE_WALKING,
-  MobilityMode,
-  NamedPoint,
-  Scenario
+  NamedPoint
 } from '../../domain/Models';
 
 export class FixtureScenario {
@@ -35,21 +33,6 @@ export class FixtureCatalog {
       }
     }
     return FixtureCatalog.xian();
-  }
-
-  static toScenario(fix: FixtureScenario, allowed: MobilityMode[], avoidTransit: boolean,
-    maxWalkMin: number): Scenario {
-    const s: Scenario = new Scenario();
-    s.driver = fix.driver;
-    s.passenger = fix.passenger;
-    s.city = fix.city;
-    const c: Constraints = new Constraints();
-    c.allowedModes = allowed.slice();
-    c.avoidTransit = avoidTransit;
-    c.maxPassengerWalkMin = maxWalkMin;
-    c.notes = fix.constraints.notes;
-    s.constraints = c;
-    return s;
   }
 
   private static xian(): FixtureScenario {

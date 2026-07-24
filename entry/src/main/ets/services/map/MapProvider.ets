@@ -1,3 +1,10 @@
+/**
+ * Map / routing provider surface (Phase 1).
+ *
+ * Current runtime: estimate-only (Mode C). HybridMapProvider keeps mapWebKey so
+ * Phase 2/3 can branch to AMap Web HTTP without changing PlanningService callers.
+ */
+
 import {
   AnalysisProviders,
   DrivingRouteResult,
@@ -19,10 +26,6 @@ import {
   StraightRouteBuild
 } from '../../domain/Estimate';
 
-/**
- * Map / routing provider surface (Phase 1).
- * Live AMap HTTP can wrap the same interface later; estimate always works.
- */
 export interface MapProvider {
   getDrivingRoute(from: GeoPoint, to: GeoPoint): Promise<DrivingRouteResult>;
 
@@ -33,8 +36,10 @@ export interface MapProvider {
     city: string
   ): Promise<PassengerPathResult>;
 
+  /** Best-effort place label; estimate returns lat,lon text. */
   reverseGeocode(point: GeoPoint): Promise<string>;
 
+  /** Best-effort POI search; estimate returns empty (no live index). */
   searchPoi(query: string, nearLon: number, nearLat: number, hasNear: boolean): Promise<string[]>;
 }
 
@@ -71,20 +76,14 @@ export class EstimateMapProvider implements MapProvider {
   }
 }
 
-/**
- * Hybrid shell: always estimate in Phase 1.
- * When mapWebKey is present, future AMap REST can branch here without UI changes.
- */
 export class HybridMapProvider implements MapProvider {
   private estimate: EstimateMapProvider = new EstimateMapProvider();
   private mapWebKey: string = '';
 
   constructor(mapWebKey: string = '') {
     this.mapWebKey = mapWebKey.trim();
-  }
-
-  hasLiveKey(): boolean {
-    return this.mapWebKey.length > 0;
+    // mapWebKey reserved for live AMap REST branch (not wired in Phase 1).
+    void this.mapWebKey;
   }
 
   async getDrivingRoute(from: GeoPoint, to: GeoPoint): Promise<DrivingRouteResult> {
@@ -109,7 +108,7 @@ export class HybridMapProvider implements MapProvider {
   }
 }
 
-export class MapProviderAsAnalysis implements AnalysisProviders {
+class MapProviderAsAnalysis implements AnalysisProviders {
   private provider: MapProvider;
 
   constructor(provider: MapProvider) {
