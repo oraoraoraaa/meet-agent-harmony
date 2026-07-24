@@ -7,6 +7,7 @@ import {
   projectPolyline
 } from '../common/PolylineMath';
 import { AppTheme } from '../common/AppTheme';
+import { StageBackground } from '../common/GlassChrome';
 import { AppSettings } from '../common/AppSettings';
 import {
   dataSourceLabelZh,
@@ -354,89 +355,98 @@ struct PlanPage {
   }
 
   build() {
-    Column() {
-      // header
-      Row() {
-        Button({ type: ButtonType.Normal }) {
-          Text('‹')
-            .fontSize(24)
-            .fontColor(AppTheme.text)
-        }
-        .width(40)
-        .height(40)
-        .backgroundColor(Color.Transparent)
-        .onClick(() => {
-          if (!this.showForm && this.hasResult) {
-            this.showForm = true;
-          } else {
-            router.back();
+    Stack() {
+      StageBackground()
+
+      Column() {
+        // header
+        Row() {
+          Button({ type: ButtonType.Normal }) {
+            Text('‹')
+              .fontSize(24)
+              .fontColor(AppTheme.ink)
           }
-        })
+          .width(40)
+          .height(40)
+          .backgroundColor(Color.Transparent)
+          .onClick(() => {
+            if (!this.showForm && this.hasResult) {
+              this.showForm = true;
+            } else {
+              router.back();
+            }
+          })
 
-        Text(this.hasResult && !this.showForm ? '优化结果' : '会合规划')
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(AppTheme.text)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
+          Text(this.hasResult && !this.showForm ? '优化结果' : '会合规划')
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(AppTheme.ink)
+            .layoutWeight(1)
+            .textAlign(TextAlign.Center)
 
-        if (this.hasResult && !this.showForm) {
-          Text(this.dataSourceBadge.length > 0 ? this.dataSourceBadge : '估算')
-            .fontSize(11)
-            .fontColor(AppTheme.text)
-            .padding({ left: 10, right: 10, top: 5, bottom: 5 })
-            .backgroundColor('#1F2937')
-            .borderRadius(999)
-            .border({ width: 1, color: AppTheme.border })
-        } else {
-          Button('设置', { type: ButtonType.Capsule })
-            .fontSize(12)
-            .height(30)
-            .backgroundColor('#1F2937')
-            .fontColor(AppTheme.text)
-            .onClick(() => {
-              this.openSettings();
-            })
+          if (this.hasResult && !this.showForm) {
+            Text(this.dataSourceBadge.length > 0 ? this.dataSourceBadge : '估算')
+              .fontSize(11)
+              .fontColor(AppTheme.ink)
+              .padding({ left: 10, right: 10, top: 5, bottom: 5 })
+              .backgroundColor(AppTheme.glassBgLight)
+              .borderRadius(999)
+              .border({ width: 1, color: AppTheme.glassBorder })
+              .backdropBlur(AppTheme.blurSoft)
+          } else {
+            Button('设置', { type: ButtonType.Capsule })
+              .fontSize(12)
+              .height(30)
+              .backgroundColor(AppTheme.glassBgLight)
+              .fontColor(AppTheme.ink)
+              .border({ width: 1, color: AppTheme.glassBorder })
+              .backdropBlur(AppTheme.blurSoft)
+              .onClick(() => {
+                this.openSettings();
+              })
+          }
         }
+        .width('100%')
+        .padding({ left: 8, right: 12, top: 10, bottom: 8 })
+
+        Scroll() {
+          Column({ space: 12 }) {
+            if (this.showForm || !this.hasResult) {
+              this.formSection()
+            }
+
+            if (this.errorText.length > 0) {
+              Text(this.errorText)
+                .fontSize(13)
+                .fontColor(AppTheme.danger)
+                .width('100%')
+                .padding({ left: 4 })
+            }
+
+            if (this.hasResult) {
+              this.resultsSection()
+            } else {
+              Text(this.statusText)
+                .fontSize(12)
+                .fontColor(AppTheme.inkMuted)
+                .width('100%')
+                .padding({ left: 4, bottom: 20 })
+            }
+          }
+          .padding({ left: 14, right: 14, bottom: 28, top: 4 })
+          .width('100%')
+        }
+        .layoutWeight(1)
+        .scrollBar(BarState.Off)
+        .edgeEffect(EdgeEffect.Spring)
+        .align(Alignment.Top)
       }
       .width('100%')
-      .padding({ left: 8, right: 12, top: 10, bottom: 8 })
-
-      Scroll() {
-        Column({ space: 12 }) {
-          if (this.showForm || !this.hasResult) {
-            this.formSection()
-          }
-
-          if (this.errorText.length > 0) {
-            Text(this.errorText)
-              .fontSize(13)
-              .fontColor(AppTheme.danger)
-              .width('100%')
-              .padding({ left: 4 })
-          }
-
-          if (this.hasResult) {
-            this.resultsSection()
-          } else {
-            Text(this.statusText)
-              .fontSize(12)
-              .fontColor(AppTheme.textSecondary)
-              .width('100%')
-              .padding({ left: 4, bottom: 20 })
-          }
-        }
-        .padding({ left: 14, right: 14, bottom: 28, top: 4 })
-        .width('100%')
-      }
-      .layoutWeight(1)
-      .scrollBar(BarState.Off)
-      .edgeEffect(EdgeEffect.Spring)
-      .align(Alignment.Top)
+      .height('100%')
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(AppTheme.bg)
+    .backgroundColor(AppTheme.bg0)
   }
 
   @Builder
@@ -447,7 +457,7 @@ struct PlanPage {
         Text('示例场景')
           .fontSize(13)
           .fontWeight(FontWeight.Medium)
-          .fontColor(AppTheme.teal)
+          .fontColor(AppTheme.link)
           .width('100%')
         Flex({ wrap: FlexWrap.Wrap }) {
           ForEach(FixtureCatalog.all(), (f: FixtureScenario) => {
@@ -455,8 +465,8 @@ struct PlanPage {
               .fontSize(11)
               .height(30)
               .margin({ right: 8, bottom: 8 })
-              .backgroundColor(this.fixtureId === f.id ? AppTheme.tealDeep : AppTheme.card)
-              .fontColor(this.fixtureId === f.id ? AppTheme.textOnPrimary : AppTheme.textSecondary)
+              .backgroundColor(this.fixtureId === f.id ? AppTheme.accent : AppTheme.glassBgLight)
+              .fontColor(this.fixtureId === f.id ? Color.White : AppTheme.inkMuted)
               .onClick(() => {
                 this.applyFixture(f);
               })
@@ -466,82 +476,87 @@ struct PlanPage {
       }
       .width('100%')
       .padding(14)
-      .borderRadius(16)
-      .backgroundColor(AppTheme.card)
+      .borderRadius(AppTheme.radiusMd)
+      .backgroundColor(AppTheme.glassBg)
+      .backdropBlur(AppTheme.blurPanel)
+      .border({ width: 1, color: AppTheme.glassBorder })
 
       // points — glass-ish light card like mock input
       Column({ space: 8 }) {
         Text('起终点')
           .fontSize(13)
           .fontWeight(FontWeight.Medium)
-          .fontColor(AppTheme.tealDeep)
+          .fontColor(AppTheme.link)
           .width('100%')
         Text('司机经度 / 纬度')
           .fontSize(12)
-          .fontColor(AppTheme.textMuted)
+          .fontColor(AppTheme.inkSoft)
           .width('100%')
         Row({ space: 8 }) {
           TextInput({ text: this.driverLonText, placeholder: 'lon' })
             .layoutWeight(1)
-            .backgroundColor(Color.White)
+            .backgroundColor(AppTheme.fieldBg)
+            .fontColor(AppTheme.ink)
+            .placeholderColor(AppTheme.inkFaint)
+            .border({ width: 1, color: AppTheme.lineStrong })
             .onChange((v: string) => {
               this.driverLonText = v;
             })
           TextInput({ text: this.driverLatText, placeholder: 'lat' })
             .layoutWeight(1)
-            .backgroundColor(Color.White)
+            .backgroundColor(AppTheme.fieldBg)
             .onChange((v: string) => {
               this.driverLatText = v;
             })
         }
         .width('100%')
         TextInput({ text: this.driverName, placeholder: '司机名称' })
-          .backgroundColor(Color.White)
+          .backgroundColor(AppTheme.fieldBg)
           .onChange((v: string) => {
             this.driverName = v;
           })
         Button('用当前定位作为司机起点', { type: ButtonType.Capsule })
           .width('100%')
           .height(36)
-          .backgroundColor('#CCFBF1')
-          .fontColor(AppTheme.tealDeep)
+          .backgroundColor(AppTheme.accentSoft)
+          .fontColor(AppTheme.link)
           .onClick(() => {
             this.onUseGpsDriver();
           })
 
         Text('乘客经度 / 纬度')
           .fontSize(12)
-          .fontColor(AppTheme.textMuted)
+          .fontColor(AppTheme.inkSoft)
           .margin({ top: 4 })
           .width('100%')
         Row({ space: 8 }) {
           TextInput({ text: this.passengerLonText, placeholder: 'lon' })
             .layoutWeight(1)
-            .backgroundColor(Color.White)
+            .backgroundColor(AppTheme.fieldBg)
             .onChange((v: string) => {
               this.passengerLonText = v;
             })
           TextInput({ text: this.passengerLatText, placeholder: 'lat' })
             .layoutWeight(1)
-            .backgroundColor(Color.White)
+            .backgroundColor(AppTheme.fieldBg)
             .onChange((v: string) => {
               this.passengerLatText = v;
             })
         }
         .width('100%')
         TextInput({ text: this.passengerName, placeholder: '乘客名称' })
-          .backgroundColor(Color.White)
+          .backgroundColor(AppTheme.fieldBg)
           .onChange((v: string) => {
             this.passengerName = v;
           })
         TextInput({ text: this.city, placeholder: '城市（公交可选）' })
-          .backgroundColor(Color.White)
+          .backgroundColor(AppTheme.fieldBg)
           .onChange((v: string) => {
             this.city = v;
           })
         Text('地点搜索 / 地图点选 · 即将接入')
           .fontSize(11)
-          .fontColor(AppTheme.textMuted)
+          .fontColor(AppTheme.inkSoft)
           .width('100%')
       }
       .width('100%')
@@ -553,30 +568,30 @@ struct PlanPage {
         Text('乘客可用方式')
           .fontSize(13)
           .fontWeight(FontWeight.Medium)
-          .fontColor(AppTheme.teal)
+          .fontColor(AppTheme.link)
           .width('100%')
         Row({ space: 8 }) {
           Button('步行', { type: ButtonType.Capsule })
             .fontSize(12)
             .height(32)
-            .backgroundColor(this.allowWalk ? AppTheme.tealDeep : AppTheme.cardMuted)
-            .fontColor(AppTheme.text)
+            .backgroundColor(this.allowWalk ? AppTheme.accent : AppTheme.glassBgLight)
+            .fontColor(AppTheme.ink)
             .onClick(() => {
               this.allowWalk = !this.allowWalk;
             })
           Button('骑行', { type: ButtonType.Capsule })
             .fontSize(12)
             .height(32)
-            .backgroundColor(this.allowBike ? AppTheme.tealDeep : AppTheme.cardMuted)
-            .fontColor(AppTheme.text)
+            .backgroundColor(this.allowBike ? AppTheme.accent : AppTheme.glassBgLight)
+            .fontColor(AppTheme.ink)
             .onClick(() => {
               this.allowBike = !this.allowBike;
             })
           Button('公交', { type: ButtonType.Capsule })
             .fontSize(12)
             .height(32)
-            .backgroundColor(this.allowTransit ? AppTheme.tealDeep : AppTheme.cardMuted)
-            .fontColor(AppTheme.text)
+            .backgroundColor(this.allowTransit ? AppTheme.accent : AppTheme.glassBgLight)
+            .fontColor(AppTheme.ink)
             .onClick(() => {
               this.allowTransit = !this.allowTransit;
             })
@@ -585,10 +600,10 @@ struct PlanPage {
         Row() {
           Text('避免公交')
             .fontSize(14)
-            .fontColor(AppTheme.text)
+            .fontColor(AppTheme.ink)
             .layoutWeight(1)
           Toggle({ type: ToggleType.Switch, isOn: this.avoidTransit })
-            .selectedColor(AppTheme.tealDeep)
+            .selectedColor(AppTheme.accent)
             .onChange((on: boolean) => {
               this.avoidTransit = on;
             })
@@ -596,7 +611,7 @@ struct PlanPage {
         .width('100%')
         Text(`步行上限约 ${this.maxWalkMin.toFixed(0)} 分钟`)
           .fontSize(12)
-          .fontColor(AppTheme.textSecondary)
+          .fontColor(AppTheme.inkMuted)
           .width('100%')
         Slider({
           value: this.maxWalkMin,
@@ -605,7 +620,7 @@ struct PlanPage {
           step: 1,
           style: SliderStyle.OutSet
         })
-          .selectedColor(AppTheme.teal)
+          .selectedColor(AppTheme.accent)
           .trackColor(AppTheme.cardMuted)
           .onChange((v: number) => {
             this.maxWalkMin = v;
@@ -613,16 +628,20 @@ struct PlanPage {
       }
       .width('100%')
       .padding(14)
-      .borderRadius(16)
-      .backgroundColor(AppTheme.card)
+      .borderRadius(AppTheme.radiusMd)
+      .backgroundColor(AppTheme.glassBg)
+      .backdropBlur(AppTheme.blurPanel)
+      .border({ width: 1, color: AppTheme.glassBorder })
 
       Button(this.planning ? '优化中…' : '开始路线优化', { type: ButtonType.Capsule })
         .width('100%')
         .height(50)
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
-        .backgroundColor(AppTheme.primary)
-        .fontColor(AppTheme.textOnPrimary)
+        .backgroundColor(AppTheme.accent)
+        .fontColor(Color.White)
+        .border({ width: 1, color: '#59FFFFFF' })
+        .shadow({ radius: 20, color: '#590A84FF', offsetX: 0, offsetY: 8 })
         .enabled(!this.planning)
         .onClick(() => {
           this.onPlan();
@@ -632,9 +651,9 @@ struct PlanPage {
         Button('查看优化结果', { type: ButtonType.Capsule })
           .width('100%')
           .height(42)
-          .backgroundColor(AppTheme.card)
-          .fontColor(AppTheme.text)
-          .border({ width: 1, color: AppTheme.border })
+          .backgroundColor(AppTheme.glassBg)
+          .fontColor(AppTheme.ink)
+          .border({ width: 1, color: AppTheme.glassBorder })
           .onClick(() => {
             this.showForm = false;
           })
@@ -669,15 +688,15 @@ struct PlanPage {
           Column() {
             Text(this.selectedModeBadge())
               .fontSize(11)
-              .fontColor(AppTheme.textOnPrimary)
+              .fontColor(Color.White)
               .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-              .backgroundColor('#2563EB')
+              .backgroundColor(AppTheme.accent)
               .borderRadius(999)
           }
           .position({ x: 10, y: 10 })
           Text('示意路线 · 非真实道路')
             .fontSize(10)
-            .fontColor(AppTheme.textMuted)
+            .fontColor(AppTheme.inkSoft)
             .position({ x: 10, y: 155 })
         }
         .width('100%')
@@ -696,7 +715,7 @@ struct PlanPage {
       Text('推荐方案')
         .fontSize(14)
         .fontWeight(FontWeight.Medium)
-        .fontColor(AppTheme.textSecondary)
+        .fontColor(AppTheme.inkMuted)
         .width('100%')
 
       ForEach(this.cards, (card: PlanCardModel) => {
@@ -711,20 +730,20 @@ struct PlanPage {
               Text(card.modeLabel)
                 .fontSize(15)
                 .fontWeight(FontWeight.Medium)
-                .fontColor(this.selectedCardId === card.id ? AppTheme.textOnPrimary : AppTheme.text)
+                .fontColor(this.selectedCardId === card.id ? Color.White : AppTheme.ink)
               if (card.recommended) {
                 Text('最快方案')
                   .fontSize(10)
-                  .fontColor(AppTheme.textOnPrimary)
+                  .fontColor(Color.White)
                   .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-                  .backgroundColor(AppTheme.primary)
+                  .backgroundColor(AppTheme.accent)
                   .borderRadius(999)
               }
             }
             .width('100%')
             Text(card.placeLine)
               .fontSize(12)
-              .fontColor(this.selectedCardId === card.id ? '#CCFBF1' : AppTheme.textSecondary)
+              .fontColor(this.selectedCardId === card.id ? '#CCFBF1' : AppTheme.inkMuted)
               .maxLines(1)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
               .width('100%')
@@ -737,20 +756,21 @@ struct PlanPage {
             Text(card.totalMinText)
               .fontSize(15)
               .fontWeight(FontWeight.Medium)
-              .fontColor(this.selectedCardId === card.id ? AppTheme.textOnPrimary : AppTheme.text)
+              .fontColor(this.selectedCardId === card.id ? Color.White : AppTheme.ink)
             Text(card.saveLine)
               .fontSize(11)
-              .fontColor(this.selectedCardId === card.id ? '#A7F3D0' : AppTheme.textSecondary)
+              .fontColor(this.selectedCardId === card.id ? '#A7F3D0' : AppTheme.inkMuted)
           }
           .alignItems(HorizontalAlign.End)
         }
         .width('100%')
         .padding(14)
-        .borderRadius(14)
-        .backgroundColor(this.selectedCardId === card.id ? AppTheme.cardSelected : AppTheme.card)
+        .borderRadius(AppTheme.radiusMd)
+        .backgroundColor(this.selectedCardId === card.id ? AppTheme.cardSelected : AppTheme.glassBg)
+        .backdropBlur(AppTheme.blurSoft)
         .border({
-          width: this.selectedCardId === card.id ? 0 : 1,
-          color: AppTheme.borderSoft
+          width: 1,
+          color: this.selectedCardId === card.id ? AppTheme.lineFocus : AppTheme.glassBorder
         })
         .onClick(() => {
           this.selectCard(card.id);
@@ -762,17 +782,17 @@ struct PlanPage {
         Text(this.summaryTitle)
           .fontSize(16)
           .fontWeight(FontWeight.Bold)
-          .fontColor(this.summaryTitle === '最快方案' ? AppTheme.textOnPrimary : AppTheme.text)
+          .fontColor(this.summaryTitle === '最快方案' ? Color.White : AppTheme.ink)
           .width('100%')
         Text(this.summaryBody)
           .fontSize(13)
-          .fontColor(this.summaryTitle === '最快方案' ? '#ECFDF5' : AppTheme.textSecondary)
+          .fontColor(this.summaryTitle === '最快方案' ? '#ECFDF5' : AppTheme.inkMuted)
           .width('100%')
       }
       .width('100%')
       .padding(16)
       .borderRadius(16)
-      .backgroundColor(this.summaryTitle === '最快方案' ? AppTheme.primaryDeep : AppTheme.cardMuted)
+      .backgroundColor(this.summaryTitle === '最快方案' ? AppTheme.accent : AppTheme.glassBgStrong)
 
       // meeting point
       Column({ space: 8 }) {
@@ -785,7 +805,7 @@ struct PlanPage {
           Text(this.previewMeeting.name.length > 0 ? this.previewMeeting.name : '会合点')
             .fontSize(15)
             .fontWeight(FontWeight.Medium)
-            .fontColor(AppTheme.textOnLight)
+            .fontColor(AppTheme.ink)
             .width('100%')
           Text(
             this.previewMeeting.address.length > 0
@@ -793,7 +813,7 @@ struct PlanPage {
               : `${this.previewMeeting.lat.toFixed(5)}, ${this.previewMeeting.lon.toFixed(5)}`
           )
             .fontSize(12)
-            .fontColor(AppTheme.textOnLightSecondary)
+            .fontColor(AppTheme.inkSecondary)
             .width('100%')
         }
         .width('100%')
@@ -804,23 +824,23 @@ struct PlanPage {
       .width('100%')
       .padding(14)
       .borderRadius(16)
-      .backgroundColor(AppTheme.pinkSoft)
+      .backgroundColor('#33FF9F0A')
 
       // placeholder actions
       Row({ space: 10 }) {
         Button('分享', { type: ButtonType.Capsule })
           .layoutWeight(1)
           .height(46)
-          .backgroundColor(AppTheme.purple)
-          .fontColor(AppTheme.textOnLight)
+          .backgroundColor('#66BF5AF2')
+          .fontColor(AppTheme.ink)
           .onClick(() => {
             this.onSharePlaceholder();
           })
         Button('在地图中打开', { type: ButtonType.Capsule })
           .layoutWeight(1)
           .height(46)
-          .backgroundColor(AppTheme.blue)
-          .fontColor(AppTheme.textOnLight)
+          .backgroundColor(AppTheme.accentSoft)
+          .fontColor(AppTheme.ink)
           .onClick(() => {
             this.onOpenMapPlaceholder();
           })
@@ -829,7 +849,7 @@ struct PlanPage {
 
       Text('分享 / 打开地图 · Phase 3 接入 · 当前为占位')
         .fontSize(11)
-        .fontColor(AppTheme.textMuted)
+        .fontColor(AppTheme.inkSoft)
         .width('100%')
         .textAlign(TextAlign.Center)
 
@@ -837,8 +857,8 @@ struct PlanPage {
         .width('100%')
         .height(42)
         .backgroundColor(AppTheme.card)
-        .fontColor(AppTheme.textSecondary)
-        .border({ width: 1, color: AppTheme.border })
+        .fontColor(AppTheme.inkMuted)
+        .border({ width: 1, color: AppTheme.glassBorder })
         .onClick(() => {
           this.showForm = true;
         })
@@ -933,13 +953,13 @@ struct PolylinePreview {
     Stack() {
       ForEach(this.projectedDriverSamples(), (p: CanvasPoint, idx: number) => {
         Circle({ width: idx === 0 ? 8 : 4, height: idx === 0 ? 8 : 4 })
-          .fill(idx === 0 ? AppTheme.tealDeep : AppTheme.teal)
+          .fill(idx === 0 ? AppTheme.accent : AppTheme.link)
           .position({ x: p.x - (idx === 0 ? 4 : 2), y: p.y - (idx === 0 ? 4 : 2) })
       }, (p: CanvasPoint, idx: number) => `d-${idx}-${p.x.toFixed(1)}-${p.y.toFixed(1)}`)
 
       ForEach(this.projectedPassengerSamples(), (p: CanvasPoint, idx: number) => {
         Circle({ width: 4, height: 4 })
-          .fill(AppTheme.amber)
+          .fill(AppTheme.warn)
           .opacity(0.95)
           .position({ x: p.x - 2, y: p.y - 2 })
       }, (p: CanvasPoint, idx: number) => `p-${idx}-${p.x.toFixed(1)}-${p.y.toFixed(1)}`)

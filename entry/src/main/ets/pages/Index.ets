@@ -1,6 +1,7 @@
 import { common } from '@kit.AbilityKit';
 import { router } from '@kit.ArkUI';
 import { AppTheme } from '../common/AppTheme';
+import { StageBackground } from '../common/GlassChrome';
 import { AppSettings } from '../common/AppSettings';
 import { LocationService } from '../services/location/LocationService';
 import { SettingsStore } from '../services/settings/SettingsStore';
@@ -74,170 +75,141 @@ struct Index {
 
   build() {
     Stack({ alignContent: Alignment.Bottom }) {
-      // map stage backdrop
-      Column() {
-        Column() {
-          Text('MeetAgent · 会合助手')
-            .fontSize(12)
-            .fontColor(AppTheme.textSecondary)
-            .margin({ top: 56, left: 20 })
-            .width('100%')
-          Text('西安示意地图')
+      StageBackground()
+
+      Row() {
+        Column({ space: 2 }) {
+          Text('会合助手')
             .fontSize(22)
             .fontWeight(FontWeight.Bold)
-            .fontColor(AppTheme.textOnLight)
-            .margin({ top: 8, left: 20 })
-          Text('实时路网 / POI 搜索 · 即将接入')
+            .fontColor(AppTheme.ink)
+          Text('MeetAgent · liquid glass')
             .fontSize(12)
-            .fontColor(AppTheme.textOnLightSecondary)
-            .margin({ top: 4, left: 20, bottom: 12 })
-
-          // faux map grid
-          Stack() {
-            Column()
-              .width('100%')
-              .height('100%')
-              .linearGradient({
-                angle: 135,
-                colors: [['#DCE8F2', 0], ['#E8F5E9', 0.55], ['#E2E8F0', 1]]
-              })
-            // road-ish lines
-            ForEach([0.18, 0.36, 0.54, 0.72, 0.88], (t: number, idx: number) => {
-              Divider()
-                .color(idx % 2 === 0 ? '#94A3B8' : '#86EFAC')
-                .strokeWidth(idx % 2 === 0 ? 2 : 1.5)
-                .opacity(0.45)
-                .width('120%')
-                .rotate({ angle: idx % 2 === 0 ? -12 : 18 })
-                .position({ x: -20, y: `${t * 100}%` })
-            }, (t: number, idx: number) => `road-${idx}`)
-            // pins
-            Column() {
-              Text('📍 司机')
-                .fontSize(11)
-                .fontColor(AppTheme.tealDeep)
-                .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-                .backgroundColor('#CCFBF1')
-                .borderRadius(999)
-            }
-            .position({ x: '18%', y: '28%' })
-            Column() {
-              Text('📍 乘客')
-                .fontSize(11)
-                .fontColor('#B45309')
-                .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-                .backgroundColor('#FEF3C7')
-                .borderRadius(999)
-            }
-            .position({ x: '58%', y: '52%' })
-            Text('高德风格示意 · 非真实地图')
-              .fontSize(10)
-              .fontColor(AppTheme.textMuted)
-              .position({ x: 12, y: '90%' })
-          }
-          .width('100%')
-          .layoutWeight(1)
-          .margin({ left: 12, right: 12, bottom: 12 })
-          .borderRadius(18)
-          .clip(true)
+            .fontColor(AppTheme.inkSoft)
         }
-        .width('100%')
-        .height('100%')
-      }
-      .width('100%')
-      .height('100%')
-      .backgroundColor(AppTheme.bg)
+        .alignItems(HorizontalAlign.Start)
+        .layoutWeight(1)
 
-      // top chrome
-      Row() {
-        Text('会合助手')
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(AppTheme.text)
-          .layoutWeight(1)
         Button('设置', { type: ButtonType.Capsule })
+          .height(36)
           .fontSize(13)
-          .height(34)
-          .backgroundColor('#1F2937')
-          .fontColor(AppTheme.text)
-          .border({ width: 1, color: AppTheme.border })
+          .backgroundColor(AppTheme.glassBgLight)
+          .fontColor(AppTheme.ink)
+          .border({ width: 1, color: AppTheme.glassBorder })
+          .backdropBlur(AppTheme.blurSoft)
           .onClick(() => {
             this.openSettings();
           })
       }
       .width('100%')
-      .padding({ left: 20, right: 16, top: 14, bottom: 8 })
+      .padding({ left: 20, right: 16, top: 18, bottom: 8 })
       .position({ x: 0, y: 0 })
 
-      // bottom glass sheet
+      Column({ space: 6 }) {
+        Text('西安示意地图')
+          .fontSize(28)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(AppTheme.ink)
+        Text('实时路网 / POI 搜索 · 即将接入')
+          .fontSize(13)
+          .fontColor(AppTheme.inkMuted)
+        Row({ space: 8 }) {
+          Text('📍 司机')
+            .fontSize(11)
+            .fontColor(AppTheme.ink)
+            .padding({ left: 10, right: 10, top: 5, bottom: 5 })
+            .borderRadius(AppTheme.radiusPill)
+            .backgroundColor(AppTheme.glassBgLight)
+            .border({ width: 1, color: AppTheme.lineStrong })
+            .backdropBlur(10)
+          Text('📍 乘客')
+            .fontSize(11)
+            .fontColor(AppTheme.ink)
+            .padding({ left: 10, right: 10, top: 5, bottom: 5 })
+            .borderRadius(AppTheme.radiusPill)
+            .backgroundColor(AppTheme.accentSoft)
+            .border({ width: 1, color: AppTheme.lineFocus })
+            .backdropBlur(10)
+        }
+        .margin({ top: 8 })
+      }
+      .width('100%')
+      .alignItems(HorizontalAlign.Start)
+      .padding({ left: 22, right: 22 })
+      .position({ x: 0, y: 96 })
+
       Column({ space: 12 }) {
         Text('接驾会合规划')
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
-          .fontColor(AppTheme.textOnLight)
+          .fontColor(AppTheme.ink)
           .width('100%')
         Text('乘客在哪？司机从哪出发？一次锁定会合方案。')
           .fontSize(13)
-          .fontColor(AppTheme.textOnLightSecondary)
+          .fontColor(AppTheme.inkMuted)
           .width('100%')
 
         Column({ space: 6 }) {
           Text('乘客位置')
             .fontSize(12)
-            .fontColor(AppTheme.textMuted)
+            .fontColor(AppTheme.inkSoft)
             .width('100%')
           Row() {
             Text('🔍  搜索地点或地址 · 即将接入')
               .fontSize(14)
-              .fontColor(AppTheme.textMuted)
+              .fontColor(AppTheme.inkFaint)
               .layoutWeight(1)
           }
           .width('100%')
-          .height(44)
-          .padding({ left: 12, right: 12 })
-          .borderRadius(12)
-          .backgroundColor(Color.White)
-          .border({ width: 1, color: AppTheme.hairline })
+          .height(46)
+          .padding({ left: 14, right: 14 })
+          .borderRadius(14)
+          .backgroundColor(AppTheme.fieldBg)
+          .border({ width: 1, color: AppTheme.lineStrong })
         }
         .width('100%')
 
         Column({ space: 6 }) {
           Text('司机出发地（可选）')
             .fontSize(12)
-            .fontColor(AppTheme.textMuted)
+            .fontColor(AppTheme.inkSoft)
             .width('100%')
           Row() {
-            Text(this.locationText.length > 0 ? this.locationText : '搜索出发地点 · 即将接入')
+            Text(this.locationText)
               .fontSize(13)
-              .fontColor(AppTheme.textOnLightSecondary)
+              .fontColor(AppTheme.inkMuted)
               .layoutWeight(1)
               .maxLines(1)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
           }
           .width('100%')
-          .height(44)
-          .padding({ left: 12, right: 12 })
-          .borderRadius(12)
-          .backgroundColor(Color.White)
-          .border({ width: 1, color: AppTheme.hairline })
+          .height(46)
+          .padding({ left: 14, right: 14 })
+          .borderRadius(14)
+          .backgroundColor(AppTheme.fieldBg)
+          .border({ width: 1, color: AppTheme.lineStrong })
         }
         .width('100%')
 
-        Row({ space: 8 }) {
+        Row({ space: 10 }) {
           Button(this.locating ? '定位中…' : '用当前定位', { type: ButtonType.Capsule })
             .layoutWeight(1)
-            .height(40)
-            .backgroundColor('#CCFBF1')
-            .fontColor(AppTheme.tealDeep)
+            .height(42)
+            .fontSize(13)
+            .backgroundColor(AppTheme.accentSoft)
+            .fontColor(AppTheme.link)
+            .border({ width: 1, color: AppTheme.lineFocus })
             .enabled(!this.locating)
             .onClick(() => {
               this.onLocate();
             })
           Button('设置', { type: ButtonType.Capsule })
             .layoutWeight(1)
-            .height(40)
-            .backgroundColor('#E2E8F0')
-            .fontColor(AppTheme.textOnLight)
+            .height(42)
+            .fontSize(13)
+            .backgroundColor(AppTheme.glassBgLight)
+            .fontColor(AppTheme.ink)
+            .border({ width: 1, color: AppTheme.glassBorder })
             .onClick(() => {
               this.openSettings();
             })
@@ -246,7 +218,7 @@ struct Index {
 
         Text(this.settingsSummary)
           .fontSize(11)
-          .fontColor(AppTheme.textMuted)
+          .fontColor(AppTheme.inkSoft)
           .width('100%')
 
         Button('开始路线优化', { type: ButtonType.Capsule })
@@ -254,31 +226,40 @@ struct Index {
           .height(50)
           .fontSize(16)
           .fontWeight(FontWeight.Medium)
-          .backgroundColor(AppTheme.primary)
-          .fontColor(AppTheme.textOnPrimary)
+          .backgroundColor(AppTheme.accent)
+          .fontColor(Color.White)
+          .border({ width: 1, color: '#59FFFFFF' })
+          .shadow({
+            radius: 22,
+            color: '#590A84FF',
+            offsetX: 0,
+            offsetY: 10
+          })
           .onClick(() => {
             this.openPlan();
           })
 
         Text('无 Key 时使用离线估算 · 密钥仅存本机')
           .fontSize(11)
-          .fontColor(AppTheme.textMuted)
+          .fontColor(AppTheme.inkSoft)
           .width('100%')
           .textAlign(TextAlign.Center)
       }
       .width('100%')
-      .padding({ left: 18, right: 18, top: 18, bottom: 28 })
-      .borderRadius({ topLeft: 24, topRight: 24 })
-      .backgroundColor(AppTheme.glass)
+      .padding({ left: 18, right: 18, top: 18, bottom: 30 })
+      .borderRadius({ topLeft: AppTheme.radiusLg, topRight: AppTheme.radiusLg })
+      .backgroundColor(AppTheme.glassBg)
+      .backdropBlur(AppTheme.blurStrong)
+      .border({ width: { top: 1 }, color: AppTheme.glassBorder })
       .shadow({
-        radius: 24,
-        color: '#66000000',
+        radius: 36,
+        color: '#80000000',
         offsetX: 0,
-        offsetY: -4
+        offsetY: -8
       })
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(AppTheme.bg)
+    .backgroundColor(AppTheme.bg0)
   }
 }
