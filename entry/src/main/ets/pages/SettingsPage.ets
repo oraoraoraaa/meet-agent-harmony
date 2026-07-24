@@ -1,6 +1,15 @@
 import { common } from '@kit.AbilityKit';
 import { promptAction, router } from '@kit.ArkUI';
-import { AppLanguage, AppSettings, LlmMode } from '../common/AppSettings';
+import {
+  AppLanguage,
+  AppSettings,
+  LANG_EN,
+  LANG_ZH_CN,
+  LLM_MODE_OFFLINE,
+  LLM_MODE_PROXY,
+  LLM_MODE_USER_KEY,
+  LlmMode
+} from '../common/AppSettings';
 import { SettingsStore } from '../services/settings/SettingsStore';
 
 @Entry
@@ -24,7 +33,8 @@ struct SettingsPage {
       this.settings = await SettingsStore.load(this.hostContext());
       this.loaded = true;
       this.statusText = '已从本机偏好加载';
-    } catch (_err) {
+    } catch (e) {
+      const _ignored: Object = e as Object;
       this.settings = new AppSettings();
       this.loaded = true;
       this.statusText = '加载失败，使用默认值';
@@ -40,7 +50,8 @@ struct SettingsPage {
       await SettingsStore.save(this.hostContext(), this.settings);
       this.statusText = '已保存到本机（不会上传）';
       promptAction.showToast({ message: '设置已保存', duration: 2000 });
-    } catch (_err) {
+    } catch (e) {
+      const _ignored: Object = e as Object;
       this.statusText = '保存失败';
       promptAction.showToast({ message: '保存失败', duration: 2000 });
     } finally {
@@ -49,13 +60,13 @@ struct SettingsPage {
   }
 
   private setMode(mode: LlmMode): void {
-    const next = this.settings.clone();
+    const next: AppSettings = this.settings.clone();
     next.llmMode = mode;
     this.settings = next;
   }
 
   private setLanguage(lang: AppLanguage): void {
-    const next = this.settings.clone();
+    const next: AppSettings = this.settings.clone();
     next.language = lang;
     this.settings = next;
   }
@@ -129,9 +140,9 @@ struct SettingsPage {
             this.sectionTitle('大模型（OpenAI 兼容）')
             this.fieldLabel('模式')
             Row({ space: 8 }) {
-              this.modeChip('offline', '离线')
-              this.modeChip('user_key', '用户 Key')
-              this.modeChip('proxy', '代理')
+              this.modeChip(LLM_MODE_OFFLINE, '离线')
+              this.modeChip(LLM_MODE_USER_KEY, '用户 Key')
+              this.modeChip(LLM_MODE_PROXY, '代理')
             }
             .width('100%')
 
@@ -163,8 +174,8 @@ struct SettingsPage {
             this.sectionTitle('体验')
             this.fieldLabel('语言')
             Row({ space: 8 }) {
-              this.langChip('zh-CN', '中文')
-              this.langChip('en', 'English')
+              this.langChip(LANG_ZH_CN, '中文')
+              this.langChip(LANG_EN, 'English')
             }
             .width('100%')
 

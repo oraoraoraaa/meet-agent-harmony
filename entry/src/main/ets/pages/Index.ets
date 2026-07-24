@@ -23,15 +23,16 @@ struct Index {
   private async refreshSettings(): Promise<void> {
     try {
       this.settings = await SettingsStore.load(this.hostContext());
-      const llm = this.settings.llmConfigured()
+      const llm: string = this.settings.llmConfigured()
         ? `LLM ${this.settings.modeLabel()} · ${this.settings.llmModel}`
         : `LLM ${this.settings.modeLabel()}（引擎估算可用）`;
-      const map = this.settings.mapApiKey.trim().length > 0 || this.settings.mapWebKey.trim().length > 0
+      const map: string = this.settings.mapApiKey.trim().length > 0 || this.settings.mapWebKey.trim().length > 0
         ? '地图 Key 已配置'
         : '地图 Key 未配置';
-      const fix = this.settings.demoFixtures ? 'Fixture 开' : 'Fixture 关';
+      const fix: string = this.settings.demoFixtures ? 'Fixture 开' : 'Fixture 关';
       this.settingsSummary = `${llm} · ${map} · ${fix}`;
-    } catch (_err) {
+    } catch (e) {
+      const _ignored: Object = e as Object;
       this.settingsSummary = '设置读取失败 — 将使用默认离线模式';
     }
   }
@@ -45,7 +46,8 @@ struct Index {
     try {
       const snap = await LocationService.readOnce(this.hostContext());
       this.locationText = snap.message;
-    } catch (_err) {
+    } catch (e) {
+      const _ignored: Object = e as Object;
       this.locationText = '定位调用异常';
     } finally {
       this.locating = false;

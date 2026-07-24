@@ -1,58 +1,92 @@
 import { common } from '@kit.AbilityKit';
 import { preferences } from '@kit.ArkData';
-import { AppLanguage, AppSettings, LlmMode } from '../common/AppSettings';
+import {
+  AppLanguage,
+  AppSettings,
+  LANG_EN,
+  LANG_ZH_CN,
+  LLM_MODE_OFFLINE,
+  LLM_MODE_PROXY,
+  LLM_MODE_USER_KEY,
+  LlmMode
+} from '../../common/AppSettings';
 
-const STORE_NAME = 'meet_agent_settings';
+const STORE_NAME: string = 'meet_agent_settings';
 
-const KEY_MAP_API = 'mapApiKey';
-const KEY_MAP_WEB = 'mapWebKey';
-const KEY_LLM_BASE = 'llmBaseUrl';
-const KEY_LLM_KEY = 'llmApiKey';
-const KEY_LLM_MODEL = 'llmModel';
-const KEY_PROXY = 'proxyBaseUrl';
-const KEY_LLM_MODE = 'llmMode';
-const KEY_LANG = 'language';
-const KEY_FIXTURES = 'demoFixtures';
-const KEY_TRACE = 'verboseAgentTrace';
+const KEY_MAP_API: string = 'mapApiKey';
+const KEY_MAP_WEB: string = 'mapWebKey';
+const KEY_LLM_BASE: string = 'llmBaseUrl';
+const KEY_LLM_KEY: string = 'llmApiKey';
+const KEY_LLM_MODEL: string = 'llmModel';
+const KEY_PROXY: string = 'proxyBaseUrl';
+const KEY_LLM_MODE: string = 'llmMode';
+const KEY_LANG: string = 'language';
+const KEY_FIXTURES: string = 'demoFixtures';
+const KEY_TRACE: string = 'verboseAgentTrace';
 
 function asLlmMode(raw: string): LlmMode {
-  if (raw === 'user_key' || raw === 'proxy' || raw === 'offline') {
-    return raw;
+  if (raw === LLM_MODE_USER_KEY) {
+    return LLM_MODE_USER_KEY;
   }
-  return 'offline';
+  if (raw === LLM_MODE_PROXY) {
+    return LLM_MODE_PROXY;
+  }
+  return LLM_MODE_OFFLINE;
 }
 
 function asLanguage(raw: string): AppLanguage {
-  if (raw === 'en') {
-    return 'en';
+  if (raw === LANG_EN) {
+    return LANG_EN;
   }
-  return 'zh-CN';
+  return LANG_ZH_CN;
+}
+
+async function readString(
+  store: preferences.Preferences,
+  key: string,
+  fallback: string
+): Promise<string> {
+  const value: preferences.ValueType = await store.get(key, fallback);
+  if (typeof value === 'string') {
+    return value;
+  }
+  return fallback;
+}
+
+async function readBool(
+  store: preferences.Preferences,
+  key: string,
+  fallback: boolean
+): Promise<boolean> {
+  const value: preferences.ValueType = await store.get(key, fallback);
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  return fallback;
 }
 
 /**
  * Preferences-backed settings store (device-local).
- * Not cryptographically hardened vault — good enough for Phase 0 keys;
- * later can migrate sensitive fields to system secure storage APIs.
  */
 export class SettingsStore {
   static async load(context: common.Context): Promise<AppSettings> {
-    const store = await preferences.getPreferences(context, STORE_NAME);
-    const settings = new AppSettings();
-    settings.mapApiKey = await store.get(KEY_MAP_API, '') as string;
-    settings.mapWebKey = await store.get(KEY_MAP_WEB, '') as string;
-    settings.llmBaseUrl = await store.get(KEY_LLM_BASE, settings.llmBaseUrl) as string;
-    settings.llmApiKey = await store.get(KEY_LLM_KEY, '') as string;
-    settings.llmModel = await store.get(KEY_LLM_MODEL, settings.llmModel) as string;
-    settings.proxyBaseUrl = await store.get(KEY_PROXY, settings.proxyBaseUrl) as string;
-    settings.llmMode = asLlmMode(await store.get(KEY_LLM_MODE, 'offline') as string);
-    settings.language = asLanguage(await store.get(KEY_LANG, 'zh-CN') as string);
-    settings.demoFixtures = await store.get(KEY_FIXTURES, true) as boolean;
-    settings.verboseAgentTrace = await store.get(KEY_TRACE, false) as boolean;
+    const store: preferences.Preferences = await preferences.getPreferences(context, STORE_NAME);
+    const settings: AppSettings = new AppSettings();
+    settings.mapApiKey = await readString(store, KEY_MAP_API, '');
+    settings.mapWebKey = await readString(store, KEY_MAP_WEB, '');
+    settings.llmBaseUrl = await readString(store, KEY_LLM_BASE, settings.llmBaseUrl);
+    settings.llmApiKey = await readString(store, KEY_LLM_KEY, '');
+    settings.llmModel = await readString(store, KEY_LLM_MODEL, settings.llmModel);
+    settings.proxyBaseUrl = await readString(store, KEY_PROXY, settings.proxyBaseUrl);
+    settings.llmMode = asLlmMode(await readString(store, KEY_LLM_MODE, LLM_MODE_OFFLINE));
+    settings.language = asLanguage(await readString(store, KEY_LANG, LANG_ZH_CN));
+    settings.demoFixtures = await readBool(store, KEY_FIXTURES, true);
+    settings.verboseAgentTrace = await readBool(store, KEY_TRACE, false);
     return settings;
   }
 
   static async save(context: common.Context, settings: AppSettings): Promise<void> {
-    const store = await preferences.getPreferences(context, STORE_NAME);
+    const store: preferences.Preferences = await preferences.getPreferences(context, STORE_NAME);
     await store.put(KEY_MAP_API, settings.mapApiKey);
     await store.put(KEY_MAP_WEB, settings.mapWebKey);
     await store.put(KEY_LLM_BASE, settings.llmBaseUrl);

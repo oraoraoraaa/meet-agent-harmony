@@ -2,24 +2,33 @@
  * Serializable app settings for Phase 0+.
  * Secrets live only in preferences / UI — never commit real values.
  */
-export type LlmMode = 'user_key' | 'proxy' | 'offline';
 
-export type AppLanguage = 'zh-CN' | 'en';
+/** LLM access mode: direct vendor key, demo proxy, or offline engine-only. */
+export type LlmMode = string;
+export type AppLanguage = string;
+export type TextValue = string;
+
+export const LLM_MODE_USER_KEY: LlmMode = 'user_key';
+export const LLM_MODE_PROXY: LlmMode = 'proxy';
+export const LLM_MODE_OFFLINE: LlmMode = 'offline';
+
+export const LANG_ZH_CN: AppLanguage = 'zh-CN';
+export const LANG_EN: AppLanguage = 'en';
 
 export class AppSettings {
-  mapApiKey: string = '';
-  mapWebKey: string = '';
-  llmBaseUrl: string = 'https://api.deepseek.com';
-  llmApiKey: string = '';
-  llmModel: string = 'deepseek-chat';
-  proxyBaseUrl: string = 'http://127.0.0.1:8787';
-  llmMode: LlmMode = 'offline';
-  language: AppLanguage = 'zh-CN';
+  mapApiKey: TextValue = '';
+  mapWebKey: TextValue = '';
+  llmBaseUrl: TextValue = 'https://api.deepseek.com';
+  llmApiKey: TextValue = '';
+  llmModel: TextValue = 'deepseek-chat';
+  proxyBaseUrl: TextValue = 'http://127.0.0.1:8787';
+  llmMode: LlmMode = LLM_MODE_OFFLINE;
+  language: AppLanguage = LANG_ZH_CN;
   demoFixtures: boolean = true;
   verboseAgentTrace: boolean = false;
 
   clone(): AppSettings {
-    const copy = new AppSettings();
+    const copy: AppSettings = new AppSettings();
     copy.mapApiKey = this.mapApiKey;
     copy.mapWebKey = this.mapWebKey;
     copy.llmBaseUrl = this.llmBaseUrl;
@@ -35,20 +44,20 @@ export class AppSettings {
 
   /** True when Mode A/B can attempt LLM calls. */
   llmConfigured(): boolean {
-    if (this.llmMode === 'offline') {
+    if (this.llmMode === LLM_MODE_OFFLINE) {
       return false;
     }
-    if (this.llmMode === 'proxy') {
+    if (this.llmMode === LLM_MODE_PROXY) {
       return this.proxyBaseUrl.trim().length > 0;
     }
     return this.llmBaseUrl.trim().length > 0 && this.llmApiKey.trim().length > 0;
   }
 
-  modeLabel(): string {
-    if (this.llmMode === 'user_key') {
+  modeLabel(): TextValue {
+    if (this.llmMode === LLM_MODE_USER_KEY) {
       return 'User key';
     }
-    if (this.llmMode === 'proxy') {
+    if (this.llmMode === LLM_MODE_PROXY) {
       return 'Proxy';
     }
     return 'Offline';
