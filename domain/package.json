@@ -1,0 +1,13 @@
+{
+  "name": "@meetagent/domain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pure planning domain for MeetAgent (scaffold)",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --experimental-strip-types --test test/**/*.test.ts"
+  }
+}

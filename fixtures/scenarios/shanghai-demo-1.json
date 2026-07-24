@@ -1,0 +1,25 @@
+{
+  "id": "shanghai-demo-1",
+  "title": "上海示例：陆家嘴 → 人民广场",
+  "city": "上海",
+  "driver": {
+    "name": "司机起点（陆家嘴）",
+    "lon": 121.5086,
+    "lat": 31.2454
+  },
+  "passenger": {
+    "name": "乘客（人民广场）",
+    "lon": 121.4737,
+    "lat": 31.2304
+  },
+  "constraints": {
+    "allowedModes": ["walking", "bicycle", "transit"],
+    "maxPassengerWalkMin": 10,
+    "avoidTransit": false,
+    "notes": "demo fixture"
+  },
+  "narration": {
+    "zh": "陆家嘴出发接人民广场乘客。",
+    "en": "Driver from Lujiazui to passenger at People's Square."
+  }
+}

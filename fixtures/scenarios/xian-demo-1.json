@@ -1,0 +1,25 @@
+{
+  "id": "xian-demo-1",
+  "title": "西安示例：高新 → 钟楼商圈",
+  "city": "西安",
+  "driver": {
+    "name": "司机起点（高新）",
+    "lon": 108.8905,
+    "lat": 34.2324
+  },
+  "passenger": {
+    "name": "乘客（钟楼附近）",
+    "lon": 108.9465,
+    "lat": 34.2610
+  },
+  "constraints": {
+    "allowedModes": ["walking", "bicycle", "transit"],
+    "maxPassengerWalkMin": 12,
+    "avoidTransit": false,
+    "notes": "demo fixture"
+  },
+  "narration": {
+    "zh": "司机从高新区出发接钟楼附近乘客，可骑行。",
+    "en": "Driver from Hi-Tech zone picks up passenger near Bell Tower; bicycle OK."
+  }
+}

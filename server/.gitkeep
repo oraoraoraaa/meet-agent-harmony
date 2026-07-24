@@ -1,0 +1,5 @@
+# Server package placeholder
+
+Implement the proxy in a later phase. Prefer a small FastAPI or Node service.
+
+Do not add vendor keys to this tree.

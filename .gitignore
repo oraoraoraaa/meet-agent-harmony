@@ -1,0 +1,62 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# HarmonyOS / OpenHarmony / DevEco
+**/node_modules/
+**/oh_modules/
+**/.hvigor/
+**/build/
+**/BuildProfile.ets
+**/.idea/
+**/.deveco/
+**/*.hap
+**/*.app
+**/*.har
+**/local.properties
+**/.cxx/
+**/oh-package-lock.json5
+!**/oh-package.json5
+
+# Keys & secrets
+.env
+.env.*
+!.env.example
+**/*secret*
+**/*credentials*
+**/local.properties
+**/keys/
+**/private/
+
+# Editor / IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+*.swp
+*.swo
+*~
+
+# Logs & caches
+*.log
+.cache/
+tmp/
+temp/
+coverage/
+.nyc_output/
+
+# Python proxy (optional server)
+server/**/.venv/
+server/**/__pycache__/
+server/**/*.pyc
+server/**/.pytest_cache/
+server/**/.ruff_cache/
+server/**/uv.lock
+# keep pyproject if present; ignore local venv only
+
+# Test / fixture runtime dumps
+fixtures/runtime/
+*.local.json
+
+# OS / misc
+Thumbs.db
