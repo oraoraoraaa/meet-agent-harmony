@@ -46,6 +46,13 @@ export {
   estimatePassengerPath,
 } from './estimate.ts';
 
+export {
+  decodeAmapPolyline,
+  mergePolylines,
+  routePointsFromPolyline,
+  ensureEndpoints,
+} from './amapPolyline.ts';
+
 export type {
   DrivingRouteResult,
   PassengerPathResult,

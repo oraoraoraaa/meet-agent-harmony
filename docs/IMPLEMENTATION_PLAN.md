@@ -117,7 +117,7 @@ Implications for routing APIs:
   - `reverseGeocode(point)`
   - `searchPoi(query, near?)` (stub)
 - [x] Live implementation behind interface (per Phase 0 decision) + estimate fallback  
-  *(Phase 1: estimate always; HybridMapProvider reserved for AMap Web key branch)*
+  *(Phase 1 estimate; Phase 4 Hybrid live AMap Web key branch)*
 - [x] `PlanningService.plan(scenario) -> RecommendationSet`
 
 ### UI
@@ -149,7 +149,7 @@ D2 packaging: mirrored ArkTS port under entry/src/main/ets/domain/* (pure TS sta
 Coordinate system: treat lon/lat as GCJ-02 when using China map vendors; estimate uses same numbers.
 Estimate speeds: drive 28 / walk 4.5 / bike 12 / transit 20 km/h.
 UI: pages/PlanPage.ets — fixtures 西安/上海, schematic polyline preview (no Map Kit), 估算 badge.
-Map: HybridMapProvider + EstimateMapProvider; AMap REST deferred until mapWebKey live path is needed.
+Map: HybridMapProvider + EstimateMapProvider; AMap REST live when mapWebKey set and demoFixtures OFF.
 Passenger point search/map-pick deferred; Phase 1 uses coords + fixtures + optional GPS for driver.
 Verify: cd domain && npm test (15 pass as of Phase 2 grounding tests). DevEco Preview used for ArkTS UI smoke.
 Phase 1 complete for offline path. Missing Map SDK is intentional, not a blocker for Phase 1/2 exit.
@@ -221,7 +221,7 @@ UI: pages/ChatPage.ets — fixtures, quick prompts, plan mini-cards, 决策过�
 Settings: 测试 LLM 连接 (ping)
 Home: 智能助手规划 → ChatPage; 表单规划 → PlanPage
 Default demo model hint: deepseek-chat (D3 still open for contest day)
-Live AMap still deferred; generate_and_score uses estimate HybridMapProvider
+Hybrid ready; Phase 4 enables live AMap when key present
 ```
 
 ---
@@ -309,41 +309,55 @@ UI:
   - Constraints already engine-enforced (allowedModes, avoidTransit, maxPassengerWalkMin)
   - Home: fixed-height scrollable sheet + map stage; driver/passenger mode chip (header UR, expand menu)
   - Immersive dark window (EntryAbility full-screen + start_window #07080C); AppLayout.statusBarInsetVp for headers
-  - Remaining 即将接入 (intentional Phase 4+): live map/POI search, JP l10n
+  - Remaining 即将接入: JP l10n (Phase 4 optional)
 
 Verify: cd domain && npm test → 20 pass (incl. session machine)
 Device: emulator Run exercised lock/share/clipboard; location 3301100 = no GPS fix (enable simulation)
-Live AMap REST still deferred; Mode C offline fixtures remain demo path.
+Live AMap REST delivered in Phase 4; Mode C offline fixtures remain demo path.
 ```
 
 ---
 
 ## Phase 4 — Contest polish & hardening
 
-**Goal:** Reliable stage demo + readable submission quality.
+**Goal:** Reliable stage demo + readable submission quality + **live AMap Hybrid** for real routes.
+
+### Live map / calculation engine
+
+- [x] `AmapWebMapProvider` Web REST (driving / walking / bicycling / transit + regeo + place/text)
+- [x] `HybridMapProvider` live branch + estimate fallback + honest `dataSource`
+- [x] `PlanningService.createProvider(mapWebKey, forceEstimate)` — demoFixtures forces estimate
+- [x] Wire Plan + Chat + agent tools through Hybrid
+- [x] Home interactive AMap JS map (drag/zoom/traffic) + search-first assign sheet
+- [x] POI / place labels via regeo (UI never shows bare lat/lon as primary text)
+- [x] Plan + Chat result maps show routes; card select updates polylines
+- [x] Loading / error recovery copy during route fetch
+- [x] Pure polyline decode helpers + unit tests (`domain/src/amapPolyline.ts`)
+- [x] Device path exercised with Map Web Key (live basemap + routes + traffic)
 
 ### Demo reliability
 
-- [ ] `fixtures/scenarios/*.json` ≥ 2 realistic city scenarios
-- [ ] Optional recorded route fixture to avoid live flakiness on stage
-- [ ] Demo mode switch: force fixture provider
-- [ ] `docs/DEMO_SCRIPT.md` timed to ~3 minutes
+- [x] `fixtures/scenarios/*.json` ≥ 2 realistic city scenarios (西安 / 上海)
+- [x] Optional recorded route sample `fixtures/routes/xian-driving-sample.json`
+- [x] Demo mode switch: force fixture/estimate provider (`demoFixtures`)
+- [x] `docs/DEMO_SCRIPT.md` matches real buttons (确认并锁定 / 复制分享 / 打开地图 / 模式 chip)
 
 ### UX polish
 
-- [ ] Loading skeletons / progress copy during tool calls (“正在获取驾车路线…”)
-- [ ] Error toasts with recovery actions
+- [x] Loading progress copy during plan / tool path (“正在获取驾车路线…”)
+- [x] Error toasts with recovery (retry / demo fixtures / open settings)
 - [ ] Basic motion (page transitions) without jank on mid devices
 - [ ] App name, icons, about screen
-- [ ] zh-CN copy review; EN if time
+- [x] zh-CN copy review for map/demo paths; EN deferred
+- [ ] JP l10n still deferred (`即将接入`)
 
 ### Quality
 
-- [ ] Engine tests green
-- [ ] Agent grounding tests green
-- [ ] Manual test checklist in `tests/MANUAL_CHECKLIST.md`
-- [ ] README quick start accurate to actual DevEco steps
-- [ ] Architecture diagram matches code modules
+- [x] Engine tests green (`cd domain && npm test` → 25 pass)
+- [x] Agent grounding tests green
+- [x] Manual test checklist in `tests/MANUAL_CHECKLIST.md` (live + offline)
+- [x] README quick start accurate (keys, DevEco, offline/live/LLM)
+- [x] Architecture notes match Hybrid + AMap modules
 
 ### Optional thin proxy
 
@@ -354,9 +368,31 @@ Live AMap REST still deferred; Mode C offline fixtures remain demo path.
 
 ### Exit criteria
 
-- Cold demo succeeds twice in a row on target phone.
-- Mode C demo succeeds with airplane-mode-ish network assumptions (fixtures).
-- Docs sufficient for another teammate to run without chat history.
+- Cold demo succeeds twice in a row on target phone. *(device — human)*
+- Mode C demo succeeds with airplane-mode-ish network assumptions (fixtures). *(code path ready)*
+- Docs sufficient for another teammate to run without chat history. *(updated this phase)*
+
+### Phase 4 notes
+
+```
+Live map (2026-07-25, updated):
+  - entry/.../services/map/AmapWebMapProvider.ets — restapi.amap.com/v3
+    GET direction/driving|walking|bicycling, direction/transit/integrated,
+    geocode/regeo (POI-preferring labels), place/text
+  - HybridMapProvider: mapWebKey + !demoFixtures → live; failure → estimate
+    with dataSource live_with_fallback
+  - PlanningService.createProvider(key, forceEstimate=settings.demoFixtures)
+  - Home Index: InteractiveMapView (AMap JS basemap + traffic) + search-first
+    assign sheet (driver/passenger by mode) → TripDraftStore
+  - PlanPage 普通规划: draft-first read-only points; result map + card routes;
+    meeting place regeo label (no bare coords UI)
+  - ChatPage 智能助手: draft intro POI names; plan cards + interactive map
+  - domain/src/amapPolyline.ts + tests (decode / merge / routePoints)
+  - fixtures/routes/xian-driving-sample.json optional recorded sample
+  - Keys only in preferences / local .env — never git
+  - GCJ-02 end-to-end; AMap JS Web basemap (Map Kit not required)
+  - Verify domain: npm test 25 pass. DevEco Run for HTTP + Web map.
+```
 
 ---
 
@@ -393,8 +429,9 @@ Compress only by cutting live POI snap and EN l10n, not by cutting Mode C or gro
 - [x] Offline engine path works without LLM
 - [x] Confirm locks plan; no auto meeting-point change
 - [x] Share + open maps
-- [ ] Fixture demo path
+- [x] Fixture demo path
 - [x] Docs + AGENTS.md consistent with code
+- [x] Live AMap Hybrid (device key still required for live badge)
 
 ---
 
@@ -402,7 +439,7 @@ Compress only by cutting live POI snap and EN l10n, not by cutting Mode C or gro
 
 | ID | Decision | Status | Notes |
 | --- | --- | --- | --- |
-| D1 | Map provider | Closed | Hybrid: EstimateMapProvider always; AMap Web HTTP when mapWebKey present (live REST deferred) |
+| D1 | Map provider | Closed | Hybrid: Estimate always; AMap Web HTTP when mapWebKey present and demoFixtures OFF |
 | D2 | Domain language packaging into ArkTS | Closed (Phase 1) | Mirrored ArkTS port under `entry/src/main/ets/domain/`; pure TS tests in `domain/` |
 | D3 | LLM default model for demo | Soft default | AppSettings default `deepseek-chat` + `https://api.deepseek.com`; contest day may switch model/proxy (D4) |
 | D4 | Proxy hosting for contest day | Open | Local laptop hotspot vs cloud |

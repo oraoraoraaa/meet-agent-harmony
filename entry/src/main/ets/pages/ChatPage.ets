@@ -11,6 +11,7 @@ import { StageBackground } from '../common/GlassChrome';
 import { formatReplyForBubble } from '../common/ReplyFormat';
 import {
   dataSourceLabelZh,
+  GeoPoint,
   MODE_BICYCLE,
   MODE_TRANSIT,
   MODE_WALKING,
@@ -26,9 +27,11 @@ import {
 import { AgentOrchestrator } from '../services/agent/AgentOrchestrator';
 import { AgentTurnResult, ToolTraceEntry } from '../services/agent/AgentTypes';
 import { MapProvider, PlanningService } from '../services/map/MapProvider';
+import { InteractiveMapView } from '../services/map/InteractiveMapView';
 import { FixtureCatalog, FixtureScenario } from '../services/planning/FixtureCatalog';
 import { SettingsStore } from '../services/settings/SettingsStore';
 import { TripSessionStore } from '../services/session/TripSessionStore';
+import { TripDraftStore } from '../services/session/TripDraftStore';
 import { ShareService } from '../services/session/ShareService';
 import { MapLinkService } from '../services/map/MapLinkService';
 
@@ -69,6 +72,12 @@ struct ChatPage {
   @State bubbles: ChatBubble[] = [];
   @State planCards: PlanMiniCard[] = [];
   @State selectedPlanId: string = '';
+  @State previewDriver: GeoPoint[] = [];
+  @State previewPassenger: GeoPoint[] = [];
+  @State previewMeeting: NamedPoint = new NamedPoint();
+  @State chatMapToken: number = 0;
+  /** Defer chat map mount until after plan cards layout (avoid blank Web). */
+  @State chatMapReady: boolean = false;
   @State dataSourceBadge: string = '';
   @State busy: boolean = false;
   @State statusLine: string = '离线引擎随时可用';
@@ -102,19 +111,83 @@ struct ChatPage {
       this.settings = new AppSettings();
     }
     this.modeLabel = this.settings.modeLabel();
-    this.applyFixture(FixtureCatalog.byId(this.fixtureId));
+    this.hydratePoints();
     this.resetOrchestrator();
-    this.pushSystem(
-      '你好，我是会合助手。用快捷语或描述约束即可规划。' +
-        '无 Key 时用本地引擎估算。'
+    this.pushSystem(this.buildLocationIntro());
+    const mapHint: string = PlanningService.describeProvider(
+      this.settings.mapWebKey,
+      this.settings.demoFixtures
     );
     this.statusLine = this.settings.llmConfigured()
-      ? `LLM ${this.settings.modeLabel()} · ${this.settings.llmModel}`
-      : `LLM Offline · 引擎估算`;
+      ? `LLM ${this.settings.modeLabel()} · ${this.settings.llmModel} · ${mapHint}`
+      : `LLM Offline · ${mapHint}`;
+  }
+
+  private hydratePoints(): void {
+    const d = TripDraftStore.get();
+    if (d.hasDriver && d.hasPassenger) {
+      this.driverLon = d.driverLon;
+      this.driverLat = d.driverLat;
+      this.driverName = d.driverName.length > 0 ? d.driverName : '司机起点';
+      this.passengerLon = d.passengerLon;
+      this.passengerLat = d.passengerLat;
+      this.passengerName = d.passengerName.length > 0 ? d.passengerName : '乘客位置';
+      if (d.city.length > 0) {
+        this.city = d.city;
+      }
+      this.fixtureId = 'draft';
+      this.fixtureTitle = '主页选点';
+      return;
+    }
+    // Incomplete or empty draft → demo fixture only as last resort
+    this.applyFixture(FixtureCatalog.byId(this.fixtureId));
+    this.fixtureTitle = this.fixtureTitle + '（未从主页带入）';
+  }
+
+  private placeLabel(name: string): string {
+    const n: string = name.trim();
+    if (n.length === 0 || n === '地图选点' || n === '当前位置') {
+      return '附近地点';
+    }
+    const parts: string[] = n.split('·');
+    if (parts.length >= 2) {
+      const tail: string = parts[parts.length - 1].trim();
+      if (tail.indexOf(',') >= 0) {
+        const c0: string = tail.length > 0 ? tail.charAt(0) : '';
+        if (c0 >= '0' && c0 <= '9') {
+          let head: string = parts[0].trim();
+          for (let i = 1; i < parts.length - 1; i++) {
+            head = `${head} · ${parts[i].trim()}`;
+          }
+          return head.length > 0 ? head : '附近地点';
+        }
+      }
+    }
+    if (n.indexOf(',') > 0) {
+      const a: string = n.split(',')[0].trim();
+      if (a.length > 0 && a.charAt(0) >= '0' && a.charAt(0) <= '9') {
+        return '附近地点';
+      }
+    }
+    return n;
+  }
+
+  private buildLocationIntro(): string {
+    const dLabel: string = this.placeLabel(this.driverName);
+    const pLabel: string = this.placeLabel(this.passengerName);
+    return (
+      '你好，我是会合助手。\n' +
+        `当前司机出发地：${dLabel}\n` +
+        `当前乘客位置：${pLabel}\n` +
+        '用快捷语或描述约束即可规划（数值只来自引擎）。如需改点请返回主页地图。'
+    );
   }
 
   private resetOrchestrator(): void {
-    const provider: MapProvider = PlanningService.createProvider(this.settings.mapWebKey);
+    const provider: MapProvider = PlanningService.createProvider(
+      this.settings.mapWebKey,
+      this.settings.demoFixtures
+    );
     this.orch = new AgentOrchestrator(this.settings, this.buildScenario(), provider);
   }
 
@@ -236,7 +309,42 @@ struct ChatPage {
     }
     this.selectedPlanId = pick;
     this.planCards = cards;
+    this.lastRec = rec;
+    this.chatMapReady = false;
+    this.applyMapForPlan(pick, rec);
     TripSessionStore.beginPlanning(this.buildScenario(), rec, pick);
+    setTimeout(() => {
+      this.bootstrapChatMap();
+    }, 80);
+  }
+
+  private bootstrapChatMap(): void {
+    this.chatMapReady = true;
+    this.chatMapToken = this.chatMapToken + 1;
+    setTimeout(() => {
+      this.chatMapToken = this.chatMapToken + 1;
+    }, 120);
+  }
+
+  private applyMapForPlan(id: string, rec: RecommendationSet): void {
+    if (id === 'stayPut') {
+      this.previewDriver = rec.stayPut.driverRoutePolyline.slice();
+      this.previewPassenger = [];
+      this.previewMeeting = rec.stayPut.meetingPoint;
+    } else if (id.indexOf('suggestion:') === 0) {
+      const idx: number = Number(id.substring('suggestion:'.length));
+      if (!isNaN(idx) && idx >= 0 && idx < rec.suggestions.length) {
+        const s: Suggestion = rec.suggestions[idx];
+        this.previewDriver = s.driverRoutePolyline.slice();
+        this.previewPassenger = s.passengerPathPolyline.slice();
+        this.previewMeeting = s.meetingPoint;
+      }
+    }
+    this.chatMapToken = this.chatMapToken + 1;
+    if (!this.chatMapReady && this.planCards.length > 0) {
+      // Selection after first show should keep map visible
+      this.chatMapReady = true;
+    }
   }
 
   private applyTrace(entries: ToolTraceEntry[]): void {
@@ -312,6 +420,9 @@ struct ChatPage {
     }
     this.planCards = next;
     TripSessionStore.selectPlan(id);
+    if (this.lastRec !== null) {
+      this.applyMapForPlan(id, this.lastRec);
+    }
     promptAction.showToast({
       message: id === 'stayPut' ? '已选择：原地等待' : `已选择：${id}`,
       duration: 1200
@@ -528,11 +639,60 @@ struct ChatPage {
             }, (b: ChatBubble) => b.id)
 
             if (this.planCards.length > 0) {
-              Text('方案卡片（点选切换 · 数值来自引擎）')
+              Text('路线预览（点选方案切换路线）')
                 .fontSize(12)
                 .fontColor(AppTheme.inkSoft)
                 .width('100%')
                 .margin({ top: 4 })
+
+              if (this.chatMapReady) {
+                InteractiveMapView({
+                  mapWebKey: this.settings.demoFixtures ? '' : this.settings.mapWebKey,
+                  pickRole: 'none',
+                  driverLon: this.driverLon,
+                  driverLat: this.driverLat,
+                  hasDriver: true,
+                  passengerLon: this.passengerLon,
+                  passengerLat: this.passengerLat,
+                  hasPassenger: true,
+                  centerLon: this.previewMeeting.lon !== 0
+                    ? this.previewMeeting.lon
+                    : (this.driverLon + this.passengerLon) / 2,
+                  centerLat: this.previewMeeting.lat !== 0
+                    ? this.previewMeeting.lat
+                    : (this.driverLat + this.passengerLat) / 2,
+                  zoom: 13,
+                  title: this.dataSourceBadge.length > 0 ? this.dataSourceBadge : '方案路线',
+                  driverLine: this.previewDriver,
+                  passengerLine: this.previewPassenger,
+                  showTraffic: !this.settings.demoFixtures && this.settings.mapWebKey.trim().length > 0,
+                  allowRoleSwitch: false,
+                  showChrome: false,
+                  reloadToken: this.chatMapToken
+                })
+                  .width('100%')
+                  .height(220)
+                  .borderRadius(16)
+                  .clip(true)
+                  .key(`chat-map-${this.chatMapToken}-${this.selectedPlanId}`)
+              } else {
+                Column() {
+                  Text('地图加载中…')
+                    .fontSize(13)
+                    .fontColor(AppTheme.inkMuted)
+                }
+                .width('100%')
+                .height(220)
+                .justifyContent(FlexAlign.Center)
+                .borderRadius(16)
+                .backgroundColor(AppTheme.mapPanel)
+              }
+
+              Text('方案卡片（点选切换 · 数值来自引擎）')
+                .fontSize(12)
+                .fontColor(AppTheme.inkSoft)
+                .width('100%')
+                .margin({ top: 8 })
 
               ForEach(this.planCards, (c: PlanMiniCard) => {
                 this.planCardView(c)

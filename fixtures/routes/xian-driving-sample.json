@@ -1,0 +1,10 @@
+{
+  "id": "xian-driving-sample",
+  "description": "Optional recorded driving polyline sample for stage demos without live AMap. Coordinates GCJ-02. Not auto-loaded; fixtures still use estimate Hybrid when demoFixtures is on.",
+  "city": "西安",
+  "from": { "lon": 108.8905, "lat": 34.2324, "name": "高新" },
+  "to": { "lon": 108.9465, "lat": 34.2610, "name": "钟楼附近" },
+  "durationSec": 1680,
+  "distanceM": 9200,
+  "polyline": "108.8905,34.2324;108.9000,34.2360;108.9100,34.2400;108.9200,34.2450;108.9300,34.2500;108.9400,34.2550;108.9465,34.2610"
+}

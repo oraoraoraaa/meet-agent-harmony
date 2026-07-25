@@ -99,7 +99,7 @@ export class SettingsStore {
     settings.proxyBaseUrl = await readString(store, KEY_PROXY, settings.proxyBaseUrl);
     settings.llmMode = asLlmMode(await readString(store, KEY_LLM_MODE, LLM_MODE_OFFLINE));
     settings.language = asLanguage(await readString(store, KEY_LANG, LANG_ZH_CN));
-    settings.demoFixtures = await readBool(store, KEY_FIXTURES, true);
+    settings.demoFixtures = await readBool(store, KEY_FIXTURES, false);
     settings.verboseAgentTrace = await readBool(store, KEY_TRACE, false);
     settings.mapApp = asMapApp(await readString(store, KEY_MAP_APP, MAP_APP_BROWSER));
     return settings;

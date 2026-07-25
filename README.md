@@ -108,7 +108,7 @@ DevEco Studio opens the **repository root** (not a nested `app/` folder).
 | Client OS | HarmonyOS (phone) |
 | UI | ArkTS + ArkUI (Stage model) |
 | Domain / engine | TypeScript-first portable core under `domain/` (mirrored or imported into the app as practical) |
-| Maps & routing | Provider interface; **estimate** now; AMap Web HTTP when mapWebKey wired (live REST deferred); Map Kit optional later for rendering |
+| Maps & routing | `MapProvider` Hybrid: **estimate** always; **AMap Web REST** when Map Web Key set and 演示 Fixture OFF; Map Kit optional later for basemap only |
 | LLM | OpenAI-compatible HTTP API (DeepSeek / Qwen / OpenAI / custom gateway) |
 | Optional server | Lightweight proxy (`server/`) to hold a demo key |
 | Tests | Domain unit tests + app UI smoke + fixture replay |
@@ -127,24 +127,38 @@ DevEco Studio opens the **repository root** (not a nested `app/` folder).
 
 > Do **not** keep developing only under `~/DevecostudioProjects/meet_agent_harmony` — that folder was the generator seed. The GitHub path is the source of truth.
 
-### 2) Client config (later phases)
+### 2) Client config (keys never in git)
 
-1. Set map credentials in app Settings / local config (never commit).
-2. (Optional) Set LLM base URL + API key + model in **Settings**.
-3. Run on device.
+1. In-app **设置**:
+   - **Map Web Key** — 高德 Web 服务 Key（`restapi.amap.com`）
+   - Console 启用：路径规划（驾车/步行/骑行/公交）、地理编码 regeo、搜索 place/text
+   - **演示 Fixture 优先** — ON = 强制估算（舞台稳）；OFF + Key = 实时路线
+   - LLM（可选）：Base URL + API Key + Model，或 Proxy，或 Offline
+2. Save → re-open Plan / Chat so provider rebuilds.
+3. Optional template: copy `.env.example` → local `.env` (gitignored) for your notes only; the app reads **preferences**, not `.env`.
 
-### 3) Optional LLM proxy
+### 3) Three demo paths
+
+| Path | How |
+| --- | --- |
+| **Offline / Fixture** | 演示 Fixture ON · 普通规划 · 主页选点或示例回退 · badge **估算** |
+| **Live map** | Fixture OFF · Map Web Key · 主页地图选点 → 普通规划 · badge **实时** / **实时+估算** |
+| **LLM agent** | Mode A/B keys · 智能助手规划 · tools still use Hybrid map |
+
+### 4) Optional LLM proxy
 
 ```bash
 cd server
 # follow server/README.md after scaffold
 ```
 
-Point the app’s Settings → **Proxy mode** at that base URL for stage demos without pasting a raw vendor key on the device.
+Point Settings → **Proxy mode** at that base URL for stage demos without pasting a vendor LLM key on the device.
 
-### 4) Offline / fixture demo
+### 5) Domain tests
 
-Load a scenario from `fixtures/scenarios/` to demo planning without live traffic.
+```bash
+cd domain && npm test
+```
 
 ---
 
@@ -152,14 +166,16 @@ Load a scenario from `fixtures/scenarios/` to demo planning without live traffic
 
 | Setting | Purpose |
 | --- | --- |
-| Map API key(s) | Live map, route, POI, reverse geocode |
+| Map Web Key | AMap REST: driving/walking/bike/transit + regeo + POI |
+| Map API Key | Optional SDK slot (not required for Hybrid REST) |
+| 演示 Fixture 优先 | Force estimate provider (ignore Map Web Key) |
 | LLM base URL | OpenAI-compatible endpoint |
 | LLM API key | User-provided key (Mode A) |
 | LLM model | e.g. `deepseek-chat`, `qwen-plus`, … |
 | Proxy base URL | Optional contest/demo server (Mode B) |
-| Prefer modes | Walk / bike / transit allow-list |
+| Prefer modes | Walk / bike / transit allow-list (plan form) |
 | Max passenger walk minutes | Soft constraint for ranking |
-| Language | zh-CN (default), en |
+| Language | zh-CN (default); EN/JP deferred |
 
 ### LLM modes
 
@@ -189,18 +205,16 @@ Mode C must always work.
 
 ## Current status
 
-**Phase 3 complete** (session lock, share, open maps). Phases 0–2 remain green.
+**Phase 4 largely landed** — live AMap Hybrid (REST + JS basemap), home search-first assign, plan/chat route maps, demo polish. Remaining: page transitions, icons/about, optional `server/` proxy, JP l10n.
 
 | Layer | Status |
 | --- | --- |
-| Domain engine | Offline multi-modal ranking + agent grounding + session machine (`cd domain && npm test` → 20 pass) |
-| Form plan UI | `PlanPage` fixtures + schematic polylines + confirm/lock |
-| Agent | OpenAI-compatible client, tool registry, orchestrator, `ChatPage` |
+| Domain engine | Multi-modal ranking + agent grounding + session + AMap polyline helpers (`cd domain && npm test` → 25 pass) |
+| Home map | Interactive AMap JS (traffic) · search/tap → assign passenger/driver · POI labels |
+| 普通规划 | Draft-first read-only points · result map + card routes · lock/share |
+| Agent | OpenAI-compatible client, tool registry, orchestrator, `ChatPage` + route map |
 | Session lock / share | `TripSessionStore` + `LockedSessionPage` + clipboard + map deep links |
-| Home UX | Immersive dark stage, driver/passenger mode chip, fixed scroll sheet |
-| Map SDK | Live AMap REST deferred — estimate / Hybrid stub (intentional) |
-
-**Next:** Phase 4 contest polish (demo fixtures, skeletons, checklist). See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
+| Map stack | `AmapWebMapProvider` + Hybrid + `InteractiveMapView` / `AmapMapHtml` |
 
 ---
 

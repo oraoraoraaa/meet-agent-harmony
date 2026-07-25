@@ -30,7 +30,7 @@ export class AppSettings {
   proxyBaseUrl: TextValue = 'http://127.0.0.1:8787';
   llmMode: LlmMode = LLM_MODE_OFFLINE;
   language: AppLanguage = LANG_ZH_CN;
-  demoFixtures: boolean = true;
+  demoFixtures: boolean = false;
   verboseAgentTrace: boolean = false;
   /** Preferred map app for open-meeting deep links. */
   mapApp: MapAppChoice = MAP_APP_BROWSER;

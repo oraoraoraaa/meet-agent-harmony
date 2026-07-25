@@ -23,15 +23,29 @@ MeetAgent is a **client-centric** HarmonyOS app with an optional demo proxy.
 │  └─────▲──────┘  └──────▲──────┘ └──────────────────┘  │
 └────────┼────────────────┼───────────────────────────────┘
          │                │
-         │         ┌──────▼──────┐
-         │         │ Map / Route │  vendor SDK or HTTP
-         │         │ Provider    │
-         │         └─────────────┘
+         │         ┌──────▼──────────────────────────┐
+         │         │ Hybrid MapProvider              │
+         │         │ Estimate · AMap Web REST        │
+         │         │ (demoFixtures forces estimate)  │
+         │         └─────────────────────────────────┘
          │
   ┌──────▼──────────────┐
   │ Optional server/    │  LLM proxy only (Mode B)
   └─────────────────────┘
 ```
+
+### Map provider modules (`entry/.../services/map/`)
+
+| File | Role |
+| --- | --- |
+| `MapProvider.ets` | Interface + `EstimateMapProvider` + `HybridMapProvider` + `PlanningService` |
+| `AmapWebMapProvider.ets` | Live HTTP to `restapi.amap.com/v3` (never logs key) |
+| `AmapPolyline.ets` | Decode/merge AMap polylines → `RoutePoint[]` |
+| `MapLinkService.ets` | Open external maps (deep link / web) |
+
+**Live when:** `mapWebKey` non-empty **and** `demoFixtures === false`.  
+**Fallback:** any live failure → estimate + `dataSource = live_with_fallback`.  
+**Coordinates:** GCJ-02 end-to-end.
 
 ## Modules
 

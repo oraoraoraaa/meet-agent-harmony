@@ -222,8 +222,8 @@ struct SettingsPage {
                   .onChange((v: string) => {
                     this.settings.mapApiKey = v;
                   })
-                this.fieldLabel('Map Web Key（HTTP 路线 / POI）')
-                TextInput({ text: this.settings.mapWebKey, placeholder: '可选' })
+                this.fieldLabel('Map Web Key（HTTP 路线 / POI · 高德 Web 服务）')
+                TextInput({ text: this.settings.mapWebKey, placeholder: 'restapi.amap.com Web Key' })
                   .type(InputType.Password)
                   .height(46)
                   .borderRadius(14)
@@ -234,6 +234,11 @@ struct SettingsPage {
                   .onChange((v: string) => {
                     this.settings.mapWebKey = v;
                   })
+                Text('启用：驾车/步行/骑行/公交路径 + 逆地理 + 地点搜索。坐标 GCJ-02。失败自动回退估算。')
+                  .fontSize(11)
+                  .fontColor(AppTheme.inkSoft)
+                  .width('100%')
+                  .margin({ top: 4, bottom: 4 })
 
                 this.sectionTitle('大模型（OpenAI 兼容）')
                 this.fieldLabel('模式')
@@ -304,6 +309,11 @@ struct SettingsPage {
                 }
                 .width('100%')
                 .margin({ top: 8 })
+                Text('开启后强制估算提供方（忽略 Map Web Key），舞台演示更稳。关闭后有 Key 则走 AMap 实时。')
+                  .fontSize(11)
+                  .fontColor(AppTheme.inkSoft)
+                  .width('100%')
+                  .margin({ bottom: 4 })
 
                 Row() {
                   Text('Agent 工具轨迹（调试）')
