@@ -1,6 +1,7 @@
 /**
  * Locked trip session screen — confirmed plan snapshot.
  * Share + open maps; explicit re-plan only (does not mutate locked session).
+ * Map: InteractiveMapView (same stack as Plan/Chat results) with deferred first paint.
  */
 
 import { common } from '@kit.AbilityKit';
@@ -22,13 +23,8 @@ import {
 import { ShareService } from '../services/session/ShareService';
 import { TripSessionStore } from '../services/session/TripSessionStore';
 import { MapLinkService } from '../services/map/MapLinkService';
+import { InteractiveMapView } from '../services/map/InteractiveMapView';
 import { SettingsStore } from '../services/settings/SettingsStore';
-import {
-  CanvasPoint,
-  computeBounds,
-  PolylineBounds,
-  projectPolyline
-} from '../common/PolylineMath';
 
 @Entry
 @Component
@@ -53,8 +49,13 @@ struct LockedSessionPage {
   @State driverLine: GeoPoint[] = [];
   @State passengerLine: GeoPoint[] = [];
   @State meeting: NamedPoint = new NamedPoint();
-  @State mapW: number = 320;
-  @State mapH: number = 160;
+  /** Origin pins from locked recommendation (GCJ-02). */
+  @State driverLon: number = 108.89;
+  @State driverLat: number = 34.23;
+  @State passengerLon: number = 108.95;
+  @State passengerLat: number = 34.26;
+  @State mapToken: number = 0;
+  @State mapReady: boolean = false;
 
   aboutToAppear(): void {
     this.bootstrap();
@@ -78,6 +79,59 @@ struct LockedSessionPage {
       return;
     }
     this.applyLocked(locked);
+    // Defer Web map mount so first layout has non-zero size (same as Plan/Chat).
+    this.mapReady = false;
+    setTimeout(() => {
+      this.bootstrapMap();
+    }, 80);
+  }
+
+  private bootstrapMap(): void {
+    this.mapReady = true;
+    this.mapToken = this.mapToken + 1;
+    setTimeout(() => {
+      this.mapToken = this.mapToken + 1;
+    }, 120);
+  }
+
+  private copyLine(src: GeoPoint[]): GeoPoint[] {
+    const out: GeoPoint[] = [];
+    for (let i = 0; i < src.length; i++) {
+      out.push(new GeoPoint(src[i].lon, src[i].lat));
+    }
+    return out;
+  }
+
+  /** Prefer POI/address; never show bare coords as the primary line. */
+  private placeLabel(name: string, address: string): string {
+    const n: string = name.trim();
+    const a: string = address.trim();
+    if (n.length > 0 && n.indexOf('会合点') !== 0) {
+      // strip trailing " · lat,lon" if present
+      const parts: string[] = n.split('·');
+      if (parts.length >= 2) {
+        const tail: string = parts[parts.length - 1].trim();
+        if (tail.indexOf(',') >= 0) {
+          const c0: string = tail.length > 0 ? tail.charAt(0) : '';
+          if (c0 >= '0' && c0 <= '9') {
+            let head: string = parts[0].trim();
+            for (let i = 1; i < parts.length - 1; i++) {
+              head = `${head} · ${parts[i].trim()}`;
+            }
+            if (head.length > 0) {
+              return head;
+            }
+          }
+        }
+      }
+      if (!(n.indexOf(',') > 0 && n.charAt(0) >= '0' && n.charAt(0) <= '9')) {
+        return n;
+      }
+    }
+    if (a.length > 0 && !(a.indexOf(',') > 0 && a.charAt(0) >= '0' && a.charAt(0) <= '9')) {
+      return a;
+    }
+    return n.length > 0 ? n : '会合点附近';
   }
 
   private applyLocked(session: TripSession): void {
@@ -88,11 +142,19 @@ struct LockedSessionPage {
     this.planId = snap.planId;
     this.modeLabel = snap.modeLabel;
     this.dataSourceBadge = dataSourceLabelZh(snap.dataSource);
-    this.meetingName = snap.meetingPoint.name.length > 0 ? snap.meetingPoint.name : '会合点';
+
+    const rec = session.recommendationSet;
+    this.driverLon = rec.driverStart.lon !== 0 ? rec.driverStart.lon : 108.89;
+    this.driverLat = rec.driverStart.lat !== 0 ? rec.driverStart.lat : 34.23;
+    this.passengerLon = rec.passengerStart.lon !== 0 ? rec.passengerStart.lon : 108.95;
+    this.passengerLat = rec.passengerStart.lat !== 0 ? rec.passengerStart.lat : 34.26;
+
+    this.meetingName = this.placeLabel(snap.meetingPoint.name, snap.meetingPoint.address);
     this.meetingAddress =
-      snap.meetingPoint.address.length > 0
+      snap.meetingPoint.address.length > 0 &&
+      snap.meetingPoint.address !== this.meetingName
         ? snap.meetingPoint.address
-        : `${snap.meetingPoint.lat.toFixed(5)}, ${snap.meetingPoint.lon.toFixed(5)}`;
+        : '';
     this.meetingLon = snap.meetingPoint.lon;
     this.meetingLat = snap.meetingPoint.lat;
     this.meeting = new NamedPoint(
@@ -109,19 +171,38 @@ struct LockedSessionPage {
     }
     this.completionText = `会合完成约 ${snap.completionMin.toFixed(0)} 分钟`;
     this.rationale = snap.rationale;
-    this.driverLine = snap.driverRoutePolyline;
-    this.passengerLine = snap.passengerPathPolyline;
+    this.driverLine = this.copyLine(snap.driverRoutePolyline);
+    this.passengerLine = this.copyLine(snap.passengerPathPolyline);
     this.sharePreview = ShareService.buildShareTextFromSession(session);
     this.statusLine = `已锁定 · ${this.dataSourceBadge} · 不会自动改点`;
+  }
+
+  private mapCenterLon(): number {
+    if (this.meetingLon !== 0) {
+      return this.meetingLon;
+    }
+    return (this.driverLon + this.passengerLon) / 2;
+  }
+
+  private mapCenterLat(): number {
+    if (this.meetingLat !== 0) {
+      return this.meetingLat;
+    }
+    return (this.driverLat + this.passengerLat) / 2;
   }
 
   private async onShare(): Promise<void> {
     const locked: TripSession | null = TripSessionStore.getLocked();
     if (locked === null) {
-      promptAction.showToast({ message: '无锁定方案', duration: 1800 });
+      promptAction.showToast({ message: '无锁定方案', duration: 1600 });
       return;
     }
-    await ShareService.shareLockedSession(locked);
+    try {
+      await ShareService.shareLockedSession(locked);
+    } catch (e) {
+      const _ignored: Object = e as Object;
+      promptAction.showToast({ message: '复制失败', duration: 1600 });
+    }
   }
 
   private async onOpenMaps(): Promise<void> {
@@ -139,16 +220,14 @@ struct LockedSessionPage {
 
   private onReplan(): void {
     TripSessionStore.replan();
-    promptAction.showToast({ message: '已关闭锁定方案，可重新规划', duration: 1800 });
+    promptAction.showToast({ message: '已关闭锁定会话，可重新规划', duration: 1600 });
     router.replaceUrl({ url: 'pages/PlanPage' }).catch(() => {
       router.back();
     });
   }
 
-  private openSettings(): void {
-    router.pushUrl({ url: 'pages/SettingsPage' }).catch(() => {
-      promptAction.showToast({ message: '无法打开设置', duration: 1800 });
-    });
+  private goBack(): void {
+    router.back();
   }
 
   build() {
@@ -156,6 +235,7 @@ struct LockedSessionPage {
       StageBackground()
 
       Column() {
+        // header
         Row() {
           Button({ type: ButtonType.Normal }) {
             Text('‹')
@@ -166,42 +246,56 @@ struct LockedSessionPage {
           .height(40)
           .backgroundColor(Color.Transparent)
           .onClick(() => {
-            router.back();
+            this.goBack();
           })
 
-          Column({ space: 2 }) {
-            Text('已锁定方案')
+          Text('已锁定方案')
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(AppTheme.ink)
+            .layoutWeight(1)
+            .textAlign(TextAlign.Center)
+
+          Button('设置', { type: ButtonType.Capsule })
+            .height(34)
+            .fontSize(13)
+            .backgroundColor(AppTheme.glassBg)
+            .fontColor(AppTheme.ink)
+            .border({ width: 1, color: AppTheme.glassBorder })
+            .onClick(() => {
+              router.pushUrl({ url: 'pages/SettingsPage' }).catch(() => {
+                promptAction.showToast({ message: '无法打开设置', duration: 1600 });
+              });
+            })
+        }
+        .width('100%')
+        .padding({
+          left: 12,
+          right: 16,
+          top: AppLayout.headerTop(),
+          bottom: 8
+        })
+
+        Text(this.statusLine)
+          .fontSize(12)
+          .fontColor(AppTheme.inkMuted)
+          .width('100%')
+          .padding({ left: 16, right: 16, bottom: 6 })
+
+        if (!this.hasSession) {
+          Column({ space: 14 }) {
+            Text('暂无锁定方案')
               .fontSize(18)
               .fontWeight(FontWeight.Bold)
               .fontColor(AppTheme.ink)
-            Text(this.statusLine)
-              .fontSize(11)
-              .fontColor(AppTheme.inkSoft)
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-          }
-          .layoutWeight(1)
-          .alignItems(HorizontalAlign.Start)
-
-          Text(this.dataSourceBadge.length > 0 ? this.dataSourceBadge : '估算')
-            .fontSize(11)
-            .fontColor(AppTheme.ink)
-            .padding({ left: 10, right: 10, top: 5, bottom: 5 })
-            .backgroundColor(AppTheme.glassBgLight)
-            .borderRadius(999)
-            .border({ width: 1, color: AppTheme.glassBorder })
-        }
-        .width('100%')
-        .padding({ left: 8, right: 12, top: AppLayout.headerTop(), bottom: 6 })
-
-        if (!this.hasSession) {
-          Column({ space: 12 }) {
+              .width('100%')
+              .textAlign(TextAlign.Center)
             Text(this.statusLine)
               .fontSize(14)
               .fontColor(AppTheme.inkMuted)
               .width('100%')
               .textAlign(TextAlign.Center)
-            Button('去表单规划', { type: ButtonType.Capsule })
+            Button('去普通规划', { type: ButtonType.Capsule })
               .width('100%')
               .height(46)
               .backgroundColor(AppTheme.accent)
@@ -230,22 +324,45 @@ struct LockedSessionPage {
         } else {
           Scroll() {
             Column({ space: 12 }) {
-              // schematic map
+              // Interactive map (locked snapshot routes)
               Stack() {
-                Column()
+                if (this.mapReady) {
+                  InteractiveMapView({
+                    mapWebKey: this.settings.demoFixtures ? '' : this.settings.mapWebKey,
+                    pickRole: 'none',
+                    driverLon: this.driverLon,
+                    driverLat: this.driverLat,
+                    hasDriver: true,
+                    passengerLon: this.passengerLon,
+                    passengerLat: this.passengerLat,
+                    hasPassenger: true,
+                    centerLon: this.mapCenterLon(),
+                    centerLat: this.mapCenterLat(),
+                    zoom: 13,
+                    title: `已锁定 · ${this.dataSourceBadge}`,
+                    driverLine: this.driverLine,
+                    passengerLine: this.passengerLine,
+                    showTraffic: !this.settings.demoFixtures &&
+                      this.settings.mapWebKey.trim().length > 0,
+                    allowRoleSwitch: false,
+                    showChrome: false,
+                    reloadToken: this.mapToken
+                  })
+                    .width('100%')
+                    .height(240)
+                    .key(`locked-map-${this.mapToken}-${this.sessionId}`)
+                } else {
+                  Column() {
+                    Text('地图加载中…')
+                      .fontSize(13)
+                      .fontColor(AppTheme.inkMuted)
+                  }
                   .width('100%')
-                  .height(160)
-                  .borderRadius(16)
+                  .height(240)
+                  .justifyContent(FlexAlign.Center)
                   .backgroundColor(AppTheme.mapPanel)
-                LockedPolylinePreview({
-                  driverLine: this.driverLine,
-                  passengerLine: this.passengerLine,
-                  meeting: this.meeting,
-                  widthPx: this.mapW,
-                  heightPx: this.mapH
-                })
-                  .width('100%')
-                  .height(160)
+                }
+
                 Text(this.modeLabel)
                   .fontSize(11)
                   .fontColor(Color.White)
@@ -253,25 +370,12 @@ struct LockedSessionPage {
                   .backgroundColor(AppTheme.accent)
                   .borderRadius(999)
                   .position({ x: 10, y: 10 })
-                Text('示意路线 · 坐标已锁定')
-                  .fontSize(10)
-                  .fontColor(AppTheme.inkMuted)
-                  .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-                  .backgroundColor('#99000000')
-                  .borderRadius(8)
-                  .position({ x: 10, y: 130 })
               }
               .width('100%')
-              .height(160)
+              .height(240)
               .clip(true)
               .borderRadius(16)
               .border({ width: 1, color: AppTheme.glassBorder })
-              .onAreaChange((_oldValue: Area, area: Area) => {
-                const w: number = Number(area.width);
-                if (!isNaN(w) && w > 0) {
-                  this.mapW = w;
-                }
-              })
 
               Column({ space: 8 }) {
                 Text('会合地点')
@@ -284,14 +388,16 @@ struct LockedSessionPage {
                   .fontWeight(FontWeight.Bold)
                   .fontColor(AppTheme.ink)
                   .width('100%')
-                Text(this.meetingAddress)
-                  .fontSize(12)
-                  .fontColor(AppTheme.inkMuted)
-                  .width('100%')
-                Text(`${this.meetingLat.toFixed(5)}, ${this.meetingLon.toFixed(5)} · GCJ-02`)
-                  .fontSize(11)
-                  .fontColor(AppTheme.inkSoft)
-                  .width('100%')
+                  .maxLines(2)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                if (this.meetingAddress.length > 0) {
+                  Text(this.meetingAddress)
+                    .fontSize(12)
+                    .fontColor(AppTheme.inkMuted)
+                    .width('100%')
+                    .maxLines(2)
+                    .textOverflow({ overflow: TextOverflow.Ellipsis })
+                }
               }
               .width('100%')
               .padding(16)
@@ -318,23 +424,13 @@ struct LockedSessionPage {
                   .fontSize(13)
                   .fontColor('#D6E8FF')
                   .width('100%')
-                Text(this.rationale)
-                  .fontSize(12)
-                  .fontColor('#D9FFFFFF')
-                  .width('100%')
-                  .margin({ top: 4 })
-                Text(`方案 ID：${this.planId}`)
-                  .fontSize(11)
-                  .fontColor('#B3FFFFFF')
-                  .width('100%')
-                Text(`会话：${this.sessionId}`)
-                  .fontSize(10)
-                  .fontColor('#99FFFFFF')
-                  .width('100%')
-                Text(`锁定时间：${this.lockedAt}`)
-                  .fontSize(10)
-                  .fontColor('#99FFFFFF')
-                  .width('100%')
+                if (this.rationale.length > 0) {
+                  Text(this.rationale)
+                    .fontSize(12)
+                    .fontColor('#D6E8FF')
+                    .width('100%')
+                    .margin({ top: 4 })
+                }
               }
               .width('100%')
               .padding(16)
@@ -352,7 +448,6 @@ struct LockedSessionPage {
                   .fontSize(12)
                   .fontColor(AppTheme.inkMuted)
                   .width('100%')
-                  .copyOption(CopyOptions.LocalDevice)
               }
               .width('100%')
               .padding(14)
@@ -360,59 +455,48 @@ struct LockedSessionPage {
               .backgroundColor(AppTheme.glassBg)
               .border({ width: 1, color: AppTheme.glassBorder })
 
-              Row({ space: 10 }) {
-                Button('复制分享', { type: ButtonType.Capsule })
-                  .layoutWeight(1)
-                  .height(48)
-                  .backgroundColor('#BF5AF2')
-                  .fontColor(Color.White)
-                  .onClick(() => {
-                    this.onShare();
-                  })
-                Button('在地图中打开', { type: ButtonType.Capsule })
-                  .layoutWeight(1)
-                  .height(48)
-                  .backgroundColor(AppTheme.accent)
-                  .fontColor(Color.White)
-                  .onClick(() => {
-                    this.onOpenMaps();
-                  })
-              }
-              .width('100%')
+              Button('复制分享', { type: ButtonType.Capsule })
+                .width('100%')
+                .height(48)
+                .backgroundColor('#BF5AF2')
+                .fontColor(Color.White)
+                .onClick(() => {
+                  this.onShare();
+                })
 
-              Button('重新规划（关闭锁定）', { type: ButtonType.Capsule })
+              Button('在地图中打开', { type: ButtonType.Capsule })
+                .width('100%')
+                .height(46)
+                .backgroundColor(AppTheme.accent)
+                .fontColor(Color.White)
+                .onClick(() => {
+                  this.onOpenMaps();
+                })
+
+              Button('重新规划', { type: ButtonType.Capsule })
                 .width('100%')
                 .height(44)
-                .backgroundColor(AppTheme.card)
-                .fontColor(AppTheme.inkMuted)
+                .backgroundColor(AppTheme.glassBgLight)
+                .fontColor(AppTheme.ink)
                 .border({ width: 1, color: AppTheme.glassBorder })
                 .onClick(() => {
                   this.onReplan();
                 })
 
-              Button('地图应用设置', { type: ButtonType.Capsule })
-                .width('100%')
-                .height(40)
-                .backgroundColor(AppTheme.glassBgLight)
-                .fontColor(AppTheme.ink)
-                .border({ width: 1, color: AppTheme.glassBorder })
-                .onClick(() => {
-                  this.openSettings();
-                })
-
-              Text('v1：锁定后不会自动改会合点；仅手动「重新规划」开启新会话。')
+              Text(`会话 ${this.sessionId} · ${this.lockedAt}`)
                 .fontSize(11)
                 .fontColor(AppTheme.inkSoft)
                 .width('100%')
                 .textAlign(TextAlign.Center)
-                .margin({ bottom: 24 })
+                .margin({ bottom: 12 })
             }
             .width('100%')
-            .padding({ left: 14, right: 14, bottom: 20, top: 4 })
+            .padding({ left: 14, right: 14, bottom: 28, top: 4 })
           }
           .layoutWeight(1)
           .scrollBar(BarState.Off)
           .edgeEffect(EdgeEffect.Spring)
+          .align(Alignment.Top)
         }
       }
       .width('100%')
@@ -421,105 +505,6 @@ struct LockedSessionPage {
     .width('100%')
     .height('100%')
     .backgroundColor(AppTheme.bg0)
-  }
-}
-
-@Component
-struct LockedPolylinePreview {
-  @Prop driverLine: GeoPoint[] = [];
-  @Prop passengerLine: GeoPoint[] = [];
-  @Prop meeting: NamedPoint = new NamedPoint();
-  @Prop widthPx: number = 320;
-  @Prop heightPx: number = 160;
-
-  private bounds(): PolylineBounds {
-    const lines: GeoPoint[][] = [];
-    if (this.driverLine.length > 0) {
-      lines.push(this.driverLine);
-    }
-    if (this.passengerLine.length > 0) {
-      lines.push(this.passengerLine);
-    }
-    if (this.meeting.lon !== 0 || this.meeting.lat !== 0) {
-      const meetLine: GeoPoint[] = [];
-      meetLine.push(new GeoPoint(this.meeting.lon, this.meeting.lat));
-      lines.push(meetLine);
-    }
-    return computeBounds(lines);
-  }
-
-  private downsample(points: CanvasPoint[], maxPts: number): CanvasPoint[] {
-    if (points.length <= maxPts) {
-      return points;
-    }
-    const out: CanvasPoint[] = [];
-    const step: number = (points.length - 1) / (maxPts - 1);
-    for (let i = 0; i < maxPts; i++) {
-      const idx: number = Math.round(i * step);
-      out.push(points[idx]);
-    }
-    return out;
-  }
-
-  private projectedDriverSamples(): CanvasPoint[] {
-    if (this.driverLine.length === 0) {
-      return [];
-    }
-    const b: PolylineBounds = this.bounds();
-    const full: CanvasPoint[] = projectPolyline(this.driverLine, b, this.widthPx, this.heightPx);
-    return this.downsample(full, 24);
-  }
-
-  private projectedPassengerSamples(): CanvasPoint[] {
-    if (this.passengerLine.length === 0) {
-      return [];
-    }
-    const b: PolylineBounds = this.bounds();
-    const full: CanvasPoint[] = projectPolyline(this.passengerLine, b, this.widthPx, this.heightPx);
-    return this.downsample(full, 16);
-  }
-
-  private meetingProjected(): CanvasPoint {
-    const b: PolylineBounds = this.bounds();
-    const pts: CanvasPoint[] = projectPolyline(
-      [new GeoPoint(this.meeting.lon, this.meeting.lat)],
-      b,
-      this.widthPx,
-      this.heightPx
-    );
-    if (pts.length > 0) {
-      return pts[0];
-    }
-    return new CanvasPoint(this.widthPx / 2, this.heightPx / 2);
-  }
-
-  build() {
-    Stack() {
-      ForEach(this.projectedDriverSamples(), (p: CanvasPoint, idx: number) => {
-        Circle({ width: idx === 0 ? 8 : 4, height: idx === 0 ? 8 : 4 })
-          .fill(idx === 0 ? AppTheme.accent : AppTheme.link)
-          .position({ x: p.x - (idx === 0 ? 4 : 2), y: p.y - (idx === 0 ? 4 : 2) })
-      }, (p: CanvasPoint, idx: number) => `ld-${idx}-${p.x.toFixed(1)}-${p.y.toFixed(1)}`)
-
-      ForEach(this.projectedPassengerSamples(), (p: CanvasPoint, idx: number) => {
-        Circle({ width: 4, height: 4 })
-          .fill(AppTheme.warn)
-          .opacity(0.95)
-          .position({ x: p.x - 2, y: p.y - 2 })
-      }, (p: CanvasPoint, idx: number) => `lp-${idx}-${p.x.toFixed(1)}-${p.y.toFixed(1)}`)
-
-      if (this.meeting.lon !== 0 || this.meeting.lat !== 0) {
-        Circle({ width: 12, height: 12 })
-          .fill('#EF4444')
-          .position({
-            x: this.meetingProjected().x - 6,
-            y: this.meetingProjected().y - 6
-          })
-      }
-    }
-    .width('100%')
-    .height('100%')
-    .clip(true)
-    .borderRadius(16)
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
   }
 }
