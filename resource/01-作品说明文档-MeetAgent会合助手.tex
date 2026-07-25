@@ -140,7 +140,7 @@ MeetAgent（会合助手）是一款 HarmonyOS 智能会合规划应用，面向
 
 \vspace{0.35em}
 {\zihao{5}\songti
-一句话概括核心创新点（18 字，符合“不超过 30 字”）。
+一句话概括核心创新点。
 }
 
 \vspace{0.5em}
@@ -240,7 +240,7 @@ MeetAgent 覆盖\textbf{应用}、\textbf{Agent}、\textbf{用户体验}：
   \end{subfigure}\hfill
   \begin{subfigure}{0.48\textwidth}
     \includegraphics[width=\linewidth]{search.png}
-    \caption{地点搜索：POI 列表可选}
+    \caption{地点搜索}
     \label{fig:ui-search}
   \end{subfigure}
   \caption{主页地图与搜索}
@@ -255,7 +255,7 @@ MeetAgent 覆盖\textbf{应用}、\textbf{Agent}、\textbf{用户体验}：
   \end{subfigure}\hfill
   \begin{subfigure}{0.48\textwidth}
     \includegraphics[width=\linewidth]{normal_planning.png}
-    \caption{普通规划：起终点只读（POI 名）}
+    \caption{普通规划}
     \label{fig:ui-plan}
   \end{subfigure}
   \caption{选点确认与普通规划}
@@ -318,25 +318,30 @@ MeetAgent 覆盖\textbf{应用}、\textbf{Agent}、\textbf{用户体验}：
 \begin{tikzpicture}[
   font=\zihao{5}\songti,
   layer/.style={draw=maDark!60, rounded corners=4pt, align=center,
-    inner sep=6pt, fill=white, minimum height=1.0cm},
+    inner sep=6pt, fill=white, minimum height=1.05cm},
+  mid/.style={layer, text width=5.2cm, minimum width=5.4cm, minimum height=1.55cm},
   arr/.style={-{Latex}, thick, maGray}
 ]
   \node[layer, minimum width=12.2cm, fill=maSoft] (ui)
     {\textbf{ArkUI 界面层}\\主页地图 · 普通规划 · 智能助手 · 锁定会话};
-  \node[layer, minimum width=12.2cm, below=0.4cm of ui, fill=blue!6]
+  \node[layer, minimum width=12.2cm, below=0.55cm of ui, fill=blue!6]
     (agent) {\textbf{Agent 编排}\\工具循环 · 接地校验 · Mode A/B/C};
-  \node[layer, minimum width=5.7cm, below left=0.5cm and -0.1cm of agent.south, fill=green!6]
+
+  % Mid row: leave explicit gap under Agent and above MapProvider
+  \node[mid, below left=0.85cm and 0.35cm of agent.south, fill=green!6]
     (tools) {\textbf{工具主机}\\驾车/步行/骑行/公交\\候选 · 评分 · regeo};
-  \node[layer, minimum width=5.7cm, below right=0.5cm and -0.1cm of agent.south, fill=orange!8]
+  \node[mid, below right=0.85cm and 0.35cm of agent.south, fill=orange!8]
     (engine) {\textbf{本地引擎 domain/}\\路径拦截 · 多模式评分};
-  \node[layer, minimum width=12.2cm, below=1.45cm of agent, fill=maSoft]
+
+  % Anchor bottom layer to the mid-row so boxes never collide
+  \node[layer, minimum width=12.2cm, below=0.85cm of $(tools.south)!0.5!(engine.south)$, fill=maSoft]
     (map) {\textbf{Hybrid MapProvider}\\实时 AMap REST/JS · 估算回退 · 诚实 dataSource};
 
   \draw[arr] (ui) -- (agent);
-  \draw[arr] (agent.south) -- ++(0,-0.12) -| (tools.north);
-  \draw[arr] (agent.south) -- ++(0,-0.12) -| (engine.north);
-  \draw[arr] (tools.south) -- ++(0,-0.22) -| (map.north);
-  \draw[arr] (engine.south) -- ++(0,-0.22) -| (map.north);
+  \draw[arr] (agent.south) -- ++(0,-0.25) -| (tools.north);
+  \draw[arr] (agent.south) -- ++(0,-0.25) -| (engine.north);
+  \draw[arr] (tools.south) -- ++(0,-0.30) -| (map.north west);
+  \draw[arr] (engine.south) -- ++(0,-0.30) -| (map.north east);
 \end{tikzpicture}
 \caption{MeetAgent 系统架构}
 \label{fig:arch}
@@ -344,7 +349,7 @@ MeetAgent 覆盖\textbf{应用}、\textbf{Agent}、\textbf{用户体验}：
 
 \subsection{Agent 工具与数字接地}
 
-\textbf{硬规则：}界面分钟数、折线、坐标只能源自工具/引擎。
+\textbf{硬规则：}界面分钟数、折线、坐标只能源自工具/引擎。防止LLM自行发明路线。
 
 \begin{table}[H]
 \centering
@@ -369,8 +374,8 @@ parse\_intent（LLM） & 自然语言 $\rightarrow$ 约束；不输出 ETA \\
 
 \begin{itemize}
   \item \textbf{实时：}Map Web Key + 关闭演示 Fixture——实战接人、看路况。
-  \item \textbf{估算：}无 Key 或 Fixture 开启——弱网/赛场保底。
-  \item \textbf{实时+估算：}部分模式失败回退，徽章如实标注。
+  \item \textbf{估算：}无 Key 或 Fixture 开启——弱网保底。
+  \item \textbf{实时+估算：}部分模式失败回退。
 \end{itemize}
 
 对候选会合点 $m$ 与乘客模式 $\mu$，引擎近似优化：
@@ -405,7 +410,6 @@ LLM & OpenAI 兼容（用户 Key / Proxy / Offline） \\
 \fbox{\parbox{0.88\textwidth}{\centering\zihao{4}\songti
 \vspace{0.45em}
 \textbf{MeetAgent · 会合助手}\\[0.3em]
-{\zihao{5} 不是猜路，是算路。}\\[0.15em]
 {\zihao{5} 乘客动一点，司机少绕一点——双方更快见面。}\\[0.15em]
 {\zihao{5} HarmonyOS 原生 · 可离线演示 · 确认即锁定}\\[0.45em]
 }}
@@ -425,11 +429,8 @@ MeetAgent（会合助手）把这类问题收敛成出发前的一次联合规�
 }
 
 \vspace{0.4em}
-\noindent{\zihao{5}\color{maGray}
-（介绍文档正文约 720 字，符合不超过 800 字；以下为补充材料。）
-}
 
-\subsection{补充：场景化收益}
+\subsection{场景化收益}
 
 \begin{itemize}
   \item \textbf{时间：}用“乘客短途移动”换“司机少绕行”，缩短双方同时到达时间。
@@ -438,17 +439,18 @@ MeetAgent（会合助手）把这类问题收敛成出发前的一次联合规�
   \item \textbf{可落地：}鸿蒙原生、单机闭环；离线/Fixture 保演示。
 \end{itemize}
 
-\subsection{补充：演示路径（约 3 分钟）}
+\subsection{演示/测试步骤}
 
 \begin{enumerate}
   \item 设置 Map Web Key；网络不稳时打开演示 Fixture。
   \item 主页搜索/点选 $\rightarrow$ 指定乘客与司机 $\rightarrow$ 普通规划。
   \item 开始路线优化：对比卡片，切换观察路线变化。
   \item 确认锁定 $\rightarrow$ 复制分享 / 打开地图。
-  \item 备选：智能助手自然语言约束（如“最多走 8 分钟，不要公交”）。
+  \item 如要测试智能 Agent 规划，设置 LLM API Key。
+  \item 智能助手自然语言约束（如“最多走 8 分钟，不要公交”）。
 \end{enumerate}
 
-\subsection{补充：测试与质量}
+\subsection{测试}
 
 \begin{itemize}
   \item 领域层：\texttt{cd domain \&\& npm test}（25 项通过）。
@@ -456,7 +458,7 @@ MeetAgent（会合助手）把这类问题收敛成出发前的一次联合规�
   \item 密钥仅存设备偏好或本地 \texttt{.env}，不入库。
 \end{itemize}
 
-\subsection{补充：团队}
+\subsection{团队}
 
 \begin{table}[H]
 \centering
@@ -495,12 +497,5 @@ cd domain && npm test
   \item 高德开放平台 Web 服务 API。
   \item 本仓库 \texttt{docs/PRODUCT.md}、\texttt{docs/ARCHITECTURE.md}、\texttt{docs/AI\_AGENT.md}。
 \end{enumerate}
-
-\vspace{1.2em}
-\begin{center}
-{\zihao{5}\color{maGray}
-—— 正文完 ——
-}
-\end{center}
 
 \end{document}
