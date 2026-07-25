@@ -91,7 +91,7 @@
 \definecolor{maSoft}{HTML}{EEF3FA}
 
 \newcommand{\WorkTitle}{MeetAgent · 会合助手}
-\newcommand{\TeamName}{MeetAgent 团队}
+\newcommand{\TeamName}{为了看Miku演唱会特前来拿奖金}
 \newcommand{\AuthorNames}{李祥熙}
 \newcommand{\ContestTrack}{人工智能创意赛（鸿蒙赛道）}
 \newcommand{\Slogan}{引擎算数智能体解释，一次锁定最优会合}
@@ -174,7 +174,7 @@ MeetAgent（会合助手）是一款 HarmonyOS 智能会合规划应用，面向
 乘客可公交或骑行到更合适的大门/路口，司机避免绕行禁行区域。 \\
 弱网 / 演示 / 无 Key &
 赛场或地下车库网络不稳时，可开启演示 Fixture 或纯估算路径，
-仍能完成规划—锁定—分享闭环，不白屏。 \\
+仍能完成规划—锁定—分享闭环。 \\
 \bottomrule
 \end{tabularx}
 \caption{核心实用场景与价值}
@@ -188,7 +188,7 @@ MeetAgent 覆盖\textbf{应用}、\textbf{Agent}、\textbf{用户体验}：
 \begin{itemize}
   \item \textbf{应用：}完整 HarmonyOS HAP——主页地图、普通规划、智能助手、设置、锁定会话。
   \item \textbf{Agent：}OpenAI 兼容工具循环；路线/候选/评分/regeo 归工具，LLM 只选方案并解释。
-  \item \textbf{体验：}深色液态玻璃、搜索优先选点、结果页切换方案即更新路线、数据源徽章诚实可见。
+  \item \textbf{体验：}深色液态玻璃主题、搜索优先选点、结果页切换方案即更新路线。
 \end{itemize}
 
 \subsection{用户主路径}
@@ -478,24 +478,12 @@ MeetAgent（会合助手）把这类问题收敛成出发前的一次联合规�
 \section{附录}
 % =============================================================================
 
-\subsection{仓库与运行}
-
-\begin{lstlisting}[language=bash,caption={领域层测试}]
-cd domain && npm test
-\end{lstlisting}
-
-\begin{itemize}
-  \item DevEco Studio 打开仓库根目录，运行 \texttt{entry}。
-  \item 设置中配置 Map Web Key / LLM；详见 \texttt{README.md}。
-\end{itemize}
-
 \subsection{参考资料}
 
 \begin{enumerate}
   \item 中国高校计算机大赛—人工智能创意赛（鸿蒙赛道）作品说明文档规范（2026.06）。
   \item HarmonyOS 应用开发文档（ArkTS / ArkUI）。
   \item 高德开放平台 Web 服务 API。
-  \item 本仓库 \texttt{docs/PRODUCT.md}、\texttt{docs/ARCHITECTURE.md}、\texttt{docs/AI\_AGENT.md}。
 \end{enumerate}
 
 \end{document}
