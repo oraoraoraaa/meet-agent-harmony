@@ -1,5 +1,7 @@
 # MeetAgent · 会合助手
 
+> 📌 月度激励申报材料：[`申报材料.md`](./申报材料.md)
+
 **HarmonyOS AI agent for smarter pickup coordination.**
 
 When a driver is on the way to pick someone up, the first chosen meeting point is often not the best one. Traffic changes, the passenger can walk / bike / take transit a short distance, and both people waste time by sticking to a fixed curb.
