@@ -51,7 +51,6 @@ struct Index {
   @State hasFocus: boolean = false;
 
   aboutToAppear(): void {
-    this.refreshSettings();
     this.hydrateDraft();
   }
 
@@ -103,6 +102,7 @@ struct Index {
 
   private async refreshSettings(): Promise<void> {
     try {
+      const previousMapKey: string = this.mapKeyForView();
       this.settings = await SettingsStore.load(this.hostContext());
       const llm: string = this.settings.llmConfigured()
         ? `LLM ${this.settings.modeLabel()} · ${this.settings.llmModel}`
@@ -114,7 +114,9 @@ struct Index {
         map = 'AMap 底图+路况+路线';
       }
       this.settingsSummary = `${llm} · ${map}`;
-      this.mapToken = this.mapToken + 1;
+      if (previousMapKey !== this.mapKeyForView()) {
+        this.mapToken = this.mapToken + 1;
+      }
     } catch (e) {
       const _ignored: Object = e as Object;
       this.settingsSummary = '设置读取失败 — 默认离线模式';
@@ -236,7 +238,6 @@ struct Index {
     this.passengerName = label;
     this.persistDraft();
     this.pickHint = `乘客位置：${this.displayPlace(label)}`;
-    this.mapToken = this.mapToken + 1;
   }
 
   private async finalizeDriverLabel(): Promise<void> {
@@ -248,7 +249,6 @@ struct Index {
     this.driverName = label;
     this.persistDraft();
     this.pickHint = `司机起点：${this.displayPlace(label)}`;
-    this.mapToken = this.mapToken + 1;
   }
 
   private onMapPick(ev: MapPickEvent): void {
@@ -365,7 +365,6 @@ struct Index {
       this.roleMode = mode;
     }
     this.modeMenuOpen = false;
-    this.mapToken = this.mapToken + 1;
   }
 
   build() {
@@ -447,7 +446,7 @@ struct Index {
           .padding({ left: 18, right: 18 })
 
           Stack() {
-            // key-like remount: when mapToken changes, rebuild Web with new pins
+            // Map batches geometry updates after all props have settled.
             InteractiveMapView({
               mapWebKey: this.mapKeyForView(),
               pickRole: this.pickRoleForMap(),
@@ -460,7 +459,7 @@ struct Index {
               centerLon: this.mapCenterLon(),
               centerLat: this.mapCenterLat(),
               zoom: this.mapZoom(),
-              title: `搜索地点后选择用途 · 路况 · t${this.mapToken}`,
+              title: '搜索地点后选择用途 · 路况',
               reloadToken: this.mapToken,
               showTraffic: true,
               allowRoleSwitch: false,
@@ -471,7 +470,6 @@ struct Index {
                 this.onMapChoose(ev);
               }
             })
-              .key(`map-${this.mapToken}`)
           }
           .width('100%')
           .layoutWeight(1)

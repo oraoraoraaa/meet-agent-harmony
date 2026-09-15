@@ -1,41 +1,28 @@
-# entry module notes
+# HarmonyOS entry module
 
-DevEco opens the **repository root**. This module is the main HAP.
+Open the repository root in DevEco Studio. `entry/` is the phone HAP module.
 
 ## Layout
 
-```text
-entry/src/main/ets/
-  common/           # AppSettings, AppTheme, GlassChrome, PolylineMath, ReplyFormat
-  domain/           # ArkTS mirror of repo-root domain/ engine
-  pages/            # Index, ChatPage, PlanPage, SettingsPage
-  services/
-    settings/       # Preferences-backed SettingsStore
-    location/       # one-shot LocationService
-    map/            # MapProvider + PlanningService (estimate Mode C)
-    planning/       # FixtureCatalog
-    agent/          # orchestrator, tools, grounding, offline reply
-    llm/            # OpenAI-compatible client (Mode A/B)
-  entryability/
-  entrybackupability/
-```
+- `src/main/ets/pages/`: home, form planning, chat, locked plan, settings.
+- `src/main/ets/domain/`: pure ArkTS engine port; keep it aligned with `domain/`.
+- `src/main/ets/common/`: settings models, theme, layout, glass components, reply formatting.
+- `src/main/ets/services/map/`: Hybrid estimate/AMap REST routing and Web map rendering.
+- `src/main/ets/services/agent/` and `llm/`: bounded tool loop, grounding, compatible HTTP client.
+- `src/main/ets/services/session/`: in-memory draft, locked snapshot, share text.
+- `src/main/ets/services/settings/`, `location/`, `planning/`: preferences, one-shot location, fixtures.
+- `src/test/`: Hypium tests for the ArkTS engine port, also registered by `src/ohosTest/`.
 
-## Surfaces (through Phase 2)
+## Current surfaces
 
-- Home: liquid-glass stage shell → chat / form plan / settings / one-shot locate
-- Chat: agent tool loop or offline engine; plan mini-cards; 决策过程 trace
-- Plan: fixtures + coords + mode constraints → offline RecommendationSet + schematic polylines
-- Settings: map keys, LLM mode A/B/C, test LLM ping, language, fixture/trace toggles
-- Permissions: INTERNET, LOCATION, APPROXIMATELY_LOCATION
+Home supports map/search selection and assigning driver/passenger points. Form planning and
+chat share Hybrid routing, result maps, and confirm/lock/share. Mode C works with estimated
+routes and an offline schematic Web map. Live routing uses AMap REST when a Web key is set
+and **演示 Fixture 优先** is off. The basemap uses AMap JavaScript through ArkWeb; no native
+map SDK is bundled. The optional proxy remains a contract, not an implemented server.
 
-## Map status
+Keys are stored in device-local Preferences; hardware-backed secret storage is still pending.
+Never commit keys or signing configuration. Build commands are in the root README.
 
-**No vendor Map SDK yet (intentional).** Planning uses the estimate engine
-(straight-line + speed model) via `EstimateMapProvider` / `HybridMapProvider` shell.
-Live AMap Web HTTP is deferred; keys can still be stored in Settings for later.
-
-## Rules
-
-- Do not commit keys.
-- Pure planning math also lives in repo-root `domain/` (Node unit tests). Keep ArkTS `entry/.../domain/` contracts aligned.
-- Do not commit half-working UI; verify Preview/device before committing (see root `AGENTS.md`).
+See [performance notes](../docs/PERFORMANCE.md) for map refresh ownership and validation.
+DevEco Preview cannot render the Web map; actual first paint and interaction require a device.

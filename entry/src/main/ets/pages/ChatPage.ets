@@ -89,11 +89,20 @@ struct ChatPage {
   private orch: AgentOrchestrator | null = null;
   private msgSeq: number = 0;
 
+  private mapMountTimer: number = -1;
+  private disposed: boolean = false;
+
   aboutToAppear(): void {
+    this.disposed = false;
     this.bootstrap();
   }
 
   aboutToDisappear(): void {
+    this.disposed = true;
+    if (this.mapMountTimer !== -1) {
+      clearTimeout(this.mapMountTimer);
+      this.mapMountTimer = -1;
+    }
     if (this.orch !== null) {
       this.orch.cancel();
     }
@@ -266,6 +275,9 @@ struct ChatPage {
   }
 
   private applyRecommendation(rec: RecommendationSet, selectedPlanId: string): void {
+    if (this.disposed) {
+      return;
+    }
     this.lastRec = rec;
     this.dataSourceBadge = dataSourceLabelZh(rec.dataSource);
     const cards: PlanMiniCard[] = [];
@@ -313,17 +325,21 @@ struct ChatPage {
     this.chatMapReady = false;
     this.applyMapForPlan(pick, rec);
     TripSessionStore.beginPlanning(this.buildScenario(), rec, pick);
-    setTimeout(() => {
+    if (this.mapMountTimer !== -1) {
+      clearTimeout(this.mapMountTimer);
+    }
+    this.mapMountTimer = setTimeout(() => {
+      this.mapMountTimer = -1;
       this.bootstrapChatMap();
     }, 80);
   }
 
   private bootstrapChatMap(): void {
+    if (this.disposed) {
+      return;
+    }
     this.chatMapReady = true;
     this.chatMapToken = this.chatMapToken + 1;
-    setTimeout(() => {
-      this.chatMapToken = this.chatMapToken + 1;
-    }, 120);
   }
 
   private applyMapForPlan(id: string, rec: RecommendationSet): void {
@@ -674,7 +690,6 @@ struct ChatPage {
                   .height(220)
                   .borderRadius(16)
                   .clip(true)
-                  .key(`chat-map-${this.chatMapToken}-${this.selectedPlanId}`)
               } else {
                 Column() {
                   Text('地图加载中…')

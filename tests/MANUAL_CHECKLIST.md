@@ -65,3 +65,17 @@ Enable on Web service key:
 - [ ] 路径规划 · transit/integrated
 - [ ] 地理编码 · regeo
 - [ ] 搜索 · place/text
+
+
+## Map lifecycle regression (2026-09-16)
+
+- [x] Native emulator: home, form result, and locked maps render without a second click.
+- [ ] Native chat-result map first paint.
+- [ ] Rapid card/point changes show only the latest route/markers.
+- [ ] Label-only and role-only changes keep map pan/zoom position.
+- [ ] Leaving during a delayed map mount does not create stale work or crash.
+- [ ] Return from settings applies a changed map key/fixture mode.
+- [ ] Live failure retains usable estimate fallback.
+
+See `docs/PERFORMANCE.md`; prior checkmarks above describe earlier verification, not a rerun
+of every native path after this change. The new smoke covers home → form → result → lock.

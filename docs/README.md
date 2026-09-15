@@ -8,5 +8,7 @@
 | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | Phased build plan (delivery SoT) |
 | [ROADMAP.md](ROADMAP.md) | Later versions & non-goals |
 | [DEMO_SCRIPT.md](DEMO_SCRIPT.md) | Stage demo |
+| [PERFORMANCE.md](PERFORMANCE.md) | Applied performance work and validation |
+| [Performance guide](../ARKTS_HARMONYOS_PERFORMANCE_OPTIMIZATION_GUIDE.md) | ArkTS/HarmonyOS optimization reference |
 
 Also read root [`../README.md`](../README.md) and [`../AGENTS.md`](../AGENTS.md).

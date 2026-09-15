@@ -57,8 +57,20 @@ struct LockedSessionPage {
   @State mapToken: number = 0;
   @State mapReady: boolean = false;
 
+  private mapMountTimer: number = -1;
+  private disposed: boolean = false;
+
   aboutToAppear(): void {
+    this.disposed = false;
     this.bootstrap();
+  }
+
+  aboutToDisappear(): void {
+    this.disposed = true;
+    if (this.mapMountTimer !== -1) {
+      clearTimeout(this.mapMountTimer);
+      this.mapMountTimer = -1;
+    }
   }
 
   private hostContext(): common.UIAbilityContext {
@@ -72,6 +84,9 @@ struct LockedSessionPage {
       const _ignored: Object = e as Object;
       this.settings = new AppSettings();
     }
+    if (this.disposed) {
+      return;
+    }
     const locked: TripSession | null = TripSessionStore.getLocked();
     if (locked === null) {
       this.hasSession = false;
@@ -81,17 +96,21 @@ struct LockedSessionPage {
     this.applyLocked(locked);
     // Defer Web map mount so first layout has non-zero size (same as Plan/Chat).
     this.mapReady = false;
-    setTimeout(() => {
+    if (this.mapMountTimer !== -1) {
+      clearTimeout(this.mapMountTimer);
+    }
+    this.mapMountTimer = setTimeout(() => {
+      this.mapMountTimer = -1;
       this.bootstrapMap();
     }, 80);
   }
 
   private bootstrapMap(): void {
+    if (this.disposed) {
+      return;
+    }
     this.mapReady = true;
     this.mapToken = this.mapToken + 1;
-    setTimeout(() => {
-      this.mapToken = this.mapToken + 1;
-    }, 120);
   }
 
   private copyLine(src: GeoPoint[]): GeoPoint[] {
@@ -350,7 +369,6 @@ struct LockedSessionPage {
                   })
                     .width('100%')
                     .height(240)
-                    .key(`locked-map-${this.mapToken}-${this.sessionId}`)
                 } else {
                   Column() {
                     Text('地图加载中…')

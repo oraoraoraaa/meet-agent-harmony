@@ -39,7 +39,7 @@ export struct InteractiveMapView {
   @Prop title: string = '地图';
   @Prop driverLine: GeoPoint[] = [];
   @Prop passengerLine: GeoPoint[] = [];
-  /** Bump to force Web reload after external state change. */
+  /** Bump to refresh the map snapshot after external state changes. */
   @Prop @Watch('onReloadTokenChanged') reloadToken: number = 0;
   /** Live traffic layer (AMap TileLayer.Traffic). */
   @Prop showTraffic: boolean = true;
@@ -56,30 +56,42 @@ export struct InteractiveMapView {
 
   private controller: webview.WebviewController = new webview.WebviewController();
   @State private status: string = '初始化地图…';
-  @State private attached: boolean = false;
-  @State private pageReady: boolean = false;
+  private attached: boolean = false;
   private lastLoadedToken: number = -999;
-  private markerSyncPending: boolean = false;
+  private reloadTimer: number = -1;
+  private lastHtml: string = '';
 
-  aboutToAppear(): void {
-    // load happens onControllerAttached
+  aboutToDisappear(): void {
+    this.attached = false;
+    this.cancelReload();
+    this.lastHtml = '';
+  }
+
+  private cancelReload(): void {
+    if (this.reloadTimer !== -1) {
+      clearTimeout(this.reloadTimer);
+      this.reloadTimer = -1;
+    }
   }
 
   onReloadTokenChanged(): void {
-    this.pageReady = false;
-    this.markerSyncPending = false;
-    if (this.attached) {
-      this.reloadMap();
-    }
+    this.scheduleReload();
   }
 
   onMarkersChanged(): void {
-    // Prop updates alone do not refresh Web content — full reload with new pins.
-    if (this.attached) {
-      this.reloadMap();
-    } else {
-      this.markerSyncPending = true;
+    this.scheduleReload();
+  }
+
+  private scheduleReload(): void {
+    if (!this.attached || this.reloadTimer !== -1) {
+      return;
     }
+    // A coordinate pair and token arrive as separate Prop notifications.
+    // Read the final snapshot once, after this batch of updates settles.
+    this.reloadTimer = setTimeout(() => {
+      this.reloadTimer = -1;
+      this.reloadMap();
+    }, 0);
   }
 
   private polyJson(line: GeoPoint[]): string {
@@ -137,11 +149,13 @@ export struct InteractiveMapView {
       return;
     }
     this.lastLoadedToken = this.reloadToken;
-    this.pageReady = false;
+    const html: string = this.buildHtml();
+    if (html === this.lastHtml) {
+      return;
+    }
     this.status = this.mapWebKey.trim().length > 0
       ? (this.showChrome ? '加载高德地图…' : '')
       : (this.showChrome ? '示意地图（无 Web Key / 演示）' : '');
-    const html: string = this.buildHtml();
     try {
       this.controller.loadData(
         html,
@@ -150,11 +164,13 @@ export struct InteractiveMapView {
         'https://local.meetagent/map',
         'https://local.meetagent/'
       );
+      this.lastHtml = html;
     } catch (e) {
       const _ignored: Object = e as Object;
       try {
         const encoded: string = encodeURIComponent(html);
         this.controller.loadUrl('data:text/html;charset=utf-8,' + encoded);
+        this.lastHtml = html;
       } catch (e2) {
         const _ignored2: Object = e2 as Object;
         this.status = '地图加载失败';
@@ -289,29 +305,22 @@ export struct InteractiveMapView {
         .zoomAccess(true)
         .onControllerAttached(() => {
           this.attached = true;
-          this.reloadMap();
-          // Layout may still be settling; reload once more so first paint isn't blank.
-          setTimeout(() => {
-            if (this.attached) {
-              this.reloadMap();
-            }
-          }, 100);
+          this.lastHtml = '';
+          this.scheduleReload();
         })
         .onPageEnd(() => {
-          if (this.reloadToken !== this.lastLoadedToken) {
-            this.reloadMap();
+          if (!this.attached) {
             return;
           }
-          this.pageReady = true;
+          if (this.reloadToken !== this.lastLoadedToken) {
+            this.scheduleReload();
+            return;
+          }
           this.status = !this.showChrome
             ? ''
             : (this.mapWebKey.trim().length > 0
               ? '地图就绪 · 搜索/点选后选择用途'
               : '示意地图就绪 · 点选后选择用途');
-          if (this.markerSyncPending) {
-            this.markerSyncPending = false;
-            this.reloadMap();
-          }
         })
         .onLoadIntercept((event): boolean => {
           try {
@@ -344,7 +353,7 @@ export struct InteractiveMapView {
     .backgroundColor(AppTheme.mapPanel)
     .onAppear(() => {
       if (this.attached && this.reloadToken !== this.lastLoadedToken) {
-        this.reloadMap();
+        this.scheduleReload();
       }
     })
   }

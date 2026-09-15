@@ -58,7 +58,7 @@ Responsibilities:
 - UI screens and navigation
 - Permissions (location, network, queries for map schemes)
 - Platform map view
-- Secure settings storage
+- Device-local Preferences settings storage (hardware-backed secret storage pending)
 - Agent orchestration wiring
 - Share sheet / deep links
 
@@ -90,7 +90,7 @@ Responsibilities:
 
 Must remain testable without DevEco.
 
-### `server/` — optional proxy
+### `server/` — optional proxy contract (implementation pending)
 
 Responsibilities:
 
@@ -208,7 +208,7 @@ If LLM disabled: UI calls engine tools directly.
 
 ## Security
 
-- Keys in secure local storage
+- Keys in device-local Preferences; hardware-backed secret storage pending
 - Proxy strips vendor key from client
 - No secret logging
 - HTTPS only for LLM/map HTTP

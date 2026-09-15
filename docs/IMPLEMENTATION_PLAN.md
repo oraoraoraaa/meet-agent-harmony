@@ -138,7 +138,7 @@ Implications for routing APIs:
 
 - [x] Fixture scenario produces stable multi-option output in estimate mode.
 - [x] Live mode works when keys present (or documented partial).  
-  *(Documented partial: live HTTP not yet wired; estimate always works.)*
+  *(Live AMap REST delivered in Phase 4; estimate always works.)*
 - [x] Unit tests for engine pass.
 - [x] User can select an option (not yet locked session).
 
@@ -445,3 +445,17 @@ Compress only by cutting live POI snap and EN l10n, not by cutting Mode C or gro
 | D4 | Proxy hosting for contest day | Open | Local laptop hotspot vs cloud |
 
 Update this table when decisions close.
+
+
+### Performance and repository maintenance (2026-09-15)
+
+Map refreshes now batch marker/token notifications, skip identical HTML snapshots, and
+cancel queued work on component destruction. Result pages retain the existing 80 ms mount
+deferral, with tracked timers; redundant 100/120 ms forced reloads are removed. Home no
+longer reloads the map solely for label/role changes or unchanged settings. See
+[PERFORMANCE.md](PERFORMANCE.md) for checks and remaining profiling work. API-24 emulator verification now covers native
+home, planning/result maps, and confirm/lock.
+
+Removed the unused `PolylineMath.ets` canvas implementation, replaced generated string
+assertion tests with ArkTS engine checks, and corrected obsolete module/proxy documentation.
+The portable domain and ArkTS ports, fixtures, and submission assets are intentionally retained.

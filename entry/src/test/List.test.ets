@@ -1,5 +1,5 @@
-import localUnitTest from './LocalUnit.test';
+import engineTest from './Engine.test';
 
-export default function testsuite() {
-  localUnitTest();
+export default function testsuite(): void {
+  engineTest();
 }

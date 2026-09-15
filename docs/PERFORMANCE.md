@@ -1,0 +1,97 @@
+# Performance audit — 2026-09-15, verified 2026-09-16
+
+Reference: [ArkTS/HarmonyOS guide](../ARKTS_HARMONYOS_PERFORMANCE_OPTIMIZATION_GUIDE.md).
+Target: HarmonyOS 6.1.1, API 24, ArkUI Stage application.
+
+## Applied changes
+
+The repeated work found in the map host is avoidable even before native profiling:
+
+- Marker coordinates and the refresh token previously triggered separate full HTML loads.
+  `InteractiveMapView` now queues one refresh per synchronous update batch, reads the final
+  props, and skips identical HTML. A changed route or map configuration still refreshes.
+- Removed the unconditional 100 ms reload after Web attachment and the 120 ms follow-up
+  reload on result pages. Retained the existing 80 ms result-map mount deferral because
+  the project records a zero-size first-paint issue; this delay is not a general tuning rule.
+- Map attachment and timer handles are ordinary fields. Removed unused observed readiness
+  state and the empty appearance hook. Queued refreshes/mounts are cancelled on destruction;
+  delayed mount callbacks check disposal before touching state.
+- Home reads settings on page show, rather than both appearance and page show. Labels,
+  role selection, and unchanged settings no longer request map reloads.
+- Removed `.key()` test tags that had been described as a production remount mechanism.
+  Refresh behavior uses the explicit watched token.
+
+The HTML cache retains only the current page and is cleared on destruction. It must never
+be logged because live map HTML contains the configured key.
+
+## Evidence and limits
+
+A controlled Node harness executed the actual map host methods from baseline `6044e80`
+and the changed source with a fake Web controller and deterministic timers:
+
+| Same input sequence | Baseline | Updated |
+| --- | --- | --- |
+| Attach, change longitude, change latitude, bump token, flush queued work | 4 HTML loads | 1 HTML load |
+
+This is a count of redundant host operations, **not** a measurement of native startup,
+frame rate, CPU time, memory, or AMap network latency. It excludes the baseline's additional
+100/120 ms retries. No device performance improvement percentage is claimed.
+
+Verification commands:
+
+```bash
+cd domain && npm test
+# From repository root, Node 22.13+:
+node --test tests/map-lifecycle.test.mjs
+```
+
+- Portable domain: 25 passing tests covering engine, grounding, polyline helpers, and lock.
+- Map host: four passing tests covering batched final snapshots, route refresh/deduplication,
+  destruction/reattachment, and load failure fallback/retry.
+- SDK: unsigned app and `entry@ohosTest` HAP builds pass. Generated string assertion examples
+  were replaced by two meaningful ArkTS engine-port checks. Both also pass on the API-24
+  Pura 90 emulator.
+- DevEco Preview: home shell, offline planning form, estimate result cards, and card
+  selection exercised; chat shell also renders. Web maps report
+  “Preview not available for this component.”
+- Native Pura 90 / API 24: app installs; the home AMap basemap renders with traffic and pins.
+  The native smoke test navigates to planning, calculates a live plan, and confirms the lock.
+  Captured plan/locked screens show driver and passenger polylines and matching tool ETAs.
+  Basemap tiles can still be loading when the first result screenshot is captured.
+- The initial emulator blocker was a stale SDK path, not a missing image. Launch succeeded
+  with `Emulator -start 'Pura 90' -imageRoot /Users/rinalic/Library/Huawei/Sdk -bootmode coldboot`.
+- Physical-device frame/CPU/memory measurements, rapid native switching/navigation races,
+  live network-failure injection, and native chat-result rendering remain follow-up checks.
+
+## Why other guide techniques were deferred
+
+- Result cards are bounded (stay-put plus at most one suggestion per mode); reuse or
+  virtualization adds complexity without a demonstrated benefit for this collection.
+  Chat history is unbounded and remains a candidate for a separately measured lazy list.
+- No measured CPU bottleneck justifies TaskPool/Worker or Sendable migration. Network calls
+  already use asynchronous APIs. Parallel route requests need explicit rate/concurrency limits.
+- Retain snapshot ownership for plan geometry; do not change `@Prop` to shared mutable
+  references solely to reduce copying.
+- No speculative Web prefetch, prerender, DisplaySync, or broad dynamic-import migration:
+  measure device startup and memory before adding earlier work or new lifecycle complexity.
+
+## Broader native profiling protocol (follow-up)
+
+Use the same API-24 phone, build mode, settings, and fixture before/after. Record cold-launch
+and first-map-frame times, frame loss during route switching, process CPU, and peak memory.
+Repeat at least five times; report medians and range. Keep keys and precise personal locations
+out of captures and logs.
+
+1. Start without keys / fixture mode; map must paint on first entry.
+2. Assign driver and passenger repeatedly; final pins match the latest selection.
+3. Plan, switch all cards rapidly, then confirm; routes and ETAs match the selected snapshot.
+4. Repeat through offline chat and the locked-plan page; sharing preserves grounded fields.
+5. Leave during the 80 ms map deferral, return, and repeat planning; no stale mount or crash.
+6. Repeat with configured live AMap, then network failure; fallback remains usable.
+7. Compare measurements; reconsider retry removal if first-paint reliability regresses.
+
+
+The native smoke test uses the device's existing map configuration and does not edit settings.
+For a deterministic network-free run, enable **演示 Fixture 优先** in Settings beforehand.
+Screenshots are written to the application sandbox `files/meetagent-{home,form,plan,locked}.png`;
+they are test artifacts, not committed assets. The test creates an in-memory locked session.

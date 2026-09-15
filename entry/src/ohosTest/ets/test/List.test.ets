@@ -1,5 +1,7 @@
-import abilityTest from './Ability.test';
+import mapSmokeTest from './MapSmoke.test';
+import engineTest from '../../../test/Engine.test';
 
-export default function testsuite() {
-  abilityTest();
+export default function testsuite(): void {
+  engineTest();
+  mapSmokeTest();
 }

@@ -238,6 +238,15 @@ When implementing a phase, update `docs/IMPLEMENTATION_PLAN.md` checkboxes / not
 - Always design empty / loading / error / offline states.
 - zh-CN strings first; keep user-facing copy in a single l10n module when introduced.
 
+### ArkTS performance rules
+
+- Map refresh ownership belongs to `InteractiveMapView`: batch marker/token changes and avoid reloading identical HTML. Parent pages must not add repeated forced-refresh timers.
+- Keep attachment flags and timer handles as ordinary fields; only observable UI values need `@State`.
+- Cancel delayed map mounts and refreshes on destruction, and ignore callbacks after disposal.
+- Keep high-frequency callbacks bounded; do not add empty system listeners or routine per-frame logging.
+- Preserve the existing bounded result cards and immutable plan snapshots. Introduce list reuse, shared state, workers, or Web prefetch only after measuring a relevant workload.
+- Record native rendering limitations and before/after evidence in `docs/PERFORMANCE.md`; Node host tests do not establish device frame-rate or startup gains.
+
 ### Domain engine
 
 - Candidate generation, mode gating, scoring, ranking, stay-put decision are pure.
@@ -308,8 +317,29 @@ A complete contribution:
 # Domain unit tests
 cd domain && node --experimental-strip-types --test test/**/*.test.ts
 
-# Optional proxy
-# cd server && <run per server/README.md>
+# Map host lifecycle checks (Node 22.13+; not native Web rendering)
+node --test tests/map-lifecycle.test.mjs
+
+# Unsigned SDK build (macOS default DevEco installation)
+PATH="/Applications/DevEco-Studio.app/Contents/tools/node/bin:$PATH" \
+JAVA_HOME=/Applications/DevEco-Studio.app/Contents/jbr \
+DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk \
+/Applications/DevEco-Studio.app/Contents/tools/hvigor/bin/hvigorw \
+  --mode module -p product=default -p module=entry@default \
+  -p buildMode=debug assembleHap --no-daemon
+
+
+# Native suite (connected device/emulator; current map settings)
+# Build the test HAP with the same Hvigor command, using -p module=entry@ohosTest.
+/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc install \
+  entry/build/default/outputs/default/entry-default-unsigned.hap
+/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc install \
+  entry/build/default/outputs/ohosTest/entry-ohosTest-unsigned.hap
+/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc shell \
+  aa test -b com.rinalic.meetAgentHarmony -m entry_test \
+  -s unittest OpenHarmonyTestRunner -s timeout 120000 -w 125
+
+# Optional proxy is not implemented; server/README.md describes the contract.
 
 # Harmony app: DevEco Studio → Open repository root → Run entry
 # /Users/rinalic/Local/Github/meet-agent-harmony

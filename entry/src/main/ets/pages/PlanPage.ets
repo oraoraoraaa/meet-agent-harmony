@@ -94,10 +94,22 @@ struct PlanPage {
   /** Gates result map mount so Web gets non-zero size on first paint. */
   @State resultMapReady: boolean = false;
 
+  private mapMountTimer: number = -1;
+  private disposed: boolean = false;
+
   aboutToAppear(): void {
+    this.disposed = false;
     this.reloadSettings().then(() => {
       this.hydrateFromDraftOrFixture();
     });
+  }
+
+  aboutToDisappear(): void {
+    this.disposed = true;
+    if (this.mapMountTimer !== -1) {
+      clearTimeout(this.mapMountTimer);
+      this.mapMountTimer = -1;
+    }
   }
 
   private hostContext(): common.UIAbilityContext {
@@ -334,6 +346,9 @@ struct PlanPage {
       }
       const provider: MapProvider = this.createMapProvider();
       const rec: RecommendationSet = await PlanningService.plan(scenario, provider);
+      if (this.disposed) {
+        return;
+      }
       this.lastRec = rec;
       // Begin planning session (in-memory). Prefer engine recommended id.
       let preferredId: string = 'stayPut';
@@ -362,7 +377,11 @@ struct PlanPage {
       this.resultMapReady = false;
       this.resultMapToken = this.resultMapToken + 1;
       // Defer map mount: first frame after hasResult often has 0-height Web → blank until re-click.
-      setTimeout(() => {
+      if (this.mapMountTimer !== -1) {
+        clearTimeout(this.mapMountTimer);
+      }
+      this.mapMountTimer = setTimeout(() => {
+        this.mapMountTimer = -1;
         this.bootstrapResultMap();
       }, 80);
       if (rec.dataSource === 'live_with_fallback') {
@@ -476,12 +495,11 @@ struct PlanPage {
   }
 
   private bootstrapResultMap(): void {
+    if (this.disposed) {
+      return;
+    }
     this.resultMapReady = true;
     this.resultMapToken = this.resultMapToken + 1;
-    // Second tick: some Web runtimes need a prop change after attach.
-    setTimeout(() => {
-      this.resultMapToken = this.resultMapToken + 1;
-    }, 120);
   }
 
   private meetingLabelLooksRaw(name: string): boolean {
@@ -995,7 +1013,6 @@ struct PlanPage {
             })
               .width('100%')
               .height(260)
-              .key(`plan-map-${this.resultMapToken}-${this.selectedCardId}`)
           } else {
             Column() {
               Text('地图加载中…')

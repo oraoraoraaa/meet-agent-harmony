@@ -74,7 +74,8 @@ DevEco Studio opens the **repository root** (not a nested `app/` folder).
 │   ├── ROADMAP.md
 │   └── DEMO_SCRIPT.md
 ├── domain/                   # portable domain models + engine (TS first)
-├── server/                   # optional LLM proxy for demos
+├── server/                   # optional proxy contract (not implemented)
+├── resource/                 # submission PDF/LaTeX, screenshots, reference template
 ├── fixtures/                 # canned scenarios for offline / stage demos
 └── tests/                    # cross-cutting test notes & shared cases
 ```
@@ -127,8 +128,6 @@ DevEco Studio opens the **repository root** (not a nested `app/` folder).
 3. Configure debug signing for your device/emulator.
 4. Run the `entry` module on a HarmonyOS phone or emulator.
 
-> Do **not** keep developing only under `~/DevecostudioProjects/meet_agent_harmony` — that folder was the generator seed. The GitHub path is the source of truth.
-
 ### 2) Client config (keys never in git)
 
 1. In-app **设置**:
@@ -149,18 +148,49 @@ DevEco Studio opens the **repository root** (not a nested `app/` folder).
 
 ### 4) Optional LLM proxy
 
-```bash
-cd server
-# follow server/README.md after scaffold
-```
-
-Point Settings → **Proxy mode** at that base URL for stage demos without pasting a vendor LLM key on the device.
+Mode B can connect to an existing OpenAI-compatible proxy. This repository does **not** include a runnable server yet; [`server/README.md`](server/README.md) records its intended contract. Set **Proxy mode** to your separately deployed endpoint.
 
 ### 5) Domain tests
 
 ```bash
 cd domain && npm test
 ```
+
+Map host lifecycle regression checks (Node 22.13+; native rendering still needs DevEco/device):
+
+```bash
+node --test tests/map-lifecycle.test.mjs
+```
+
+Unsigned SDK build on macOS with the default DevEco installation:
+
+```bash
+PATH="/Applications/DevEco-Studio.app/Contents/tools/node/bin:$PATH" \
+JAVA_HOME=/Applications/DevEco-Studio.app/Contents/jbr \
+DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk \
+/Applications/DevEco-Studio.app/Contents/tools/hvigor/bin/hvigorw \
+  --mode module -p product=default -p module=entry@default \
+  -p buildMode=debug assembleHap --no-daemon
+```
+
+The local emulator accepts the unsigned HAP. Physical-device installation needs local signing
+in DevEco; do not commit signing credentials. Native smoke commands:
+
+```bash
+# Native suite (connected device/emulator; current map settings)
+# Build the test HAP with the same Hvigor command, using -p module=entry@ohosTest.
+/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc install \
+  entry/build/default/outputs/default/entry-default-unsigned.hap
+/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc install \
+  entry/build/default/outputs/ohosTest/entry-ohosTest-unsigned.hap
+/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc shell \
+  aa test -b com.rinalic.meetAgentHarmony -m entry_test \
+  -s unittest OpenHarmonyTestRunner -s timeout 120000 -w 125
+```
+
+The native smoke creates a locked session using current map settings. Enable fixture mode
+before running it if you want a network-free test. Inspect the `Tests run` summary: the test
+launcher can exit successfully even when a test fails.
 
 ---
 
@@ -184,7 +214,7 @@ cd domain && npm test
 | Mode | Behavior |
 | --- | --- |
 | **A. User key** | App calls vendor API directly with user-supplied key |
-| **B. Proxy** | App calls your `server/` which holds the real key |
+| **B. Proxy** | App calls a separately deployed compatible proxy; bundled server pending |
 | **C. Offline** | No LLM; local engine + template copy |
 
 Mode C must always work.
@@ -201,6 +231,8 @@ Mode C must always work.
 | [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) | **Detailed phased implementation plan** |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Milestones and explicit non-goals |
 | [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) | 3-minute stage path |
+| [`ARKTS_HARMONYOS_PERFORMANCE_OPTIMIZATION_GUIDE.md`](ARKTS_HARMONYOS_PERFORMANCE_OPTIMIZATION_GUIDE.md) | Performance reference supplied for this project |
+| [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) | Applied optimizations, evidence, and device validation gaps |
 | [`AGENTS.md`](AGENTS.md) | Rules for AI coding agents working in this repo |
 
 ---
