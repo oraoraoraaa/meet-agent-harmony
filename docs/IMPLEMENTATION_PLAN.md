@@ -446,6 +446,24 @@ Compress only by cutting live POI snap and EN l10n, not by cutting Mode C or gro
 
 Update this table when decisions close.
 
+### Semifinal pickup and ETA hardening (2026-09-16)
+
+- Live driving polyline vertices now use AMap step durations. If step timing is missing,
+  the route uses distance interpolation and the data source is marked mixed.
+- At most four shortlisted live meeting coordinates receive a separate AMap driving
+  route. A point is omitted when the route fails or its returned endpoint is more
+  than 60 m from the proposed point. Driver ETA and displayed driver line then come
+  from that candidate route, not a fraction of the original trip.
+- AMap nearby entrance search supplies a landmark within 80 m without moving the
+  meeting coordinate. The text explicitly says that stopping conditions need on-site
+  confirmation. Live passenger paths must route successfully to remain in the list.
+- Offline Mode C still uses deterministic estimates and labels route samples as
+  unverified. Dual-phone sync remains in `ROADMAP.md` for a later phase.
+- Verification: 28 portable tests and four map lifecycle tests pass; unsigned ArkTS
+  HAP builds; API-24 emulator native smoke passes (3/3). Live AMap key exercised
+  driving steps, four candidate routes, and entrance lookup with a Xi'an scenario.
+  Native live-key planning and real curb suitability still need field validation.
+
 
 ### Performance and repository maintenance (2026-09-15)
 

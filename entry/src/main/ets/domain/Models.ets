@@ -90,6 +90,9 @@ export class EvaluatedOption {
   completionMin: number = 0;
   score: number = 0;
   passengerPolyline: GeoPoint[] = [];
+  driverPolyline: GeoPoint[] = [];
+  pickupNote: string = '';
+  landmark: string = '';
 }
 
 export class Suggestion {

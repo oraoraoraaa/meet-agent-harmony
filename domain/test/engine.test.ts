@@ -10,6 +10,7 @@ import {
   rankOptions,
   reachableModes,
   runEstimateAnalysis,
+  runAnalysis,
   scoreOption,
   type EvaluatedOption,
   type MobilityMode,
@@ -176,4 +177,55 @@ test('avoidTransit filters transit suggestions', async () => {
   };
   const result = await runEstimateAnalysis(scenario);
   assert.ok(result.suggestions.every((s) => s.mode !== 'transit'));
+});
+
+test('live candidate must have a routed driver arrival near the meeting coordinate', async () => {
+  const driver = { lon: 108.89, lat: 34.23 };
+  const passenger = { lon: 108.95, lat: 34.26 };
+  const base = buildStraightDrivingRoute(driver, passenger, { segmentM: 80 });
+  const scenario: Scenario = { driver, passenger, constraints: { allowedModes: ['walking'] } };
+  const result = await runAnalysis(scenario, {
+    getDrivingRoute(_from, to) {
+      if (to.lon === passenger.lon && to.lat === passenger.lat) {
+        return { ...base, dataSource: 'live' as const };
+      }
+      return { ...base, dataSource: 'live' as const, snappedDestinationM: 120 };
+    },
+    getPassengerPath() {
+      throw new Error('unreachable candidate must not trigger passenger routing');
+    },
+  });
+  assert.equal(result.suggestions.length, 0);
+  assert.equal(result.stayPut.recommended, true);
+});
+
+test('live recommendation uses candidate route ETA and keeps landmark separate from coordinates', async () => {
+  const driver = { lon: 108.89, lat: 34.23 };
+  const passenger = { lon: 108.95, lat: 34.26 };
+  const base = buildStraightDrivingRoute(driver, passenger, { segmentM: 80 });
+  const scenario: Scenario = { driver, passenger, constraints: { allowedModes: ['walking'] } };
+  const result = await runAnalysis(scenario, {
+    getDrivingRoute(_from, to) {
+      if (to.lon === passenger.lon && to.lat === passenger.lat) {
+        return { ...base, dataSource: 'live' as const };
+      }
+      return {
+        polyline: [driver, to],
+        route: [{ point: driver, driverSecs: 0, metersFromStart: 0 },
+          { point: to, driverSecs: 180, metersFromStart: 1000 }],
+        dataSource: 'live' as const,
+        snappedDestinationM: 4,
+      };
+    },
+    getPassengerPath(_mode, from, to) {
+      return { etaMin: 4, polyline: [from, to], dataSource: 'live' as const };
+    },
+    lookupPickupLandmark() { return '地铁站A口'; },
+  });
+  assert.ok(result.suggestions.length > 0);
+  const s = result.suggestions[0]!;
+  assert.equal(s.driverEtaMin, 3);
+  assert.equal(s.meetingPoint.name, '地铁站A口附近');
+  assert.deepEqual(s.driverRoutePolyline.at(-1), { lon: s.meetingPoint.lon, lat: s.meetingPoint.lat });
+  assert.match(s.rationale, /停车条件仍需现场确认/);
 });

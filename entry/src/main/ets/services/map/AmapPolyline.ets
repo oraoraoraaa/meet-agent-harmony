@@ -76,6 +76,53 @@ export function routePointsFromPolyline(polyline: GeoPoint[], durationSec: numbe
   return route;
 }
 
+export function routePointsFromSteps(steps: GeoPoint[][], stepSeconds: number[], totalSeconds: number): RoutePoint[] {
+  if (steps.length === 0 || steps.length !== stepSeconds.length) {
+    return [];
+  }
+  const route: RoutePoint[] = [];
+  let elapsed: number = 0;
+  let meters: number = 0;
+  for (let s = 0; s < steps.length; s++) {
+    const points: GeoPoint[] = steps[s];
+    const seconds: number = stepSeconds[s];
+    if (isNaN(seconds) || seconds < 0 || points.length === 0) {
+      return [];
+    }
+    let length: number = 0;
+    for (let i = 1; i < points.length; i++) {
+      length += haversineM(points[i - 1], points[i]);
+    }
+    if (length <= 0) {
+      continue;
+    }
+    const startElapsed: number = elapsed;
+    const startMeters: number = meters;
+    for (let i = 0; i < points.length; i++) {
+      if (i > 0) {
+        meters += haversineM(points[i - 1], points[i]);
+      }
+      const point: GeoPoint = points[i];
+      const secs: number = startElapsed + seconds * (meters - startMeters) / length;
+      const vertex: RoutePoint = new RoutePoint(new GeoPoint(point.lon, point.lat), secs, meters);
+      if (route.length > 0 && haversineM(route[route.length - 1].point, point) < 0.02) {
+        route[route.length - 1] = vertex;
+      } else {
+        route.push(vertex);
+      }
+    }
+    elapsed += seconds;
+  }
+  if (route.length < 2 || elapsed <= 0 || totalSeconds <= 0) {
+    return [];
+  }
+  const scale: number = totalSeconds / elapsed;
+  for (let i = 0; i < route.length; i++) {
+    route[i].driverSecs *= scale;
+  }
+  return route;
+}
+
 export function ensureEndpoints(polyline: GeoPoint[], from: GeoPoint, to: GeoPoint): GeoPoint[] {
   if (polyline.length === 0) {
     return [new GeoPoint(from.lon, from.lat), new GeoPoint(to.lon, to.lat)];

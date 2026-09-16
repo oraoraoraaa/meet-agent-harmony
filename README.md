@@ -243,7 +243,8 @@ Mode C must always work.
 
 | Layer | Status |
 | --- | --- |
-| Domain engine | Multi-modal ranking + agent grounding + session + AMap polyline helpers (`cd domain && npm test` → 25 pass) |
+| Domain engine | Multi-modal ranking + agent grounding + session + AMap polyline helpers (`cd domain && npm test` → 28 pass) |
+| Pickup validation | Live shortlist is routed to each candidate; destinations snapped over 60 m away are rejected. Nearby entrance names are landmarks, while parking legality remains for on-site confirmation. |
 | Home map | Interactive AMap JS (traffic) · search/tap → assign passenger/driver · POI labels |
 | 普通规划 | Draft-first read-only points · result map + card routes · lock/share |
 | Agent | OpenAI-compatible client, tool registry, orchestrator, `ChatPage` + route map |

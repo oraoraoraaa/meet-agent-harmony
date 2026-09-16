@@ -50,6 +50,7 @@ export interface MapProvider {
 
   /** Best-effort POI name list; estimate returns empty (no live index). */
   searchPoi(query: string, nearLon: number, nearLat: number, hasNear: boolean): Promise<string[]>;
+  lookupPickupLandmark(point: GeoPoint): Promise<string>;
 }
 
 /** Optional rich POI search for UI pick. */
@@ -93,6 +94,10 @@ export class EstimateMapProvider implements MapProvider {
 
   async searchPoi(_query: string, _nearLon: number, _nearLat: number, _hasNear: boolean): Promise<string[]> {
     return [];
+  }
+
+  async lookupPickupLandmark(_point: GeoPoint): Promise<string> {
+    return '';
   }
 }
 
@@ -172,6 +177,18 @@ export class HybridMapProvider implements MapProvider, PoiSearchCapable {
     }
   }
 
+  async lookupPickupLandmark(point: GeoPoint): Promise<string> {
+    if (this.live === null) {
+      return '';
+    }
+    try {
+      return await this.live.lookupPickupLandmark(point);
+    } catch (e) {
+      const _ignored: Object = e as Object;
+      return '';
+    }
+  }
+
   async searchPoiDetailed(
     query: string,
     nearLon: number,
@@ -209,6 +226,10 @@ class MapProviderAsAnalysis implements AnalysisProviders {
     city: string
   ): Promise<PassengerPathResult> {
     return this.provider.getPassengerPath(mode, from, to, city);
+  }
+
+  async lookupPickupLandmark(point: GeoPoint): Promise<string> {
+    return this.provider.lookupPickupLandmark(point);
   }
 }
 

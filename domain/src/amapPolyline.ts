@@ -94,6 +94,41 @@ export function routePointsFromPolyline(
   return route;
 }
 
+/** Preserve AMap step timing instead of treating congested and free-flowing roads alike. */
+export function routePointsFromSteps(
+  steps: readonly (readonly GeoPoint[])[],
+  stepSeconds: readonly number[],
+  totalSeconds: number,
+): RoutePoint[] {
+  if (steps.length === 0 || steps.length !== stepSeconds.length ||
+      stepSeconds.some((s) => !Number.isFinite(s) || s < 0)) return [];
+  const route: RoutePoint[] = [];
+  let elapsed = 0;
+  let meters = 0;
+  for (let s = 0; s < steps.length; s++) {
+    const points = steps[s]!;
+    if (points.length === 0) continue;
+    let length = 0;
+    for (let i = 1; i < points.length; i++) length += haversineM(points[i - 1]!, points[i]!);
+    if (length <= 0) continue;
+    const startElapsed = elapsed;
+    const startMeters = meters;
+    for (let i = 0; i < points.length; i++) {
+      if (i > 0) meters += haversineM(points[i - 1]!, points[i]!);
+      const point = points[i]!;
+      const secs = startElapsed + stepSeconds[s]! * (meters - startMeters) / length;
+      const last = route[route.length - 1];
+      if (last && haversineM(last.point, point) < 0.02) {
+        route[route.length - 1] = { point, driverSecs: secs, metersFromStart: meters };
+      } else route.push({ point, driverSecs: secs, metersFromStart: meters });
+    }
+    elapsed += stepSeconds[s]!;
+  }
+  if (route.length < 2 || elapsed <= 0 || totalSeconds <= 0) return [];
+  const scale = totalSeconds / elapsed;
+  return route.map((p) => ({ ...p, driverSecs: p.driverSecs * scale }));
+}
+
 /** Ensure endpoints match from/to when AMap slightly snaps them. */
 export function ensureEndpoints(
   polyline: readonly GeoPoint[],

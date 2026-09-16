@@ -33,6 +33,7 @@ export interface DrivingRouteResult {
   readonly polyline: readonly GeoPoint[];
   readonly route: readonly RoutePoint[];
   readonly dataSource: DataSource;
+  readonly snappedDestinationM?: number;
 }
 
 export interface PassengerPathResult {
@@ -49,6 +50,7 @@ export interface AnalysisProviders {
     to: GeoPoint,
     city?: string,
   ): Promise<PassengerPathResult> | PassengerPathResult;
+  lookupPickupLandmark?(point: GeoPoint): Promise<string> | string;
 }
 
 export interface AnalysisOptions {
@@ -143,27 +145,49 @@ export async function runAnalysis(
   const end = route[route.length - 1]!;
   const baselineDriverEtaMin = end.driverSecs / 60;
 
-  type EvalWithPath = EvaluatedOption & { passengerPolyline: readonly GeoPoint[] };
+  type EvalWithPath = EvaluatedOption & {
+    passengerPolyline: readonly GeoPoint[];
+    driverPolyline: readonly GeoPoint[];
+    landmark: string;
+    pickupNote: string;
+  };
   const evaluated: EvalWithPath[] = [];
 
   const candidates = generateRouteCandidates(route, passenger, cfg);
   for (const cand of candidates) {
+    let driverEtaMin = cand.driverEtaMin;
+    let driverPolyline = sliceDriverPolyline(fullPolyline, cand.routeIndex);
+    let pickupNote = '会合位置为路线采样点，请现场确认可停车与可步行到达';
+    if (driving.dataSource === 'live') {
+      const checked = await providers.getDrivingRoute(driver, cand.point);
+      if (checked.dataSource !== 'live' || checked.snappedDestinationM === undefined ||
+          checked.snappedDestinationM > 60 || checked.route.length < 2) continue;
+      driverEtaMin = checked.route[checked.route.length - 1]!.driverSecs / 60;
+      driverPolyline = checked.polyline.map((p) => ({ ...p }));
+      pickupNote = '驾车可达附近；停车条件仍需现场确认';
+    }
+    const landmark = driving.dataSource === 'live' && providers.lookupPickupLandmark
+      ? await providers.lookupPickupLandmark(cand.point) : '';
     const modes = allowedModesFromConstraints(scenario.constraints, cand.passengerStraightM, cfg);
     for (const mode of modes) {
       const path = await providers.getPassengerPath(mode, passenger, cand.point, scenario.city);
       dataSource = mergeDataSource(dataSource, path.dataSource);
+      if (driving.dataSource === 'live' && path.dataSource !== 'live') continue;
       if (!passesSoftCaps(mode, path.etaMin, scenario.constraints)) continue;
 
-      const score = scoreOption(cand.driverEtaMin, path.etaMin, mode, cfg);
+      const score = scoreOption(driverEtaMin, path.etaMin, mode, cfg);
       evaluated.push({
         meetingPoint: cand.point,
         routeIndex: cand.routeIndex,
         mode,
-        driverEtaMin: cand.driverEtaMin,
+        driverEtaMin,
         passengerEtaMin: path.etaMin,
-        completionMin: Math.max(cand.driverEtaMin, path.etaMin),
+        completionMin: Math.max(driverEtaMin, path.etaMin),
         score,
         passengerPolyline: path.polyline,
+        driverPolyline,
+        pickupNote,
+        landmark,
       });
     }
   }
@@ -187,14 +211,15 @@ export async function runAnalysis(
     return {
       mode: opt.mode,
       recommended: isRec,
-      meetingPoint: asNamed(opt.meetingPoint, `会合点·${modeLabelZh(opt.mode)}`, undefined),
+      meetingPoint: asNamed(opt.meetingPoint, withPath?.landmark
+        ? `${withPath.landmark}附近` : `会合点·${modeLabelZh(opt.mode)}`, undefined),
       driverEtaMin: opt.driverEtaMin,
       passengerEtaMin: opt.passengerEtaMin,
       completionMin: opt.completionMin,
       driverSavedMin,
       score: opt.score,
-      rationale: buildMoveRationale(opt.mode, opt.driverEtaMin, opt.passengerEtaMin, driverSavedMin),
-      driverRoutePolyline: sliceDriverPolyline(fullPolyline, opt.routeIndex),
+      rationale: `${buildMoveRationale(opt.mode, opt.driverEtaMin, opt.passengerEtaMin, driverSavedMin)} ${withPath?.pickupNote ?? ''}。`,
+      driverRoutePolyline: withPath?.driverPolyline ?? sliceDriverPolyline(fullPolyline, opt.routeIndex),
       passengerPathPolyline: passengerPolyline.map((p) => ({ lon: p.lon, lat: p.lat })),
     };
   });

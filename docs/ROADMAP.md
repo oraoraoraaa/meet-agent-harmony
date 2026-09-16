@@ -14,7 +14,8 @@ See `IMPLEMENTATION_PLAN.md`.
 
 ## v1.1 — Practical hardening
 
-- Better semantic meeting points (POI quality filters)
+- Improve pickup suitability beyond route reachability and nearby entrance landmarks: curb rules, correct entrance side, and explicit user adjustment before lock
+- Continue testing candidate driving and passenger arrival on real streets and devices
 - Richer transit step display
 - Stronger preference memory
 - Improved deep links for more map apps

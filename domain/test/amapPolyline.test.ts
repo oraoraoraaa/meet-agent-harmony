@@ -6,6 +6,7 @@ import {
   ensureEndpoints,
   mergePolylines,
   routePointsFromPolyline,
+  routePointsFromSteps,
 } from '../src/amapPolyline.ts';
 
 test('decodeAmapPolyline parses semicolon lon,lat pairs', () => {
@@ -45,4 +46,14 @@ test('ensureEndpoints pins first/last to from/to', () => {
   assert.equal(fixed[0].lon, 10);
   assert.equal(fixed[fixed.length - 1].lat, 20);
   assert.equal(fixed.length, 3);
+});
+
+test('routePointsFromSteps follows unequal step durations and ends at route ETA', () => {
+  const a = decodeAmapPolyline('108.9,34.2;108.901,34.2');
+  const b = decodeAmapPolyline('108.901,34.2;108.902,34.2');
+  const route = routePointsFromSteps([a, b], [240, 60], 300);
+  assert.equal(route.length, 3);
+  assert.equal(route[1]!.driverSecs, 240);
+  assert.equal(route[2]!.driverSecs, 300);
+  assert.deepEqual(routePointsFromSteps([a, b], [240, -1], 300), []);
 });

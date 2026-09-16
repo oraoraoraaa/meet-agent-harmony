@@ -16,18 +16,22 @@ import {
 } from '../../domain/RunAnalysis';
 import {
   DATA_LIVE,
+  DATA_LIVE_FALLBACK,
   GeoPoint,
   MODE_BICYCLE,
   MODE_TRANSIT,
   MODE_WALKING,
-  MobilityMode
+  MobilityMode,
+  RoutePoint
 } from '../../domain/Models';
 import {
   decodeAmapPolyline,
   ensureEndpoints,
   mergePolylines,
-  routePointsFromPolyline
+  routePointsFromPolyline,
+  routePointsFromSteps
 } from './AmapPolyline';
+import { haversineM } from '../../domain/Geo';
 
 const AMAP_BASE: string = 'https://restapi.amap.com/v3';
 const DEFAULT_TIMEOUT_MS: number = 12000;
@@ -146,6 +150,7 @@ export class AmapWebMapProvider {
     const durationSec: number = asNumber(firstPath['duration'], 0);
     const steps: Object[] = asArray(firstPath['steps']);
     const stepPolys: GeoPoint[][] = [];
+    const stepSeconds: number[] = [];
     for (let i = 0; i < steps.length; i++) {
       const step: Record<string, Object> | null = asObject(steps[i]);
       if (step === null) {
@@ -155,6 +160,7 @@ export class AmapWebMapProvider {
       const decoded: GeoPoint[] = decodeAmapPolyline(polyStr);
       if (decoded.length > 0) {
         stepPolys.push(decoded);
+        stepSeconds.push(asNumber(step['duration'], -1));
       }
     }
     let polyline: GeoPoint[] = mergePolylines(stepPolys);
@@ -163,14 +169,31 @@ export class AmapWebMapProvider {
       const pathPoly: string = asString(firstPath['polyline'], '');
       polyline = decodeAmapPolyline(pathPoly);
     }
+    const rawEnd: GeoPoint = polyline.length > 0 ? polyline[polyline.length - 1] : to;
+    const snappedDestinationM: number = haversineM(rawEnd, to);
+    let route: RoutePoint[] = routePointsFromSteps(stepPolys, stepSeconds, durationSec);
+    if (route.length >= 2) {
+      polyline = [];
+      for (let i = 0; i < route.length; i++) {
+        polyline.push(route[i].point);
+      }
+    }
     polyline = ensureEndpoints(polyline, from, to);
     if (polyline.length < 2) {
       throw new Error('amap driving: empty polyline');
     }
     const out: DrivingRouteResult = new DrivingRouteResult();
     out.polyline = polyline;
-    out.route = routePointsFromPolyline(polyline, durationSec);
-    out.dataSource = DATA_LIVE;
+    const interpolated: boolean = route.length < 2;
+    if (interpolated) {
+      route = routePointsFromPolyline(polyline, durationSec);
+    } else {
+      route[0].point = polyline[0];
+      route[route.length - 1].point = polyline[polyline.length - 1];
+    }
+    out.route = route;
+    out.dataSource = interpolated ? DATA_LIVE_FALLBACK : DATA_LIVE;
+    out.snappedDestinationM = snappedDestinationM;
     return out;
   }
 
@@ -210,6 +233,39 @@ export class AmapWebMapProvider {
    */
   async reverseGeocode(point: GeoPoint): Promise<string> {
     return this.reverseGeocodeLabel(point);
+  }
+
+  /** Nearby entrance is a landmark only; its coordinate never replaces the routed road point. */
+  async lookupPickupLandmark(point: GeoPoint): Promise<string> {
+    const query: string = encodeQuery([
+      `key=${urlEncode(this.key)}`,
+      `location=${urlEncode(lonLatParam(point))}`,
+      `keywords=${urlEncode('出入口')}`,
+      'radius=80',
+      'sortrule=distance',
+      'offset=8',
+      'extensions=base'
+    ]);
+    const root: Record<string, Object> = await this.getJson(`${AMAP_BASE}/place/around?${query}`);
+    this.assertStatus(root, 'pickup landmark');
+    const pois: Object[] = asArray(root['pois']);
+    for (let i = 0; i < pois.length; i++) {
+      const poi: Record<string, Object> | null = asObject(pois[i]);
+      if (poi === null) {
+        continue;
+      }
+      const name: string = asString(poi['name'], '').trim();
+      const loc: string = asString(poi['location'], '');
+      const comma: number = loc.indexOf(',');
+      if (name.length === 0 || comma <= 0 || name.indexOf('内部专用') >= 0) {
+        continue;
+      }
+      const poiPoint: GeoPoint = new GeoPoint(Number(loc.substring(0, comma)), Number(loc.substring(comma + 1)));
+      if (!isNaN(poiPoint.lon) && !isNaN(poiPoint.lat) && haversineM(point, poiPoint) <= 80) {
+        return name;
+      }
+    }
+    return '';
   }
 
   async reverseGeocodeLabel(point: GeoPoint): Promise<string> {

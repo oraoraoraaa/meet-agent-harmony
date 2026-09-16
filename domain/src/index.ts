@@ -50,6 +50,7 @@ export {
   decodeAmapPolyline,
   mergePolylines,
   routePointsFromPolyline,
+  routePointsFromSteps,
   ensureEndpoints,
 } from './amapPolyline.ts';
 
