@@ -246,8 +246,9 @@ struct LockedSessionPage {
     });
   }
 
-  private goBack(): void {
-    router.back();
+  pageTransition() {
+    PageTransitionEnter({ duration: 0 })
+    PageTransitionExit({ duration: 0 })
   }
 
   build() {
@@ -257,18 +258,6 @@ struct LockedSessionPage {
       Column() {
         // header
         Row() {
-          Button({ type: ButtonType.Normal }) {
-            Text('‹')
-              .fontSize(24)
-              .fontColor(AppTheme.ink)
-          }
-          .width(40)
-          .height(40)
-          .backgroundColor(Color.Transparent)
-          .onClick(() => {
-            this.goBack();
-          })
-
           Text('我的行程')
             .fontSize(18)
             .fontWeight(FontWeight.Bold)

@@ -1,6 +1,6 @@
 import { BottomNavigation } from '../common/BottomNavigation';
 import { common } from '@kit.AbilityKit';
-import { promptAction, router } from '@kit.ArkUI';
+import { promptAction } from '@kit.ArkUI';
 import {
   AppSettings,
   LLM_MODE_OFFLINE,
@@ -124,24 +124,17 @@ struct SettingsPage {
       .width('100%')
   }
 
+  pageTransition() {
+    PageTransitionEnter({ duration: 0 })
+    PageTransitionExit({ duration: 0 })
+  }
+
   build() {
     Stack() {
       StageBackground()
 
       Column() {
         Row() {
-          Button({ type: ButtonType.Normal }) {
-            Text('‹')
-              .fontSize(24)
-              .fontColor(AppTheme.ink)
-          }
-          .width(40)
-          .height(40)
-          .backgroundColor(Color.Transparent)
-          .onClick(() => {
-            router.back();
-          })
-
           Text('设置')
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
@@ -149,7 +142,6 @@ struct SettingsPage {
             .layoutWeight(1)
             .textAlign(TextAlign.Center)
 
-          Blank().width(40)
         }
         .width('100%')
         .padding({ left: 8, right: 8, top: AppLayout.headerTop(), bottom: 4 })

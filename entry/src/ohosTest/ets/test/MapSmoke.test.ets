@@ -41,13 +41,16 @@ export default function mapSmokeTest(): void {
       expect(await driver.waitForComponent(ON.text('我的行程'), 15000)).not().assertNull();
       await driver.delayMs(2000);
       expect(await driver.screenCap(context.filesDir + '/meetagent-locked.png')).assertTrue();
+      expect(await driver.findComponent(ON.text('‹'))).assertNull();
       await (await driver.findComponent(ON.text('助手'))).click();
       expect(await driver.waitForComponent(ON.text('智能助手'), 5000)).not().assertNull();
       await driver.delayMs(1000);
       await driver.screenCap(context.filesDir + '/meetagent-chat.png');
+      expect(await driver.findComponent(ON.text('‹'))).assertNull();
       await (await driver.findComponent(ON.text('设置').within(ON.type('Column')))).click();
       await driver.delayMs(1000);
       await driver.screenCap(context.filesDir + '/meetagent-settings.png');
+      expect(await driver.findComponent(ON.text('‹'))).assertNull();
     });
     it('offline preferences still produce labeled estimates without sample trips', 0, async () => {
       const delegator = abilityDelegatorRegistry.getAbilityDelegator();

@@ -498,6 +498,11 @@ struct ChatPage {
     });
   }
 
+  pageTransition() {
+    PageTransitionEnter({ duration: 0 })
+    PageTransitionExit({ duration: 0 })
+  }
+
   build() {
     Stack() {
       StageBackground()
@@ -505,18 +510,6 @@ struct ChatPage {
       Column() {
         // header
         Row() {
-          Button({ type: ButtonType.Normal }) {
-            Text('‹')
-              .fontSize(24)
-              .fontColor(AppTheme.ink)
-          }
-          .width(40)
-          .height(40)
-          .backgroundColor(Color.Transparent)
-          .onClick(() => {
-            router.back();
-          })
-
           Column({ space: 2 }) {
             Text('智能助手')
               .fontSize(18)

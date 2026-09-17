@@ -1,7 +1,7 @@
 import { router, promptAction } from '@kit.ArkUI';
 import { AppTheme } from './AppTheme';
 
-/** Reuse existing routes so tab changes never accumulate duplicate pages. */
+/** Tabs replace the current route instead of creating a drill-down history. */
 @Component
 export struct BottomNavigation {
   @Prop active: string = 'map';
@@ -9,7 +9,7 @@ export struct BottomNavigation {
 
   private open(id: string, page: string): void {
     if (id === this.active && !this.allowActiveNavigation) return;
-    router.pushUrl({ url: page }, router.RouterMode.Single).catch(() => {
+    router.replaceUrl({ url: page }, router.RouterMode.Single).catch(() => {
       promptAction.showToast({ message: '暂时无法打开，请重试' });
     });
   }

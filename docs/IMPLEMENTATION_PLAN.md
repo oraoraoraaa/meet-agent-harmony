@@ -493,3 +493,7 @@ The portable domain and ArkTS ports, fixtures, and submission assets are intenti
 Map styling uses the existing AMap service and its documented `fresh` style. This is an
 Apple-inspired presentation, not Apple Maps cartography. Vendor attribution stays visible.
 Fixtures remain under `fixtures/` and domain tests as development data only.
+
+Tab navigation correction: bottom tabs replace the current route, with zero-duration
+entry/exit transitions on main screens. Main tab headers have no back buttons; the
+planning detail retains its back action.

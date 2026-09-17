@@ -313,6 +313,11 @@ struct Index {
     }.width('100%').height(38)
   }
 
+  pageTransition() {
+    PageTransitionEnter({ duration: 0 })
+    PageTransitionExit({ duration: 0 })
+  }
+
   build() {
     Stack() {
       StageBackground()

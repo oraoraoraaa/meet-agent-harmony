@@ -690,6 +690,11 @@ struct PlanPage {
     });
   }
 
+  pageTransition() {
+    // A bottom-tab selection can also leave this detail screen.
+    PageTransitionExit({ duration: 0 })
+  }
+
   build() {
     Stack() {
       StageBackground()
