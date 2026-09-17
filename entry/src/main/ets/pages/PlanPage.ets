@@ -65,6 +65,7 @@ struct PlanPage {
   @State allowBike: boolean = true;
   @State allowTransit: boolean = true;
   @State avoidTransit: boolean = false;
+  @State preferMetro: boolean = false;
   @State maxWalkMin: number = 12;
   @State planning: boolean = false;
   @State statusText: string = '确认起终点后点击「开始路线优化」';
@@ -268,6 +269,7 @@ struct PlanPage {
     );
     s.constraints.allowedModes = this.buildAllowedModes();
     s.constraints.avoidTransit = this.avoidTransit;
+    s.constraints.preferMetro = this.preferMetro;
     s.constraints.maxPassengerWalkMin = this.maxWalkMin;
     return s;
   }
@@ -538,18 +540,10 @@ struct PlanPage {
         this.previewPassenger = c.passengerPolyline.slice();
         this.previewMeeting = c.meeting;
         this.summaryTitle = c.recommended ? '推荐方案' : c.modeLabel;
+        this.summaryBody = c.rationale;
         if (c.kind === 'stayPut') {
-          this.summaryBody =
-            `乘客原地等待；司机约 ${c.driverEtaMin.toFixed(0)} 分钟到达。`;
           TripSessionStore.selectPlan('stayPut');
         } else {
-          const meetUi: string = this.placeLabel(
-            c.meeting.name.length > 0 ? c.meeting.name : '会合点'
-          );
-          this.summaryBody =
-            `乘客：${c.modeLabel}到 ${meetUi}\n` +
-            `司机：约 ${c.driverEtaMin.toFixed(0)} 分钟` +
-            (c.driverSavedMin > 0.4 ? `，节省约 ${c.driverSavedMin.toFixed(0)} 分钟车程` : '');
           if (c.suggestionIndex >= 0) {
             TripSessionStore.selectPlan(`suggestion:${c.suggestionIndex}`);
           }
@@ -873,18 +867,19 @@ struct PlanPage {
             .onClick(() => {
               this.allowBike = !this.allowBike;
             })
-          Button('公交', { type: ButtonType.Capsule })
+          Button('公共交通', { type: ButtonType.Capsule })
             .fontSize(12)
             .height(32)
             .backgroundColor(this.allowTransit ? AppTheme.accent : AppTheme.glassBgLight)
             .fontColor(this.allowTransit ? Color.White : AppTheme.ink)
             .onClick(() => {
               this.allowTransit = !this.allowTransit;
+              if (!this.allowTransit) this.preferMetro = false;
             })
         }
         .width('100%')
         Row() {
-          Text('避免公交')
+          Text('避免公共交通')
             .fontSize(14)
             .fontColor(AppTheme.ink)
             .layoutWeight(1)
@@ -892,9 +887,30 @@ struct PlanPage {
             .selectedColor(AppTheme.accent)
             .onChange((on: boolean) => {
               this.avoidTransit = on;
+              if (on) this.preferMetro = false;
             })
         }
         .width('100%')
+        Text('计算策略')
+          .fontSize(13).fontColor(AppTheme.inkMuted).width('100%')
+        Row({ space: 8 }) {
+          Button('综合最优', { type: ButtonType.Capsule })
+            .fontSize(12).height(32)
+            .backgroundColor(!this.preferMetro ? AppTheme.accent : AppTheme.glassBgLight)
+            .fontColor(!this.preferMetro ? Color.White : AppTheme.ink)
+            .onClick(() => { this.preferMetro = false; })
+          Button('地铁优先', { type: ButtonType.Capsule })
+            .fontSize(12).height(32)
+            .backgroundColor(this.preferMetro ? AppTheme.accent : AppTheme.glassBgLight)
+            .fontColor(this.preferMetro ? Color.White : AppTheme.ink)
+            .onClick(() => {
+              this.preferMetro = true;
+              this.allowTransit = true;
+              this.avoidTransit = false;
+            })
+        }.width('100%')
+        Text('优先选择地铁、列车可达的车站；没有合适路线时使用综合方案。')
+          .fontSize(11).fontColor(AppTheme.inkSoft).width('100%')
         Text(`步行上限约 ${this.maxWalkMin.toFixed(0)} 分钟`)
           .fontSize(12)
           .fontColor(AppTheme.inkMuted)

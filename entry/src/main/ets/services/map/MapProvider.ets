@@ -24,6 +24,7 @@ import {
   DataSource,
   GeoPoint,
   MobilityMode,
+  NamedPoint,
   RecommendationSet,
   Scenario
 } from '../../domain/Models';
@@ -42,7 +43,8 @@ export interface MapProvider {
     mode: MobilityMode,
     from: GeoPoint,
     to: GeoPoint,
-    city: string
+    city: string,
+    preferMetro?: boolean
   ): Promise<PassengerPathResult>;
 
   /** Best-effort place label; estimate returns lat,lon text. */
@@ -50,6 +52,7 @@ export interface MapProvider {
 
   /** Best-effort POI name list; estimate returns empty (no live index). */
   searchPoi(query: string, nearLon: number, nearLat: number, hasNear: boolean): Promise<string[]>;
+  getRailStations(near: GeoPoint, radiusM: number): Promise<NamedPoint[]>;
   lookupPickupLandmark(point: GeoPoint): Promise<string>;
 }
 
@@ -78,7 +81,8 @@ export class EstimateMapProvider implements MapProvider {
     mode: MobilityMode,
     from: GeoPoint,
     to: GeoPoint,
-    _city: string
+    _city: string,
+    _preferMetro: boolean = false
   ): Promise<PassengerPathResult> {
     const path: PassengerPathEstimate = estimatePassengerPath(mode, from, to);
     const out: PassengerPathResult = new PassengerPathResult();
@@ -93,6 +97,10 @@ export class EstimateMapProvider implements MapProvider {
   }
 
   async searchPoi(_query: string, _nearLon: number, _nearLat: number, _hasNear: boolean): Promise<string[]> {
+    return [];
+  }
+
+  async getRailStations(_near: GeoPoint, _radiusM: number): Promise<NamedPoint[]> {
     return [];
   }
 
@@ -138,16 +146,17 @@ export class HybridMapProvider implements MapProvider, PoiSearchCapable {
     mode: MobilityMode,
     from: GeoPoint,
     to: GeoPoint,
-    city: string
+    city: string,
+    preferMetro: boolean = false
   ): Promise<PassengerPathResult> {
     if (this.live === null) {
-      return this.estimate.getPassengerPath(mode, from, to, city);
+      return this.estimate.getPassengerPath(mode, from, to, city, preferMetro);
     }
     try {
-      return await this.live.getPassengerPath(mode, from, to, city);
+      return await this.live.getPassengerPath(mode, from, to, city, preferMetro);
     } catch (e) {
       const _ignored: Object = e as Object;
-      const fallback: PassengerPathResult = await this.estimate.getPassengerPath(mode, from, to, city);
+      const fallback: PassengerPathResult = await this.estimate.getPassengerPath(mode, from, to, city, preferMetro);
       fallback.dataSource = DATA_LIVE_FALLBACK;
       return fallback;
     }
@@ -174,6 +183,15 @@ export class HybridMapProvider implements MapProvider, PoiSearchCapable {
     } catch (e) {
       const _ignored: Object = e as Object;
       return this.estimate.searchPoi(query, nearLon, nearLat, hasNear);
+    }
+  }
+
+  async getRailStations(near: GeoPoint, radiusM: number): Promise<NamedPoint[]> {
+    if (this.live === null) return [];
+    try {
+      return await this.live.getRailStations(near, radiusM);
+    } catch (_) {
+      return [];
     }
   }
 
@@ -223,9 +241,14 @@ class MapProviderAsAnalysis implements AnalysisProviders {
     mode: MobilityMode,
     from: GeoPoint,
     to: GeoPoint,
-    city: string
+    city: string,
+    preferMetro: boolean = false
   ): Promise<PassengerPathResult> {
-    return this.provider.getPassengerPath(mode, from, to, city);
+    return this.provider.getPassengerPath(mode, from, to, city, preferMetro);
+  }
+
+  async getRailStations(near: GeoPoint, radiusM: number): Promise<NamedPoint[]> {
+    return this.provider.getRailStations(near, radiusM);
   }
 
   async lookupPickupLandmark(point: GeoPoint): Promise<string> {

@@ -11,6 +11,7 @@ import type {
   EvaluatedOption,
   GeoPoint,
   MobilityMode,
+  NamedPoint,
   RoutePoint,
 } from './models.ts';
 import { haversineM } from './geo.ts';
@@ -188,4 +189,35 @@ export function sliceDriverPolyline(
   if (full.length === 0) return [];
   const end = Math.min(full.length - 1, Math.max(0, routeIndex));
   return full.slice(0, end + 1).map((p) => ({ lon: p.lon, lat: p.lat }));
+}
+
+/** Reserve a bounded share of the candidate budget for real station POIs. */
+export function addStationCandidates(
+  road: readonly Candidate[], stations: readonly NamedPoint[], driver: GeoPoint,
+  passenger: GeoPoint, preferMetro: boolean, cfg: EngineConfig = DEFAULT_ENGINE_CONFIG,
+): Candidate[] {
+  const sorted = stations.filter(p => Number.isFinite(p.lon) && Number.isFinite(p.lat) && !!p.name)
+    .slice().sort((a, b) =>
+      (haversineM(driver, a) + haversineM(passenger, a)) -
+      (haversineM(driver, b) + haversineM(passenger, b)));
+  const selected: Candidate[] = [];
+  const budget = preferMetro ? cfg.maxCandidates : Math.max(1, Math.floor(cfg.maxCandidates / 2));
+  for (const p of sorted) {
+    if (selected.length >= budget) break;
+    if (selected.some(c => haversineM(c.point, p) < cfg.minCandidateSpacingM)) continue;
+    selected.push({ point: p, stationName: p.name, routeIndex: -1 - selected.length,
+      driverEtaMin: 0, passengerStraightM: haversineM(passenger, p) });
+  }
+  return [...selected, ...road.slice(0, Math.max(0, cfg.maxCandidates - selected.length))];
+}
+
+/** Prefer rail only among plans that still meet the stay-put improvement threshold. */
+export function rankWithMetroPreference(
+  options: readonly EvaluatedOption[], baseline: number, preferMetro: boolean,
+  cfg: EngineConfig = DEFAULT_ENGINE_CONFIG,
+): EvaluatedOption[] {
+  const ranked = rankOptions(options);
+  if (!preferMetro) return ranked;
+  const preferred = ranked.filter(o => o.usesRail && o.score <= baseline - cfg.minImprovementMin);
+  return [...preferred, ...ranked.filter(o => !preferred.includes(o))];
 }

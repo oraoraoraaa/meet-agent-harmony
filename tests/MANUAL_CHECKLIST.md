@@ -4,6 +4,8 @@
 - [x] Domain engine/grounding/session suite.
 - [x] Map lifecycle tests and generated JavaScript syntax validation.
 - [x] Emulator map selections → live planning → confirm lock → assistant/settings tabs.
+- [x] 公共交通 label and 地铁优先 selection render correctly; live station entrance is offered.
+- [x] Rail preference, station eligibility, API parsing and unavailable-data fallback tests.
 - [ ] Physical phone pass, including keyboard, larger font sizes and external navigation app handoff.
 
 Visual review: empty home, map search and assignment, preference form, result cards,

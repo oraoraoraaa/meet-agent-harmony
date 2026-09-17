@@ -29,7 +29,11 @@ export default function mapSmokeTest(): void {
       expect(await driver.findComponent(ON.text('在地图上选择乘客位置'))).assertNull();
       await (await driver.waitForComponent(ON.text('规划会合路线'), 5000)).click();
       await driver.delayMs(500);
+      expect(await driver.findComponent(ON.text('公共交通'))).not().assertNull();
+      await (await driver.waitForComponent(ON.text('地铁优先'), 5000)).click();
+      await driver.delayMs(300);
       await driver.screenCap(context.filesDir + '/meetagent-form.png');
+      await (await driver.findComponent(ON.type('Scroll'))).scrollToBottom();
       await (await driver.waitForComponent(ON.text('开始路线优化'), 5000)).click();
       expect(await driver.waitForComponent(ON.text('优化结果'), 60000)).not().assertNull();
       await driver.delayMs(2000);
@@ -77,6 +81,7 @@ export default function mapSmokeTest(): void {
         await driver.delayMs(800);
         await driver.screenCap(context.filesDir + '/meetagent-offline-home.png');
         await (await driver.findComponent(ON.text('规划会合路线'))).click();
+        await (await driver.findComponent(ON.type('Scroll'))).scrollToBottom();
         await (await driver.waitForComponent(ON.text('开始路线优化'), 5000)).click();
         expect(await driver.waitForComponent(ON.text('估算'), 10000)).not().assertNull();
         await driver.delayMs(1000);

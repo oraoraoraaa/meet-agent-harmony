@@ -318,7 +318,7 @@ A complete contribution:
 cd domain && node --experimental-strip-types --test test/**/*.test.ts
 
 # Map host lifecycle checks (Node 22.13+; not native Web rendering)
-node --test tests/map-lifecycle.test.mjs tests/production-reply.test.mjs
+node --test tests/map-lifecycle.test.mjs tests/production-reply.test.mjs tests/rail-provider.test.mjs
 
 # Unsigned SDK build (macOS default DevEco installation)
 PATH="/Applications/DevEco-Studio.app/Contents/tools/node/bin:$PATH" \

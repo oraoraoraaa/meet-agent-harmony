@@ -1,10 +1,11 @@
 import {
   allowedModesFromConstraints,
+  addStationCandidates,
+  rankWithMetroPreference,
   bestPerMode,
   decideSwitch,
   generateRouteCandidates,
   passesSoftCaps,
-  rankOptions,
   scoreOption,
   sliceDriverPolyline
 } from './Engine';
@@ -36,6 +37,7 @@ export class DrivingRouteResult {
 }
 
 export class PassengerPathResult {
+  usesRail: boolean = false;
   etaMin: number = 0;
   polyline: GeoPoint[] = [];
   dataSource: DataSource = DATA_ESTIMATE;
@@ -48,9 +50,11 @@ export interface AnalysisProviders {
     mode: MobilityMode,
     from: GeoPoint,
     to: GeoPoint,
-    city: string
+    city: string,
+    preferMetro?: boolean
   ): Promise<PassengerPathResult>;
 
+  getRailStations?(near: GeoPoint, radiusM: number): Promise<NamedPoint[]>;
   lookupPickupLandmark?(point: GeoPoint): Promise<string>;
 }
 
@@ -131,41 +135,58 @@ export async function runAnalysis(
 
   const end: RoutePoint = route[route.length - 1];
   const baselineDriverEtaMin: number = end.driverSecs / 60;
-  const candidates: Candidate[] = generateRouteCandidates(route, passengerGeo, cfg);
+  let candidates: Candidate[] = generateRouteCandidates(route, passengerGeo, cfg);
+  const preferMetro: boolean = scenario.constraints.preferMetro;
+  const allowTransit: boolean = !scenario.constraints.avoidTransit &&
+    scenario.constraints.allowedModes.indexOf('transit') >= 0;
+  if (allowTransit && providers.getRailStations !== undefined) {
+    try {
+      const stations: NamedPoint[] = await providers.getRailStations(
+        route[Math.floor(route.length / 2)].point, cfg.transitReachM);
+      candidates = addStationCandidates(candidates, stations, driverGeo, passengerGeo, preferMetro, cfg);
+    } catch (_) { /* Station search failure keeps ordinary planning available. */ }
+  }
   const evaluated: EvaluatedOption[] = [];
 
   for (let i = 0; i < candidates.length; i++) {
     const cand: Candidate = candidates[i];
+    const isStation: boolean = cand.stationName.length > 0;
     let driverEtaMin: number = cand.driverEtaMin;
     let driverLine: GeoPoint[] = sliceDriverPolyline(fullPolyline, cand.routeIndex);
     let pickupNote: string = '会合位置为路线采样点，请现场确认可停车与可步行到达';
-    if (driving.dataSource === DATA_LIVE) {
+    if (driving.dataSource === DATA_LIVE || isStation) {
       const candidateRoute: DrivingRouteResult = await providers.getDrivingRoute(driverGeo, cand.point);
-      if (candidateRoute.dataSource !== DATA_LIVE || candidateRoute.snappedDestinationM < 0 ||
-        candidateRoute.snappedDestinationM > 60 || candidateRoute.route.length < 2) {
+      if (candidateRoute.route.length < 2 || (!isStation &&
+        (candidateRoute.dataSource !== DATA_LIVE || candidateRoute.snappedDestinationM < 0 ||
+        candidateRoute.snappedDestinationM > 60))) {
         continue;
       }
+      dataSource = mergeDataSource(dataSource, candidateRoute.dataSource);
       driverEtaMin = candidateRoute.route[candidateRoute.route.length - 1].driverSecs / 60;
       driverLine = copyPolyline(candidateRoute.polyline);
-      pickupNote = '驾车可达附近；停车条件仍需现场确认';
+      pickupNote = isStation ? '车站会合点' : '驾车可达附近；停车条件仍需现场确认';
     }
-    let landmark: string = '';
-    if (providers.lookupPickupLandmark !== undefined && driving.dataSource === DATA_LIVE) {
+    let landmark: string = cand.stationName;
+    if (!isStation && providers.lookupPickupLandmark !== undefined && driving.dataSource === DATA_LIVE) {
       landmark = await providers.lookupPickupLandmark(cand.point);
     }
     const modes: MobilityMode[] = allowedModesFromConstraints(scenario.constraints, cand.passengerStraightM, cfg);
+    if (isStation && allowTransit && modes.indexOf('transit') < 0) modes.push('transit');
     for (let m = 0; m < modes.length; m++) {
       const mode: MobilityMode = modes[m];
       const path: PassengerPathResult =
-        await providers.getPassengerPath(mode, passengerGeo, cand.point, scenario.city);
+        await providers.getPassengerPath(mode, passengerGeo, cand.point, scenario.city, preferMetro);
       dataSource = mergeDataSource(dataSource, path.dataSource);
-      if (driving.dataSource === DATA_LIVE && path.dataSource !== DATA_LIVE) {
+      if (!isStation && driving.dataSource === DATA_LIVE && path.dataSource !== DATA_LIVE) {
         continue;
       }
+      if (!Number.isFinite(path.etaMin) || path.etaMin < 0) continue;
       if (!passesSoftCaps(mode, path.etaMin, scenario.constraints)) {
         continue;
       }
       const opt: EvaluatedOption = new EvaluatedOption();
+      opt.usesRail = mode === 'transit' && path.usesRail && path.dataSource === DATA_LIVE;
+      opt.isStation = isStation;
       opt.meetingPoint = cand.point;
       opt.routeIndex = cand.routeIndex;
       opt.mode = mode;
@@ -181,10 +202,12 @@ export async function runAnalysis(
     }
   }
 
-  const ranked: EvaluatedOption[] = rankOptions(evaluated);
+  const ranked: EvaluatedOption[] = rankWithMetroPreference(evaluated, baselineDriverEtaMin, preferMetro, cfg);
   const perMode: EvaluatedOption[] = bestPerMode(ranked);
   const winner: EvaluatedOption | undefined = decideSwitch(baselineDriverEtaMin, ranked, cfg);
 
+  const strategyNote: string = preferMetro && (winner === undefined || !winner.usesRail)
+    ? ' 地铁优先未找到更合适的轨道交通方案，已按综合策略计算。' : '';
   const suggestions: Suggestion[] = [];
   for (let i = 0; i < perMode.length; i++) {
     const opt: EvaluatedOption = perMode[i];
@@ -199,14 +222,14 @@ export async function runAnalysis(
     const s: Suggestion = new Suggestion();
     s.mode = opt.mode;
     s.recommended = isRec;
-    s.meetingPoint = asNamed(opt.meetingPoint, opt.landmark.length > 0 ? `${opt.landmark}附近` :
+    s.meetingPoint = asNamed(opt.meetingPoint, opt.landmark.length > 0 ? (opt.isStation ? opt.landmark : `${opt.landmark}附近`) :
       `会合点·${modeLabelZh(opt.mode)}`, '');
     s.driverEtaMin = opt.driverEtaMin;
     s.passengerEtaMin = opt.passengerEtaMin;
     s.completionMin = opt.completionMin;
     s.driverSavedMin = driverSavedMin;
     s.score = opt.score;
-    s.rationale = `${buildMoveRationale(opt.mode, opt.driverEtaMin, opt.passengerEtaMin, driverSavedMin)} ${opt.pickupNote}。`;
+    s.rationale = `${buildMoveRationale(opt.mode, opt.driverEtaMin, opt.passengerEtaMin, driverSavedMin)} ${opt.pickupNote}。${opt.usesRail ? ' 含地铁或列车行程。' : ''}${strategyNote}`;
     s.driverRoutePolyline = copyPolyline(opt.driverPolyline);
     s.passengerPathPolyline = copyPolyline(opt.passengerPolyline);
     suggestions.push(s);
@@ -248,7 +271,7 @@ export async function runAnalysis(
   stayPut.completionMin = baselineDriverEtaMin;
   const stayName: string = passenger.name.length > 0 ? passenger.name : '乘客位置';
   stayPut.meetingPoint = asNamed(passengerGeo, stayName, passenger.address);
-  stayPut.rationale = templateStayRationale(baselineDriverEtaMin);
+  stayPut.rationale = templateStayRationale(baselineDriverEtaMin) + strategyNote;
   stayPut.driverRoutePolyline = fullPolyline.length > 0 ? fullPolyline : [driverGeo, passengerGeo];
 
   result.dataSource = dataSource;

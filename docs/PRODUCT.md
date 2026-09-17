@@ -46,7 +46,7 @@ Receives a shared plan (text/link). Does not need the app installed for v1.
 
 ### US-2 Natural language constraints
 
-**As** a user, **I want** to say constraints in chat (“最多走8分钟，不坐公交”) **so that** ranking respects them.
+**As** a user, **I want** to say constraints in chat (“最多走8分钟，不坐公共交通”) **so that** ranking respects them.
 
 **Acceptance**
 

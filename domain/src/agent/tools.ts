@@ -34,6 +34,7 @@ export const AGENT_TOOL_DEFINITIONS: readonly ToolDefinition[] = [
         maxPassengerWalkMin: { type: 'number' },
         maxPassengerBikeMin: { type: 'number' },
         avoidTransit: { type: 'boolean' },
+        preferMetro: { type: 'boolean', description: 'Prefer verified subway/rail routes to station meeting points.' },
         notes: { type: 'string' },
       },
       additionalProperties: false,

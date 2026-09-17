@@ -654,7 +654,7 @@ struct ChatPage {
         Scroll() {
           Row({ space: 8 }) {
             this.quickChip('帮我规划会合，我可以骑车')
-            this.quickChip('尽量少走路，不要公交')
+            this.quickChip('尽量少走路，不要公共交通')
             this.quickChip('乘客原地等待可以吗？')
           }
           .padding({ left: 14, right: 14 })

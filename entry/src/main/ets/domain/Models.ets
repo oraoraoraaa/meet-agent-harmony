@@ -52,6 +52,7 @@ export class Constraints {
   maxPassengerWalkMin: number = -1; // <0 means unset
   maxPassengerBikeMin: number = -1;
   avoidTransit: boolean = false;
+  preferMetro: boolean = false;
   notes: string = '';
 }
 
@@ -75,6 +76,7 @@ export class RoutePoint {
 }
 
 export class Candidate {
+  stationName: string = '';
   routeIndex: number = 0;
   point: GeoPoint = new GeoPoint();
   driverEtaMin: number = 0;
@@ -82,6 +84,8 @@ export class Candidate {
 }
 
 export class EvaluatedOption {
+  usesRail: boolean = false;
+  isStation: boolean = false;
   meetingPoint: GeoPoint = new GeoPoint();
   routeIndex: number = 0;
   mode: MobilityMode = MODE_WALKING;
@@ -149,7 +153,7 @@ export function modeLabelZh(mode: MobilityMode): string {
     return '骑行';
   }
   if (mode === MODE_TRANSIT) {
-    return '公交';
+    return '公共交通';
   }
   return mode;
 }

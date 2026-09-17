@@ -9,6 +9,7 @@ import {
   MODE_TRANSIT,
   MODE_WALKING,
   MobilityMode,
+  NamedPoint,
   RoutePoint
 } from './Models';
 
@@ -253,4 +254,39 @@ export function sliceDriverPolyline(full: GeoPoint[], routeIndex: number): GeoPo
     out.push(new GeoPoint(full[i].lon, full[i].lat));
   }
   return out;
+}
+
+export function addStationCandidates(
+  road: Candidate[], stations: NamedPoint[], driver: GeoPoint, passenger: GeoPoint,
+  preferMetro: boolean, cfg: EngineConfig = defaultEngineConfig()
+): Candidate[] {
+  const sorted: NamedPoint[] = stations.filter((p: NamedPoint) =>
+    Number.isFinite(p.lon) && Number.isFinite(p.lat) && p.name.length > 0);
+  sorted.sort((a: NamedPoint, b: NamedPoint) =>
+    (haversineM(driver, a.toGeo()) + haversineM(passenger, a.toGeo())) -
+    (haversineM(driver, b.toGeo()) + haversineM(passenger, b.toGeo())));
+  const selected: Candidate[] = [];
+  const budget: number = preferMetro ? cfg.maxCandidates : Math.max(1, Math.floor(cfg.maxCandidates / 2));
+  for (let i = 0; i < sorted.length && selected.length < budget; i++) {
+    const p: NamedPoint = sorted[i];
+    if (selected.some((c: Candidate) => haversineM(c.point, p.toGeo()) < cfg.minCandidateSpacingM)) continue;
+    const c: Candidate = new Candidate();
+    c.point = p.toGeo();
+    c.stationName = p.name;
+    c.routeIndex = -1 - selected.length;
+    c.passengerStraightM = haversineM(passenger, p.toGeo());
+    selected.push(c);
+  }
+  return selected.concat(road.slice(0, Math.max(0, cfg.maxCandidates - selected.length)));
+}
+
+export function rankWithMetroPreference(
+  options: EvaluatedOption[], baseline: number, preferMetro: boolean,
+  cfg: EngineConfig = defaultEngineConfig()
+): EvaluatedOption[] {
+  const ranked: EvaluatedOption[] = rankOptions(options);
+  if (!preferMetro) return ranked;
+  const preferred: EvaluatedOption[] = ranked.filter((o: EvaluatedOption) =>
+    o.usesRail && o.score <= baseline - cfg.minImprovementMin);
+  return preferred.concat(ranked.filter((o: EvaluatedOption) => preferred.indexOf(o) < 0));
 }

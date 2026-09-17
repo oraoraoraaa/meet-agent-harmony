@@ -151,6 +151,7 @@ function cloneScenario(s: Scenario): Scenario {
   out.constraints.maxPassengerWalkMin = s.constraints.maxPassengerWalkMin;
   out.constraints.maxPassengerBikeMin = s.constraints.maxPassengerBikeMin;
   out.constraints.avoidTransit = s.constraints.avoidTransit;
+  out.constraints.preferMetro = s.constraints.preferMetro;
   out.constraints.notes = s.constraints.notes;
   return out;
 }

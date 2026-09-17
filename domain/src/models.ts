@@ -23,6 +23,7 @@ export interface Constraints {
   readonly maxPassengerWalkMin?: number;
   readonly maxPassengerBikeMin?: number;
   readonly avoidTransit?: boolean;
+  readonly preferMetro?: boolean;
   /** Free-form notes from the agent (luggage, rain, …). */
   readonly notes?: string;
 }
@@ -43,6 +44,7 @@ export interface RoutePoint {
 }
 
 export interface Candidate {
+  readonly stationName?: string;
   readonly routeIndex: number;
   readonly point: GeoPoint;
   readonly driverEtaMin: number;
@@ -50,6 +52,7 @@ export interface Candidate {
 }
 
 export interface EvaluatedOption {
+  readonly usesRail?: boolean;
   readonly meetingPoint: GeoPoint;
   readonly routeIndex: number;
   readonly mode: MobilityMode;

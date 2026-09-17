@@ -22,6 +22,7 @@ import {
   MODE_TRANSIT,
   MODE_WALKING,
   MobilityMode,
+  NamedPoint,
   RoutePoint
 } from '../../domain/Models';
 import {
@@ -201,7 +202,8 @@ export class AmapWebMapProvider {
     mode: MobilityMode,
     from: GeoPoint,
     to: GeoPoint,
-    city: string
+    city: string,
+    preferMetro: boolean = false
   ): Promise<PassengerPathResult> {
     if (mode === MODE_WALKING) {
       return this.directionSimple(`${AMAP_BASE}/direction/walking`, from, to);
@@ -222,7 +224,7 @@ export class AmapWebMapProvider {
       }
     }
     if (mode === MODE_TRANSIT) {
-      return this.directionTransit(from, to, city);
+      return this.directionTransit(from, to, city, preferMetro);
     }
     return this.directionSimple(`${AMAP_BASE}/direction/walking`, from, to);
   }
@@ -233,6 +235,33 @@ export class AmapWebMapProvider {
    */
   async reverseGeocode(point: GeoPoint): Promise<string> {
     return this.reverseGeocodeLabel(point);
+  }
+
+  /** Real rail-station POIs are eligible meeting points, independent of road snap distance. */
+  async getRailStations(near: GeoPoint, radiusM: number): Promise<NamedPoint[]> {
+    const query: string = encodeQuery([
+      `key=${urlEncode(this.key)}`, `location=${urlEncode(lonLatParam(near))}`,
+      'types=150500%7C150501%7C150200', `radius=${Math.min(50000, Math.max(1, radiusM))}`,
+      'sortrule=distance', 'offset=25', 'page=1', 'extensions=base'
+    ]);
+    const root: Record<string, Object> = await this.getJson(`${AMAP_BASE}/place/around?${query}`);
+    this.assertStatus(root, 'rail stations');
+    const pois: Object[] = asArray(root['pois']);
+    const result: NamedPoint[] = [];
+    for (let i = 0; i < pois.length; i++) {
+      const poi: Record<string, Object> | null = asObject(pois[i]);
+      if (poi === null) continue;
+      const type: string = asString(poi['typecode']);
+      if (type !== '150500' && type !== '150501' && type !== '150200') continue;
+      const coords: string[] = asString(poi['location']).split(',');
+      const name: string = asString(poi['name']);
+      if (coords.length !== 2 || name.length === 0) continue;
+      const lon: number = Number(coords[0]);
+      const lat: number = Number(coords[1]);
+      if (!Number.isFinite(lon) || !Number.isFinite(lat) || Math.abs(lon) > 180 || Math.abs(lat) > 90) continue;
+      result.push(new NamedPoint(lon, lat, name, asString(poi['address'])));
+    }
+    return result;
   }
 
   /** Nearby entrance is a landmark only; its coordinate never replaces the routed road point. */
@@ -518,7 +547,7 @@ export class AmapWebMapProvider {
     return out;
   }
 
-  private async directionTransit(from: GeoPoint, to: GeoPoint, city: string): Promise<PassengerPathResult> {
+  private async directionTransit(from: GeoPoint, to: GeoPoint, city: string, preferMetro: boolean): Promise<PassengerPathResult> {
     const cityName: string = city.trim().length > 0 ? city.trim() : '全国';
     const query: string = encodeQuery([
       `key=${urlEncode(this.key)}`,
@@ -538,7 +567,20 @@ export class AmapWebMapProvider {
     if (transits.length === 0) {
       throw new Error('amap transit: empty transits');
     }
-    const first: Record<string, Object> | null = asObject(transits[0]);
+    let first: Record<string, Object> | null = null;
+    for (let i = 0; i < transits.length; i++) {
+      const candidate: Record<string, Object> | null = asObject(transits[i]);
+      if (candidate === null || asNumber(candidate['duration'], -1) <= 0) continue;
+      if (first === null) {
+        first = candidate;
+        continue;
+      }
+      const candidateRail: boolean = this.transitUsesRail(candidate);
+      const firstRail: boolean = this.transitUsesRail(first);
+      if ((preferMetro && candidateRail && !firstRail) ||
+        ((!preferMetro || candidateRail === firstRail) &&
+          asNumber(candidate['duration']) < asNumber(first['duration']))) first = candidate;
+    }
     if (first === null) {
       throw new Error('amap transit: bad transit');
     }
@@ -560,10 +602,31 @@ export class AmapWebMapProvider {
       polyline = ensureEndpoints(polyline, from, to);
     }
     const out: PassengerPathResult = new PassengerPathResult();
-    out.etaMin = durationSec > 0 ? durationSec / 60 : 0;
+    out.usesRail = this.transitUsesRail(first);
+    out.etaMin = durationSec / 60;
     out.polyline = polyline;
     out.dataSource = DATA_LIVE;
     return out;
+  }
+
+  private transitUsesRail(transit: Record<string, Object>): boolean {
+    const segments: Object[] = asArray(transit['segments']);
+    for (let i = 0; i < segments.length; i++) {
+      const segment: Record<string, Object> | null = asObject(segments[i]);
+      if (segment === null) continue;
+      const railway: Record<string, Object> | null = asObject(segment['railway']);
+      if (railway !== null && asString(railway['id']).length > 0) return true;
+      const bus: Record<string, Object> | null = asObject(segment['bus']);
+      if (bus === null) continue;
+      const lines: Object[] = asArray(bus['buslines']);
+      // Buslines are alternatives for one leg; use the same first line as the map geometry.
+      if (lines.length === 0) continue;
+      const line: Record<string, Object> | null = asObject(lines[0]);
+      if (line === null) continue;
+      const type: string = asString(line['type']);
+      if (type.indexOf('地铁') >= 0 || type.indexOf('轻轨') >= 0 || type.indexOf('有轨电车') >= 0) return true;
+    }
+    return false;
   }
 
   private collectTransitPolys(seg: Record<string, Object>, out: GeoPoint[][]): void {
@@ -576,7 +639,7 @@ export class AmapWebMapProvider {
       // bus has buslines[]
       const buslines: Object[] = asArray(node['buslines']);
       if (buslines.length > 0) {
-        for (let b = 0; b < buslines.length; b++) {
+        for (let b = 0; b < Math.min(1, buslines.length); b++) {
           const line: Record<string, Object> | null = asObject(buslines[b]);
           if (line === null) {
             continue;

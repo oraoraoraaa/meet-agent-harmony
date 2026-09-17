@@ -32,7 +32,7 @@ export const TOOL_FORMAT_SHARE_TEXT: string = 'format_share_text';
 const OPENAI_TOOLS_JSON: string =
   '[' +
   '{"type":"function","function":{"name":"get_scenario_snapshot","description":"Return current driver/passenger points, city, and constraints from the UI session.","parameters":{"type":"object","properties":{},"additionalProperties":false}}},' +
-  '{"type":"function","function":{"name":"set_constraints","description":"Update structured constraints (allowed modes, walk/bike caps, avoidTransit, notes). Re-run generate_and_score_plans after changes.","parameters":{"type":"object","properties":{"allowedModes":{"type":"array","items":{"type":"string","enum":["walking","bicycle","transit"]}},"maxPassengerWalkMin":{"type":"number"},"maxPassengerBikeMin":{"type":"number"},"avoidTransit":{"type":"boolean"},"notes":{"type":"string"}},"additionalProperties":false}}},' +
+  '{"type":"function","function":{"name":"set_constraints","description":"Update structured constraints (allowed modes, walk/bike caps, avoidTransit, preferMetro, notes). Re-run generate_and_score_plans after changes.","parameters":{"type":"object","properties":{"allowedModes":{"type":"array","items":{"type":"string","enum":["walking","bicycle","transit"]}},"maxPassengerWalkMin":{"type":"number"},"maxPassengerBikeMin":{"type":"number"},"avoidTransit":{"type":"boolean"},"preferMetro":{"type":"boolean"},"notes":{"type":"string"}},"additionalProperties":false}}},' +
   '{"type":"function","function":{"name":"get_driving_route","description":"Fetch driver driving route polyline + cumulative times from current driver to passenger.","parameters":{"type":"object","properties":{},"additionalProperties":false}}},' +
   '{"type":"function","function":{"name":"generate_and_score_plans","description":"Run the local interception engine. Authoritative ranking. Returns plan IDs stayPut and suggestion:N with ETAs.","parameters":{"type":"object","properties":{},"additionalProperties":false}}},' +
   '{"type":"function","function":{"name":"reverse_geocode","description":"Best-effort place label for lon/lat.","parameters":{"type":"object","properties":{"lon":{"type":"number"},"lat":{"type":"number"}},"required":["lon","lat"],"additionalProperties":false}}},' +
@@ -57,6 +57,7 @@ interface ConstraintsDto {
   maxPassengerWalkMin: number;
   maxPassengerBikeMin: number;
   avoidTransit: boolean;
+  preferMetro: boolean;
   notes: string;
 }
 
@@ -152,6 +153,8 @@ class ToolArgs {
   maxPassengerBikeMin: number = -99999;
   avoidTransit: boolean = false;
   hasAvoidTransit: boolean = false;
+  preferMetro: boolean = false;
+  hasPreferMetro: boolean = false;
   notes: string = '';
   hasNotes: boolean = false;
   allowedModes: string[] = [];
@@ -214,6 +217,12 @@ function parseToolArgs(argumentsJson: string): ToolArgs {
     if (typeof avoid === 'boolean') {
       out.avoidTransit = avoid as boolean;
       out.hasAvoidTransit = true;
+    }
+
+    const metro: Object | undefined = bag['preferMetro'];
+    if (typeof metro === 'boolean') {
+      out.preferMetro = metro as boolean;
+      out.hasPreferMetro = true;
     }
 
     const notes: Object | undefined = bag['notes'];
@@ -390,6 +399,7 @@ export class AgentToolHost {
       maxPassengerWalkMin: s.constraints.maxPassengerWalkMin,
       maxPassengerBikeMin: s.constraints.maxPassengerBikeMin,
       avoidTransit: s.constraints.avoidTransit,
+      preferMetro: s.constraints.preferMetro,
       notes: s.constraints.notes
     };
     const payload: SnapshotDto = {
@@ -435,6 +445,8 @@ export class AgentToolHost {
         }
       }
     }
+    if (args.hasPreferMetro) c.preferMetro = args.preferMetro;
+    if (c.avoidTransit || c.allowedModes.indexOf(MODE_TRANSIT) < 0) c.preferMetro = false;
     if (args.hasNotes) {
       c.notes = args.notes;
     }
@@ -443,6 +455,7 @@ export class AgentToolHost {
       maxPassengerWalkMin: c.maxPassengerWalkMin,
       maxPassengerBikeMin: c.maxPassengerBikeMin,
       avoidTransit: c.avoidTransit,
+      preferMetro: c.preferMetro,
       notes: c.notes
     };
     const result: SetConstraintsResultDto = {

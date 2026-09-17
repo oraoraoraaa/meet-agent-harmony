@@ -5,12 +5,13 @@
 
 import {
   allowedModesFromConstraints,
+  addStationCandidates,
+  rankWithMetroPreference,
   bestPerMode,
   decideSwitch,
   DEFAULT_ENGINE_CONFIG,
   generateRouteCandidates,
   passesSoftCaps,
-  rankOptions,
   scoreOption,
   sliceDriverPolyline,
   type EngineConfig,
@@ -37,6 +38,7 @@ export interface DrivingRouteResult {
 }
 
 export interface PassengerPathResult {
+  readonly usesRail?: boolean;
   readonly etaMin: number;
   readonly polyline: readonly GeoPoint[];
   readonly dataSource: DataSource;
@@ -49,7 +51,9 @@ export interface AnalysisProviders {
     from: GeoPoint,
     to: GeoPoint,
     city?: string,
+    preferMetro?: boolean,
   ): Promise<PassengerPathResult> | PassengerPathResult;
+  getRailStations?(near: GeoPoint, radiusM: number): Promise<readonly NamedPoint[]>;
   lookupPickupLandmark?(point: GeoPoint): Promise<string> | string;
 }
 
@@ -74,7 +78,7 @@ function modeLabelZh(mode: MobilityMode): string {
     case 'bicycle':
       return '骑行';
     case 'transit':
-      return '公交';
+      return '公共交通';
   }
 }
 
@@ -153,30 +157,45 @@ export async function runAnalysis(
   };
   const evaluated: EvalWithPath[] = [];
 
-  const candidates = generateRouteCandidates(route, passenger, cfg);
+  let candidates = generateRouteCandidates(route, passenger, cfg);
+  const preferMetro = scenario.constraints?.preferMetro === true;
+  const allowTransit = !scenario.constraints?.avoidTransit &&
+    (scenario.constraints?.allowedModes.includes('transit') ?? true);
+  if (allowTransit && providers.getRailStations) {
+    try {
+      const stations = await providers.getRailStations(route[Math.floor(route.length / 2)]!.point, cfg.transitReachM);
+      candidates = addStationCandidates(candidates, stations, driver, passenger, preferMetro, cfg);
+    } catch { /* POI failure keeps ordinary/offline planning available. */ }
+  }
   for (const cand of candidates) {
+    const isStation = !!cand.stationName;
     let driverEtaMin = cand.driverEtaMin;
     let driverPolyline = sliceDriverPolyline(fullPolyline, cand.routeIndex);
     let pickupNote = '会合位置为路线采样点，请现场确认可停车与可步行到达';
-    if (driving.dataSource === 'live') {
+    if (driving.dataSource === 'live' || isStation) {
       const checked = await providers.getDrivingRoute(driver, cand.point);
-      if (checked.dataSource !== 'live' || checked.snappedDestinationM === undefined ||
-          checked.snappedDestinationM > 60 || checked.route.length < 2) continue;
+      if (checked.route.length < 2) continue;
+      if (!isStation && (checked.dataSource !== 'live' || checked.snappedDestinationM === undefined ||
+          checked.snappedDestinationM > 60)) continue;
+      dataSource = mergeDataSource(dataSource, checked.dataSource);
       driverEtaMin = checked.route[checked.route.length - 1]!.driverSecs / 60;
       driverPolyline = checked.polyline.map((p) => ({ ...p }));
-      pickupNote = '驾车可达附近；停车条件仍需现场确认';
+      pickupNote = isStation ? '车站会合点' : '驾车可达附近；停车条件仍需现场确认';
     }
-    const landmark = driving.dataSource === 'live' && providers.lookupPickupLandmark
-      ? await providers.lookupPickupLandmark(cand.point) : '';
+    const landmark = cand.stationName || (driving.dataSource === 'live' && providers.lookupPickupLandmark
+      ? await providers.lookupPickupLandmark(cand.point) : '');
     const modes = allowedModesFromConstraints(scenario.constraints, cand.passengerStraightM, cfg);
+    if (isStation && allowTransit && !modes.includes('transit')) modes.push('transit');
     for (const mode of modes) {
-      const path = await providers.getPassengerPath(mode, passenger, cand.point, scenario.city);
+      const path = await providers.getPassengerPath(mode, passenger, cand.point, scenario.city, preferMetro);
       dataSource = mergeDataSource(dataSource, path.dataSource);
-      if (driving.dataSource === 'live' && path.dataSource !== 'live') continue;
+      if (!isStation && driving.dataSource === 'live' && path.dataSource !== 'live') continue;
+      if (!Number.isFinite(path.etaMin) || path.etaMin < 0) continue;
       if (!passesSoftCaps(mode, path.etaMin, scenario.constraints)) continue;
 
       const score = scoreOption(driverEtaMin, path.etaMin, mode, cfg);
       evaluated.push({
+        usesRail: mode === 'transit' && path.usesRail === true && path.dataSource === 'live',
         meetingPoint: cand.point,
         routeIndex: cand.routeIndex,
         mode,
@@ -192,9 +211,12 @@ export async function runAnalysis(
     }
   }
 
-  const ranked = rankOptions(evaluated);
+  const ranked = rankWithMetroPreference(evaluated, baselineDriverEtaMin, preferMetro, cfg);
   const perMode = bestPerMode(ranked);
   const winner = decideSwitch(baselineDriverEtaMin, ranked, cfg);
+
+  const strategyNote = preferMetro && !winner?.usesRail
+    ? ' 地铁优先未找到更合适的轨道交通方案，已按综合策略计算。' : '';
 
   const suggestions: Suggestion[] = perMode.map((opt) => {
     const withPath = evaluated.find(
@@ -212,13 +234,13 @@ export async function runAnalysis(
       mode: opt.mode,
       recommended: isRec,
       meetingPoint: asNamed(opt.meetingPoint, withPath?.landmark
-        ? `${withPath.landmark}附近` : `会合点·${modeLabelZh(opt.mode)}`, undefined),
+        ? (opt.routeIndex < 0 ? withPath.landmark : `${withPath.landmark}附近`) : `会合点·${modeLabelZh(opt.mode)}`, undefined),
       driverEtaMin: opt.driverEtaMin,
       passengerEtaMin: opt.passengerEtaMin,
       completionMin: opt.completionMin,
       driverSavedMin,
       score: opt.score,
-      rationale: `${buildMoveRationale(opt.mode, opt.driverEtaMin, opt.passengerEtaMin, driverSavedMin)} ${withPath?.pickupNote ?? ''}。`,
+      rationale: `${buildMoveRationale(opt.mode, opt.driverEtaMin, opt.passengerEtaMin, driverSavedMin)} ${withPath?.pickupNote ?? ''}。${opt.usesRail ? ' 含地铁或列车行程。' : ''}${strategyNote}`,
       driverRoutePolyline: withPath?.driverPolyline ?? sliceDriverPolyline(fullPolyline, opt.routeIndex),
       passengerPathPolyline: passengerPolyline.map((p) => ({ lon: p.lon, lat: p.lat })),
     };
@@ -260,7 +282,7 @@ export async function runAnalysis(
     driverEtaMin: baselineDriverEtaMin,
     completionMin: baselineDriverEtaMin,
     meetingPoint: asNamed(passenger, passenger.name ?? '乘客位置', passenger.address),
-    rationale: templateStayRationale(baselineDriverEtaMin),
+    rationale: templateStayRationale(baselineDriverEtaMin) + strategyNote,
     driverRoutePolyline: fullPolyline.length > 0 ? fullPolyline : [driver, passenger],
   };
 

@@ -220,7 +220,7 @@ export function resolveLockedPlan(session: TripSession): LockedPlanSnapshot {
 function modeZh(mode: string): string {
   if (mode === 'walking') return '步行';
   if (mode === 'bicycle') return '骑行';
-  if (mode === 'transit') return '公交';
+  if (mode === 'transit') return '公共交通';
   return mode;
 }
 

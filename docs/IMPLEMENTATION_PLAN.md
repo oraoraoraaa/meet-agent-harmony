@@ -497,3 +497,19 @@ Fixtures remain under `fixtures/` and domain tests as development data only.
 Tab navigation correction: bottom tabs replace the current route, with zero-duration
 entry/exit transitions on main screens. Main tab headers have no back buttons; the
 planning detail retains its back action.
+
+Rail-station planning: query AMap station/entrance POIs around the middle of the driving
+route (radius uses transitReachM). Reserve half the four-candidate budget for stations,
+or all available slots under 地铁优先; unused slots retain road candidates. Station POIs
+are accepted as meeting locations without the generic 60 m road-snap rejection or the
+2 km public-transport minimum. Route durations still come from providers; route failure
+can use explicitly labeled estimates. No station coordinates are invented offline.
+
+地铁优先 selects the fastest returned rail-containing transit alternative, then favors
+verified rail options that meet the existing 1.5-minute improvement threshold. If none
+qualifies, use normal ranking and explain the fallback. Public transport exclusions
+remain hard constraints. Rail preference is propagated through chat tools and locked
+session snapshots. “公交” mode labels are now “公共交通”.
+
+Provider references: [AMap transit routing](https://lbs.amap.com/api/webservice/guide/api/direction)
+and [station/entrance POI categories](https://lbs.amap.com/faq/webservice/webservice-api/poi-search/43253).

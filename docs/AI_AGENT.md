@@ -132,6 +132,7 @@ Output: clipboard-ready summary.
   "maxPassengerWalkMin": 10,
   "maxPassengerBikeMin": 20,
   "avoidTransit": false,
+  "preferMetro": false,
   "notes": "luggage | rain | elderly | ..."
 }
 ```
@@ -171,3 +172,7 @@ Free-text preferences require a configured LLM. In offline mode the assistant li
 structured planning controls instead of accepting text that the local engine cannot parse.
 Offline replies show grounded times and recommendation explanations without internal plan IDs.
 Model/network failure retains automatic engine fallback; raw HTTP errors remain internal.
+
+`preferMetro=true` favors tool-verified rail routes that satisfy the existing stay-put
+improvement threshold. The agent must enable `transit` and clear `avoidTransit` when
+requested; explicit exclusion of public transport wins over the soft preference.

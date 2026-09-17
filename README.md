@@ -132,7 +132,7 @@ DevEco Studio opens the **repository root** (not a nested `app/` folder).
 
 1. Open the **设置** tab:
    - **Map Web Key** — 高德 Web 服务 Key（`restapi.amap.com`）
-   - Console 启用：路径规划（驾车/步行/骑行/公交）、地理编码 regeo、搜索 place/text
+   - Console 启用：路径规划（驾车/步行/骑行/公共交通）、地理编码 regeo、搜索 place/text
    - LLM（可选）：Base URL + API Key + Model，或 Proxy，或 Offline
 2. Save → re-open Plan / Chat so provider rebuilds.
 3. Optional template: copy `.env.example` → local `.env` (gitignored) for your notes only; the app reads **preferences**, not `.env`.
@@ -158,7 +158,7 @@ cd domain && npm test
 Map host lifecycle regression checks (Node 22.13+; native rendering still needs DevEco/device):
 
 ```bash
-node --test tests/map-lifecycle.test.mjs tests/production-reply.test.mjs
+node --test tests/map-lifecycle.test.mjs tests/production-reply.test.mjs tests/rail-provider.test.mjs
 ```
 
 Unsigned SDK build on macOS with the default DevEco installation:
@@ -243,7 +243,7 @@ Mode C must always work.
 
 | Layer | Status |
 | --- | --- |
-| Domain engine | Multi-modal ranking + agent grounding + session + AMap polyline helpers (`cd domain && npm test` → 28 pass) |
+| Domain engine | Multi-modal ranking + agent grounding + session + AMap polyline helpers (`cd domain && npm test` → 34 pass) |
 | Pickup validation | Live shortlist is routed to each candidate; destinations snapped over 60 m away are rejected. Nearby entrance names are landmarks, while parking legality remains for on-site confirmation. |
 | Home map | Interactive AMap JS (calm basemap, optional traffic) · search/tap → assign passenger/driver · POI labels |
 | 路线规划 | Draft-first read-only points · result map + card routes · lock/share |
@@ -256,3 +256,7 @@ Mode C must always work.
 ## License / course use
 
 Private project unless otherwise stated by the owners. Do not commit secrets, large binaries, or vendor SDK license keys.
+
+Public transport planning includes real subway/train-station meeting candidates. Select
+“地铁优先” in planning preferences to favor verified rail routes that improve on waiting
+in place; unavailable rail data falls back transparently to ordinary planning.

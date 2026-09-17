@@ -120,3 +120,15 @@ Visual evidence can be exported from the debug app after the native suite, for e
 The default AMap palette is softened with a map-layer saturation filter; route coordinates,
 labels, and vendor attribution are unchanged. Style reference:
 [AMap official map themes](https://lbs.amap.com/demo/javascript-api-v2/example/personalized-map/set-theme-style/).
+
+## Rail-station planning verification — 2026-09-17
+
+Station POI search adds one bounded request per planning run. Routing still evaluates at
+most four meeting candidates. Host tests exercise actual ArkTS station eligibility and
+AMap response parsing (including rail alternatives, malformed durations, and station types).
+The emulator planning flow selected 地铁优先 and displayed a live station-entrance candidate;
+public transport labels and strategy controls were visually checked. This is functional
+validation, not a device performance benchmark.
+
+Verification passed: app/test SDK builds, 34 domain tests, 10 host tests and 4 native
+emulator tests. Offline test settings were restored; no physical-device benchmark was run.
