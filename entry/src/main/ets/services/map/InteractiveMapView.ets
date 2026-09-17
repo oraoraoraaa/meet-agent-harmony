@@ -155,7 +155,7 @@ export struct InteractiveMapView {
     }
     this.status = this.mapWebKey.trim().length > 0
       ? (this.showChrome ? '加载高德地图…' : '')
-      : (this.showChrome ? '示意地图（无 Web Key / 演示）' : '');
+      : (this.showChrome ? '离线地图加载中…' : '');
     try {
       this.controller.loadData(
         html,
@@ -316,11 +316,7 @@ export struct InteractiveMapView {
             this.scheduleReload();
             return;
           }
-          this.status = !this.showChrome
-            ? ''
-            : (this.mapWebKey.trim().length > 0
-              ? '地图就绪 · 搜索/点选后选择用途'
-              : '示意地图就绪 · 点选后选择用途');
+          this.status = '';
         })
         .onLoadIntercept((event): boolean => {
           try {
@@ -341,7 +337,7 @@ export struct InteractiveMapView {
           .fontSize(10)
           .fontColor(AppTheme.inkMuted)
           .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-          .backgroundColor('#99000000')
+          .backgroundColor(AppTheme.bg1)
           .borderRadius(8)
           .margin({ left: 8, bottom: 8 })
       }

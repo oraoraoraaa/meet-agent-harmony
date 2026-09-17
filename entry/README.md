@@ -18,7 +18,7 @@ Open the repository root in DevEco Studio. `entry/` is the phone HAP module.
 Home supports map/search selection and assigning driver/passenger points. Form planning and
 chat share Hybrid routing, result maps, and confirm/lock/share. Mode C works with estimated
 routes and an offline schematic Web map. Live routing uses AMap REST when a Web key is set
-and **演示 Fixture 优先** is off. The basemap uses AMap JavaScript through ArkWeb; no native
+(with automatic estimate fallback on failure). The basemap uses AMap JavaScript through ArkWeb; no native
 map SDK is bundled. The optional proxy remains a contract, not an implemented server.
 
 Keys are stored in device-local Preferences; hardware-backed secret storage is still pending.

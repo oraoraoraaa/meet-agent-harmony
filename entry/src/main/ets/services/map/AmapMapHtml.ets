@@ -93,50 +93,29 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>' +
     '<style>' +
     'html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#e8eef5;}' +
+    '.amap-layer{filter:saturate(.5);}' +
     'body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;overflow:hidden;}' +
-    '#top{position:absolute;left:8px;right:8px;top:8px;z-index:30;display:flex;flex-direction:column;gap:6px;}' +
+    '#top{position:absolute;left:16px;right:16px;top:16px;z-index:30;}' +
+    '#bar{display:flex;gap:8px;padding:6px;background:rgba(255,255,255,.96);border-radius:18px;box-shadow:0 4px 22px #182d4218;backdrop-filter:blur(16px);}' +
+    '#q{min-width:0;flex:1;width:0;height:38px;border:0;outline:0;background:transparent;color:#1c1c1e;padding:0 8px;font-size:15px;}' +
+    'button{font-family:inherit;cursor:pointer;}' +
+    '#btn{height:38px;border:0;border-radius:13px;padding:0 15px;font-size:13px;font-weight:600;background:#007aff;color:white;}' +
+    '#btnMe,#btnTr{position:absolute;right:0;top:68px;width:46px;height:46px;border:0;border-radius:15px;background:#ffffffed;color:#007aff;box-shadow:0 3px 14px #182d4218;font-size:12px;font-weight:600;}' +
+    '#btnMe{top:122px;}#btnTr.off{color:#636366;}' +
+    '#hint{position:absolute;left:16px;right:74px;bottom:28px;z-index:30;color:#636366;font-size:11px;background:#ffffffeb;padding:9px 12px;border-radius:12px;line-height:1.4;pointer-events:none;box-shadow:0 2px 12px #182d420a;}' +
+    '#list{position:absolute;left:16px;right:16px;top:76px;z-index:31;max-height:60%;overflow:auto;display:none;background:#fffffff5;border-radius:18px;padding:10px;box-shadow:0 8px 24px #182d4220;}' +
+    '#list.open{display:block;}#listHead{display:flex;align-items:center;justify-content:space-between;padding:4px 4px 8px;}' +
+    '#listTitle{font-size:12px;color:#636366;font-weight:600;}#listClose{border:0;background:#f2f2f7;color:#007aff;border-radius:12px;height:32px;padding:0 12px;}' +
+    '.hit{background:#f7f8fa;color:#1c1c1e;padding:14px;border-radius:12px;margin-bottom:6px;font-size:14px;line-height:1.5;}' +
     (showChrome ? '' : '#top,#list,#hint{display:none!important;}') +
-    '#roles{display:none;}' +
-    '.role{flex:1;height:32px;border:1px solid rgba(255,255,255,.22);border-radius:10px;' +
-    'background:rgba(18,24,36,.9);color:#d9e6ff;font-size:12px;}' +
-    '.role.on{background:#0A84FF;color:#fff;border-color:#59a8ff;font-weight:600;}' +
-    '.role:disabled{opacity:.45;}' +
-    '#bar{display:flex;gap:6px;}' +
-    '#q{flex:1;height:36px;border-radius:18px;border:1px solid rgba(0,0,0,.08);' +
-    'background:rgba(255,255,255,.96);color:#1c1c1e;padding:0 12px;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.08);}' +
-    '#btn,#btnMe,#btnTr{height:36px;border:0;border-radius:18px;padding:0 12px;font-size:12px;' +
-    'background:#0A84FF;color:#fff;box-shadow:0 2px 8px rgba(10,132,255,.25);}' +
-    '#btnMe{background:#3A4A5C;box-shadow:none;}' +
-    '#btnTr{background:#34C759;min-width:52px;}' +
-    '#btnTr.off{background:#8E8E93;}' +
-    '#hint{position:absolute;left:8px;right:8px;bottom:8px;z-index:30;color:#1c1c1e;' +
-    'font-size:11px;background:rgba(255,255,255,.88);padding:7px 9px;border-radius:12px;line-height:1.35;' +
-    'box-shadow:0 2px 12px rgba(0,0,0,.12);}' +
-    '#list{position:absolute;left:8px;right:8px;top:56px;z-index:31;max-height:170px;overflow:auto;' +
-    'display:none;background:rgba(255,255,255,.98);border-radius:14px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);}' +
-    '#list.open{display:block;}' +
-    '#listHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}' +
-    '#listTitle{font-size:12px;color:#3a3a3c;font-weight:600;}' +
-    '#listClose{border:0;background:#F2F2F7;color:#1c1c1e;border-radius:14px;height:28px;padding:0 12px;font-size:12px;}' +
-    '.hit{background:#F8F9FB;color:#1c1c1e;padding:10px;border-radius:12px;margin-bottom:6px;' +
-    'border:1px solid rgba(0,0,0,.06);font-size:12px;}' +
-    '.hit b{color:#0A84FF;}' +
-    '.lbl{display:none;}' +
-    '.lbl-d{background:#0A84FF;}.lbl-p{background:#34C759;}' +
     '</style>' +
     (hasKey
       ? '<script src="https://webapi.amap.com/maps?v=2.0&key=' + keyEsc + '&plugin=AMap.PlaceSearch,AMap.Geocoder"></script>'
       : '') +
     '</head><body>' +
     '<div id="top">' +
-    (allowSwitch
-      ? '<div id="roles">' +
-        '<button type="button" class="role" id="roleD">司机起点</button>' +
-        '<button type="button" class="role" id="roleP">乘客位置</button>' +
-        '</div>'
-      : '') +
     '<div id="bar">' +
-    '<input id="q" placeholder="' + (hasKey ? '搜索地点 / 地址 / POI' : '无 Key · 点击地图选点') + '"/>' +
+    '<input id="q" placeholder="' + (hasKey ? '搜索地点或地址' : '离线选点') + '"/>' +
     '<button id="btn" type="button">搜索</button>' +
     '<button id="btnTr" type="button" class="">路况</button>' +
     '<button id="btnMe" type="button">居中</button>' +
@@ -161,19 +140,10 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     'function setHint(t){ var h=document.getElementById("hint"); if(h) h.textContent=t; }' +
     'function setListOpen(on){ var el=document.getElementById("list"); if(!el) return; el.className=on?"open":""; }' +
     'function clearList(){ var body=document.getElementById("listBody"); if(body) body.innerHTML=""; setListOpen(false); }' +
-    'function roleLabel(){ return "地点"; }' +
-    'function syncRoleUi(){ var q=document.getElementById("q"); if(q){ q.placeholder="搜索地点 / 地址 / POI"; } }' +
+    'function syncRoleUi(){ var q=document.getElementById("q"); if(q){ q.placeholder="搜索地点或地址"; } }' +
     'function sendChoose(lon,lat,name){' +
     '  if(PICK==="none") return;' +
     '  var u="meetagent://choose?lon="+encodeURIComponent(String(lon))' +
-    '    +"&lat="+encodeURIComponent(String(lat))' +
-    '    +"&name="+encodeURIComponent(name||"");' +
-    '  try{ window.location.href=u; }catch(e){}' +
-    '}' +
-    'function sendPick(lon,lat,name,role){' +
-    '  var r=role||""; if(!r||r==="none"){ sendChoose(lon,lat,name); return; }' +
-    '  var u="meetagent://pick?role="+encodeURIComponent(r)' +
-    '    +"&lon="+encodeURIComponent(String(lon))' +
     '    +"&lat="+encodeURIComponent(String(lat))' +
     '    +"&name="+encodeURIComponent(name||"");' +
     '  try{ window.location.href=u; }catch(e){}' +
@@ -187,7 +157,7 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     '  var W=0,H=0,scale=12000,ox=cLon,oy=cLat;' +
     '  function resize(){ W=mapEl.clientWidth; H=mapEl.clientHeight;' +
     '    canvas.width=W*devicePixelRatio; canvas.height=H*devicePixelRatio;' +
-    '    canvas.style.width=W+"px"; canvas.style.height=H+"px"; draw(); }' +
+    '    canvas.style.width=W+"px"; canvas.style.height=H+"px"; var pts=[]; if(hasD)pts.push([dLon,dLat]);if(hasP)pts.push([pLon,pLat]);pts=pts.concat(dPoly,pPoly); if(pts.length>1){var xs=pts.map(function(p){return p[0];}),ys=pts.map(function(p){return p[1];});var x0=Math.min.apply(null,xs),x1=Math.max.apply(null,xs),y0=Math.min.apply(null,ys),y1=Math.max.apply(null,ys);ox=(x0+x1)/2;oy=(y0+y1)/2;scale=Math.min((W-100)/Math.max(.002,x1-x0),(H-160)/Math.max(.002,y1-y0));} draw(); }' +
     '  function proj(lon,lat){ return {x:(lon-ox)*scale+W/2, y:(oy-lat)*scale+H/2}; }' +
     '  function unproj(x,y){ return {lon:(x-W/2)/scale+ox, lat:oy-(y-H/2)/scale}; }' +
     '  function draw(){ var ctx=canvas.getContext("2d"); if(!ctx) return;' +
@@ -199,7 +169,7 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     '      for(var i=0;i<poly.length;i++){ var p=proj(poly[i][0],poly[i][1]); if(i===0) ctx.moveTo(p.x,p.y); else ctx.lineTo(p.x,p.y);} ctx.stroke(); }' +
     '    line(dPoly,"#0A84FF"); line(pPoly,"#34C759");' +
     '    function mark(lon,lat,color,label){ var p=proj(lon,lat); ctx.fillStyle=color; ctx.beginPath(); ctx.arc(p.x,p.y,8,0,Math.PI*2); ctx.fill();' +
-    '      ctx.fillStyle="#fff"; ctx.font="10px sans-serif"; ctx.fillText(label,p.x+10,p.y+3); }' +
+    '      ctx.strokeStyle="#fff";ctx.lineWidth=3;ctx.stroke();ctx.fillStyle="#3a3a3c"; ctx.font="12px sans-serif"; ctx.fillText(label,p.x+10,p.y+3); }' +
     '    if(hasD) mark(dLon,dLat,"#0A84FF","司"); if(hasP) mark(pLon,pLat,"#34C759","乘"); }' +
     '  var dragging=false,lx=0,ly=0;' +
     '  canvas.addEventListener("touchstart",function(e){ dragging=true; lx=e.touches[0].clientX; ly=e.touches[0].clientY; });' +
@@ -208,29 +178,29 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     '  canvas.addEventListener("touchend",function(){ dragging=false; });' +
     '  canvas.addEventListener("click",function(e){ if(PICK==="none"||!showChrome) return; var r=canvas.getBoundingClientRect();' +
     '    var p=unproj(e.clientX-r.left,e.clientY-r.top);' +
-    '    sendChoose(p.lon,p.lat,"地图选点"); setHint("已选点，请选择用途 "+p.lat.toFixed(5)+","+p.lon.toFixed(5)); });' +
+    '    sendChoose(p.lon,p.lat,"地图选点"); setHint("已选地点，请选择用途"); });' +
     '  var elMe=document.getElementById("btnMe"); if(elMe) elMe.onclick=function(){ ox=cLon; oy=cLat; draw(); };' +
-    '  var elBtn=document.getElementById("btn"); if(elBtn) elBtn.onclick=function(){ setHint("无 Map Web Key：仅支持点击选点"); };' +
-    '  var elTr=document.getElementById("btnTr"); if(elTr) elTr.onclick=function(){ setHint("无 Key：无法加载实时路况"); };' +
+    '  var elBtn=document.getElementById("btn"); if(elBtn) elBtn.onclick=function(){ setHint("离线地图暂不支持搜索，请轻点选择位置"); };' +
+    '  var elTr=document.getElementById("btnTr"); if(elTr) elTr.onclick=function(){ setHint("离线状态暂不支持路况"); };' +
     '  var elClose=document.getElementById("listClose"); if(elClose) elClose.onclick=function(){ clearList(); setHint("已关闭搜索"); };' +
-    '  if(showChrome) syncRoleUi(); window.addEventListener("resize",resize); resize();' +
-    '  if(showChrome) setHint("示意地图 · 搜索或点选地点后选择用途"); return;' +
+    '  if(showChrome){document.getElementById("q").disabled=true;document.getElementById("btn").style.display="none";} window.addEventListener("resize",resize); resize();' +
+    '  if(showChrome) setHint("离线示意 · 不含道路信息，仅供位置参考"); return;' +
     '}' +
     // —— AMap live ——
     'var map=new AMap.Map("map",{zoom:zoom,center:[cLon,cLat],viewMode:"2D",' +
-    '  mapStyle:"amap://styles/whitesmoke",showBuildingBlock:false,features:["bg","road","point"]});' +
+    '  mapStyle:"amap://styles/fresh",showBuildingBlock:true,features:["bg","road","building","point"]});' +
     'var trafficLayer=null;' +
     'function applyTraffic(on){' +
     '  trafficOn=!!on;' +
     '  var b=document.getElementById("btnTr");' +
-    '  if(b){ b.className=trafficOn?"":"off"; b.textContent=trafficOn?"路况":"路况关"; }' +
+    '  if(b){ b.className=trafficOn?"":"off"; b.textContent=trafficOn?"路况":"路况"; }' +
     '  try{' +
     '    if(trafficOn){' +
     '      if(!trafficLayer){ trafficLayer=new AMap.TileLayer.Traffic({zIndex:10,autoRefresh:true,interval:180}); }' +
     '      map.add(trafficLayer);' +
-    '      setHint("实时路况 · 搜索地点后选择用途");' +
-    '    } else if(trafficLayer){ map.remove(trafficLayer); setHint("路况已关 · 搜索地点后选择用途"); }' +
-    '  }catch(e){ setHint("路况图层不可用（检查 JS Key 路况权限）"); }' +
+    '      setHint("已显示实时路况");' +
+    '    } else if(trafficLayer){ map.remove(trafficLayer); setHint("搜索或轻点地图选择地点"); }' +
+    '  }catch(e){ setHint("路况暂不可用，请稍后重试"); }' +
     '}' +
     'var dMarker=null,pMarker=null,dLine=null,pLine=null;' +
     'function pinSvg(color,label){' +
@@ -266,8 +236,8 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     '    if(focus && fit.length===1){ map.setZoomAndCenter(Math.max(map.getZoom(),15), fit[0]); }' +
     '    else if(fit.length>=2){ map.setFitView(null,false,[60,60,60,60]); }' +
     '    else if(fit.length===1){ map.setCenter(fit[0]); }' +
-    '    setHint("针点已更新");' +
-    '  }catch(e){ setHint("针点更新失败"); }' +
+    '    setHint("位置已更新");' +
+    '  }catch(e){ setHint("暂时无法更新位置"); }' +
     '};' +
     'if(hasD) ensureDriver(dLon,dLat,"司机"); if(hasP) ensurePassenger(pLon,pLat,"乘客");' +
     'if(dPoly && dPoly.length>=2){ dLine=new AMap.Polyline({path:dPoly.map(function(x){return [x[0],x[1]];}),' +
@@ -295,12 +265,12 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     '  map.setZoomAndCenter(Math.max(map.getZoom(),15),[lon,lat]);' +
     '  showPending(lon,lat,"地图选点");' +
     '  sendChoose(lon,lat,"地图选点");' +
-    '  setHint("已选点，请选择用途 "+lat.toFixed(5)+", "+lon.toFixed(5));' +
+    '  setHint("已选地点，请选择用途");' +
     '});' +
     'var bMe=document.getElementById("btnMe"); if(bMe) bMe.onclick=function(){ map.setZoomAndCenter(zoom,[cLon,cLat]); };' +
     'var bTr=document.getElementById("btnTr"); if(bTr) bTr.onclick=function(){ applyTraffic(!trafficOn); };' +
     'var bClose=document.getElementById("listClose"); if(bClose) bClose.onclick=function(){ clearList(); setHint("已关闭搜索"); };' +
-    'var bSearch=document.getElementById("btn"); if(bSearch) bSearch.onclick=function(){' +
+    'document.getElementById("q").addEventListener("keydown",function(e){if(e.key==="Enter")document.getElementById("btn").click();});var bSearch=document.getElementById("btn"); if(bSearch) bSearch.onclick=function(){' +
     '  if(PICK==="none"||!showChrome){ return; }' +
     '  var q=(document.getElementById("q").value||"").trim(); if(!q){ setHint("请输入关键词"); return; }' +
     '  setHint("搜索中…");' +
@@ -311,7 +281,7 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     '    +"&keywords="+encodeURIComponent(q)+"&offset=10&page=1&extensions=base"' +
     '    +"&location="+encodeURIComponent(loc)+"&radius=8000&sortrule=distance";' +
     '  fetch(url).then(function(r){return r.json();}).then(function(j){' +
-    '    if(String(j.status)!=="1"){ setHint("搜索失败: "+(j.info||"检查 Place 权限")); setListOpen(false); return; }' +
+    '    if(String(j.status)!=="1"){ setHint("搜索暂不可用，请检查地图设置后重试"); setListOpen(false); return; }' +
     '    var pois=j.pois||[]; var listBody=document.getElementById("listBody"); if(!listBody) return; listBody.innerHTML="";' +
     '    if(!pois.length){ setHint("无结果"); setListOpen(false); return; }' +
     '    setHint("找到 "+pois.length+" 个 · 点选后选择用途"); setListOpen(true);' +
@@ -319,7 +289,7 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     '      var loc2=(poi.location||"").split(","); if(loc2.length<2) return;' +
     '      var lon=parseFloat(loc2[0]), lat=parseFloat(loc2[1]); if(isNaN(lon)||isNaN(lat)) return;' +
     '      var div=document.createElement("div"); div.className="hit";' +
-    '      div.innerHTML="<b>地点</b> "+(poi.name||"")+" · "+(poi.address||"");' +
+    '      div.textContent=(poi.name||"")+" · "+(poi.address||"");' +
     '      div.onclick=function(){' +
     '        map.setZoomAndCenter(16,[lon,lat]);' +
     '        showPending(lon,lat,poi.name||"POI");' +
@@ -329,20 +299,8 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     '    });' +
     '  }).catch(function(){ setHint("搜索网络失败"); setListOpen(false); });' +
     '};' +
-    'if(showChrome){ syncRoleUi(); applyTraffic(showTraffic); setHint("搜索地点后选择用途 · 路况可开关"); }' +
+    'if(showChrome){ syncRoleUi(); applyTraffic(showTraffic); setHint("搜索或轻点地图选择地点"); }' +
     'else { if(showTraffic){ try{ applyTraffic(true); }catch(e){} } }' +
     '})();</script></body></html>';
   return html;
-}
-
-export function polyToJsonPairs(pointsLonLat: number[][]): string {
-  let s: string = '[';
-  for (let i = 0; i < pointsLonLat.length; i++) {
-    if (i > 0) {
-      s += ',';
-    }
-    s += '[' + pointsLonLat[i][0] + ',' + pointsLonLat[i][1] + ']';
-  }
-  s += ']';
-  return s;
 }

@@ -1,3 +1,4 @@
+import { BottomNavigation } from '../common/BottomNavigation';
 import { common } from '@kit.AbilityKit';
 import { promptAction, router } from '@kit.ArkUI';
 import { AppTheme } from '../common/AppTheme';
@@ -21,7 +22,6 @@ import {
 } from '../domain/Models';
 import { MapProvider, PlanningService } from '../services/map/MapProvider';
 import { InteractiveMapView } from '../services/map/InteractiveMapView';
-import { FixtureCatalog, FixtureScenario } from '../services/planning/FixtureCatalog';
 import { SettingsStore } from '../services/settings/SettingsStore';
 import { TripSessionStore } from '../services/session/TripSessionStore';
 import { ShareService } from '../services/session/ShareService';
@@ -54,13 +54,11 @@ class PlanCardModel {
 @Component
 struct PlanPage {
   @State settings: AppSettings = new AppSettings();
-  @State fixtureId: string = 'xian-demo-1';
-  @State fixtureTitle: string = '西安：高新 → 钟楼';
-  @State driverLonText: string = '108.8905';
-  @State driverLatText: string = '34.2324';
+  @State driverLonText: string = '';
+  @State driverLatText: string = '';
   @State driverName: string = '司机起点';
-  @State passengerLonText: string = '108.9465';
-  @State passengerLatText: string = '34.2610';
+  @State passengerLonText: string = '';
+  @State passengerLatText: string = '';
   @State passengerName: string = '乘客位置';
   @State city: string = '西安';
   @State allowWalk: boolean = true;
@@ -97,10 +95,10 @@ struct PlanPage {
   private mapMountTimer: number = -1;
   private disposed: boolean = false;
 
-  aboutToAppear(): void {
+  onPageShow(): void {
     this.disposed = false;
     this.reloadSettings().then(() => {
-      this.hydrateFromDraftOrFixture();
+      this.hydrateFromDraft();
     });
   }
 
@@ -116,9 +114,16 @@ struct PlanPage {
     return getContext(this) as common.UIAbilityContext;
   }
 
-  private hydrateFromDraftOrFixture(): void {
+  private hydrateFromDraft(): void {
     // Prefer home-map draft. Never override a full draft with hardcoded fixtures.
     const d = TripDraftStore.get();
+    if (this.driverLonText !== `${d.driverLon}` || this.driverLatText !== `${d.driverLat}` ||
+      this.passengerLonText !== `${d.passengerLon}` || this.passengerLatText !== `${d.passengerLat}`) {
+      this.hasResult = false;
+      this.showForm = true;
+      this.lastRec = null;
+      this.cards = [];
+    }
     if (d.hasDriver && d.hasPassenger) {
       this.driverLonText = `${d.driverLon}`;
       this.driverLatText = `${d.driverLat}`;
@@ -129,8 +134,6 @@ struct PlanPage {
       if (d.city.length > 0) {
         this.city = d.city;
       }
-      this.fixtureId = 'draft';
-      this.fixtureTitle = '主页选点';
       this.statusText = '使用主页已选起终点 · 可调整方式后开始优化';
       this.refreshDistanceWarn();
       return;
@@ -146,15 +149,11 @@ struct PlanPage {
       this.passengerName = d.passengerName.length > 0 ? d.passengerName : '乘客位置';
     }
     if (d.hasDriver || d.hasPassenger) {
-      this.fixtureId = 'draft';
-      this.fixtureTitle = '主页选点（不完整）';
       this.statusText = '主页选点不完整 — 请返回主页补全司机与乘客位置';
       this.refreshDistanceWarn();
       return;
     }
-    // No draft: fall back to demo fixture once (first open without map pick).
-    this.applyFixture(FixtureCatalog.byId(this.fixtureId));
-    this.statusText = '未从主页带入选点 · 已载入示例（可返回主页重新选点）';
+    this.statusText = '请先在地图选择司机出发地和乘客位置';
   }
 
   private refreshDistanceWarn(): void {
@@ -169,7 +168,7 @@ struct PlanPage {
     const km: number = haversineM(a, b) / 1000;
     if (km > 80) {
       this.distanceWarn =
-        `起终点直线约 ${km.toFixed(0)} km — ETA 会很大。模拟器请设同城坐标，或用地图/示例点。`;
+        `起终点直线约 ${km.toFixed(0)} km — ETA 会很大。请选择同城的出发地和乘客位置。`;
     } else if (km < 0.05) {
       this.distanceWarn = '起终点过近或重合，请调整坐标。';
     } else {
@@ -183,7 +182,7 @@ struct PlanPage {
       this.settingsLoaded = true;
       this.providerHint = PlanningService.describeProvider(
         this.settings.mapWebKey,
-        this.settings.demoFixtures
+        false
       );
     } catch (e) {
       const _ignored: Object = e as Object;
@@ -194,28 +193,9 @@ struct PlanPage {
   }
 
   private createMapProvider(): MapProvider {
-    return PlanningService.createProvider(this.settings.mapWebKey, this.settings.demoFixtures);
+    return PlanningService.createProvider(this.settings.mapWebKey, false);
   }
 
-  private applyFixture(fix: FixtureScenario): void {
-    this.fixtureId = fix.id;
-    this.fixtureTitle = fix.title;
-    this.city = fix.city;
-    this.driverLonText = `${fix.driver.lon}`;
-    this.driverLatText = `${fix.driver.lat}`;
-    this.driverName = fix.driver.name;
-    this.passengerLonText = `${fix.passenger.lon}`;
-    this.passengerLatText = `${fix.passenger.lat}`;
-    this.passengerName = fix.passenger.name;
-    if (fix.constraints.maxPassengerWalkMin >= 0) {
-      this.maxWalkMin = fix.constraints.maxPassengerWalkMin;
-    } else {
-      this.maxWalkMin = 12;
-    }
-    this.avoidTransit = fix.constraints.avoidTransit;
-    this.statusText = fix.narrationZh;
-    this.refreshDistanceWarn();
-  }
 
   private parseCoord(text: string, fallback: number): number {
     const v: number = Number(text);
@@ -296,10 +276,15 @@ struct PlanPage {
     if (this.planning) {
       return;
     }
+    const draft = TripDraftStore.get();
+    if (!draft.hasDriver || !draft.hasPassenger) {
+      promptAction.showToast({ message: '请先在地图选择司机和乘客的位置' });
+      return;
+    }
     this.planning = true;
     this.errorText = '';
     this.emptyHint = '';
-    this.statusText = this.settings.demoFixtures || this.settings.mapWebKey.trim().length === 0
+    this.statusText =  this.settings.mapWebKey.trim().length === 0
       ? '正在估算路线与会合方案…'
       : '正在获取驾车路线…';
     try {
@@ -311,7 +296,7 @@ struct PlanPage {
         this.passengerLonText.trim().length === 0 || this.passengerLatText.trim().length === 0;
       if (passengerMissing) {
         this.errorText = '请填写乘客坐标';
-        this.emptyHint = '缺少乘客点：填写经纬度、搜索地点或选择示例场景。';
+        this.emptyHint = '请返回地图选择乘客位置。';
         this.statusText = '缺少乘客点';
         this.planning = false;
         promptAction.showToast({ message: '缺少乘客点', duration: 1800 });
@@ -332,17 +317,11 @@ struct PlanPage {
       if (distKm > 120) {
         this.errorText = `起终点过远（约 ${distKm.toFixed(0)} km）`;
         this.emptyHint =
-          '模拟器定位常落在默认城市外。请：① 选西安/上海示例 ② 主页地图点选 ③ 模拟器设同城坐标。';
+          '当前仅支持同城会合，请返回地图调整位置。';
         this.statusText = '距离过大 — 已阻止规划';
         this.planning = false;
-        promptAction.showToast({ message: '距离过大，请用示例或地图选点', duration: 2500 });
+        promptAction.showToast({ message: '距离过大，请在地图重新选点', duration: 2500 });
         return;
-      }
-      // Soft mode: if key present but demoFixtures still ON, remind user.
-      if (this.settings.demoFixtures && this.settings.mapWebKey.trim().length > 0) {
-        this.statusText = '演示 Fixture 开启中 · 强制估算（设置里可关）…';
-      } else if (!this.settings.demoFixtures && this.settings.mapWebKey.trim().length > 0) {
-        this.statusText = '正在获取驾车路线与乘客路径…';
       }
       const provider: MapProvider = this.createMapProvider();
       const rec: RecommendationSet = await PlanningService.plan(scenario, provider);
@@ -386,17 +365,17 @@ struct PlanPage {
       }, 80);
       if (rec.dataSource === 'live_with_fallback') {
         promptAction.showToast({
-          message: '部分模式回退估算（常见：公交/骑行权限）',
+          message: '部分路线暂不可用，已标注为估算',
           duration: 2400
         });
       }
     } catch (e) {
       const _ignored: Object = e as Object;
-      this.errorText = '规划失败，请重试或改用演示 Fixture';
+      this.errorText = '暂时无法规划，请稍后重试';
       this.statusText = '规划出错';
       this.hasResult = false;
-      this.emptyHint = '规划失败：请检查坐标 / 网络 / Map Web Key，或开启演示 Fixture。';
-      promptAction.showToast({ message: '规划失败，可重试或开演示模式', duration: 2200 });
+      this.emptyHint = '请检查所选位置和网络连接后重试。';
+      promptAction.showToast({ message: '暂时无法规划，请重试', duration: 2200 });
     } finally {
       this.planning = false;
     }
@@ -558,7 +537,7 @@ struct PlanPage {
         this.previewDriver = c.driverPolyline.slice();
         this.previewPassenger = c.passengerPolyline.slice();
         this.previewMeeting = c.meeting;
-        this.summaryTitle = c.recommended ? '最快方案' : c.modeLabel;
+        this.summaryTitle = c.recommended ? '推荐方案' : c.modeLabel;
         if (c.kind === 'stayPut') {
           this.summaryBody =
             `乘客原地等待；司机约 ${c.driverEtaMin.toFixed(0)} 分钟到达。`;
@@ -600,20 +579,11 @@ struct PlanPage {
     return 'stayPut';
   }
 
-  private modeIcon(modeKey: string): string {
-    if (modeKey === MODE_WALKING || modeKey === 'walking') {
-      return '🚶';
-    }
-    if (modeKey === MODE_BICYCLE || modeKey === 'bicycle') {
-      return '🚲';
-    }
-    if (modeKey === MODE_TRANSIT || modeKey === 'transit') {
-      return '🚌';
-    }
-    if (modeKey === 'stay') {
-      return '🧍';
-    }
-    return '📍';
+  private modeIcon(modeKey: string): Resource {
+    if (modeKey === MODE_WALKING) return $r('app.media.mode_walk');
+    if (modeKey === MODE_BICYCLE) return $r('app.media.mode_bike');
+    if (modeKey === MODE_TRANSIT) return $r('app.media.mode_transit');
+    return $r('app.media.mode_stay');
   }
 
   private mapCaption(): string {
@@ -670,12 +640,8 @@ struct PlanPage {
     }
     this.confirming = true;
     try {
-      // Ensure planning session exists (may have been cleared)
-      if (TripSessionStore.getPlanning() === null) {
-        TripSessionStore.beginPlanning(this.buildScenario(), this.lastRec, this.currentPlanId());
-      } else {
-        TripSessionStore.selectPlan(this.currentPlanId());
-      }
+      // Bind confirmation to the result displayed on this page, even after visiting another tab.
+      TripSessionStore.beginPlanning(this.buildScenario(), this.lastRec, this.currentPlanId());
       const meet: NamedPoint = this.previewMeeting;
       let meetName: string = meet.name;
       let meetAddress: string = meet.address;
@@ -747,7 +713,7 @@ struct PlanPage {
             }
           })
 
-          Text(this.hasResult && !this.showForm ? '优化结果' : '普通规划')
+          Text(this.hasResult && !this.showForm ? '优化结果' : '路线规划')
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
             .fontColor(AppTheme.ink)
@@ -818,6 +784,7 @@ struct PlanPage {
         .scrollBar(BarState.Off)
         .edgeEffect(EdgeEffect.Spring)
         .align(Alignment.Top)
+        BottomNavigation({ active: 'map', allowActiveNavigation: true })
       }
       .width('100%')
       .height('100%')
@@ -832,7 +799,7 @@ struct PlanPage {
     Column({ space: 12 }) {
       // Read-only origin/destination from home map draft
       Column({ space: 8 }) {
-        Text('起终点（主页已选 · 只读）')
+        Text('出发地与乘客位置')
           .fontSize(13)
           .fontWeight(FontWeight.Medium)
           .fontColor(AppTheme.link)
@@ -889,7 +856,7 @@ struct PlanPage {
             .fontSize(12)
             .height(32)
             .backgroundColor(this.allowWalk ? AppTheme.accent : AppTheme.glassBgLight)
-            .fontColor(AppTheme.ink)
+            .fontColor(this.allowWalk ? Color.White : AppTheme.ink)
             .onClick(() => {
               this.allowWalk = !this.allowWalk;
             })
@@ -897,7 +864,7 @@ struct PlanPage {
             .fontSize(12)
             .height(32)
             .backgroundColor(this.allowBike ? AppTheme.accent : AppTheme.glassBgLight)
-            .fontColor(AppTheme.ink)
+            .fontColor(this.allowBike ? Color.White : AppTheme.ink)
             .onClick(() => {
               this.allowBike = !this.allowBike;
             })
@@ -905,7 +872,7 @@ struct PlanPage {
             .fontSize(12)
             .height(32)
             .backgroundColor(this.allowTransit ? AppTheme.accent : AppTheme.glassBgLight)
-            .fontColor(AppTheme.ink)
+            .fontColor(this.allowTransit ? Color.White : AppTheme.ink)
             .onClick(() => {
               this.allowTransit = !this.allowTransit;
             })
@@ -962,7 +929,7 @@ struct PlanPage {
         .backgroundColor(AppTheme.accent)
         .fontColor(Color.White)
         .border({ width: 1, color: '#59FFFFFF' })
-        .shadow({ radius: 20, color: '#590A84FF', offsetX: 0, offsetY: 8 })
+        .shadow({ radius: 20, color: '#18007AFF', offsetX: 0, offsetY: 8 })
         .enabled(!this.planning)
         .onClick(() => {
           this.onPlan();
@@ -991,7 +958,7 @@ struct PlanPage {
         Stack() {
           if (this.resultMapReady) {
             InteractiveMapView({
-              mapWebKey: this.settings.demoFixtures ? '' : this.settings.mapWebKey,
+              mapWebKey: this.settings.mapWebKey,
               pickRole: 'none',
               driverLon: this.parseCoord(this.driverLonText, 108.89),
               driverLat: this.parseCoord(this.driverLatText, 34.23),
@@ -1006,7 +973,7 @@ struct PlanPage {
               title: this.mapCaption(),
               driverLine: this.previewDriver,
               passengerLine: this.previewPassenger,
-              showTraffic: this.settings.demoFixtures ? false : true,
+              showTraffic: false,
               allowRoleSwitch: false,
               showChrome: false,
               reloadToken: this.resultMapToken
@@ -1051,19 +1018,16 @@ struct PlanPage {
 
       ForEach(this.cards, (card: PlanCardModel) => {
         Row() {
-          Text(this.modeIcon(card.modeKey))
-            .fontSize(22)
-            .width(36)
-            .textAlign(TextAlign.Center)
+          Image(this.modeIcon(card.modeKey)).width(28).height(28)
 
           Column({ space: 3 }) {
             Row({ space: 6 }) {
               Text(card.modeLabel)
                 .fontSize(15)
                 .fontWeight(FontWeight.Medium)
-                .fontColor(this.selectedCardId === card.id ? Color.White : AppTheme.ink)
+                .fontColor(AppTheme.ink)
               if (card.recommended) {
-                Text('最快方案')
+                Text('推荐方案')
                   .fontSize(10)
                   .fontColor(Color.White)
                   .padding({ left: 6, right: 6, top: 2, bottom: 2 })
@@ -1074,7 +1038,7 @@ struct PlanPage {
             .width('100%')
             Text(card.placeLine)
               .fontSize(12)
-              .fontColor(this.selectedCardId === card.id ? '#E8F1FF' : AppTheme.inkMuted)
+              .fontColor(AppTheme.inkMuted)
               .maxLines(1)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
               .width('100%')
@@ -1087,10 +1051,10 @@ struct PlanPage {
             Text(card.totalMinText)
               .fontSize(15)
               .fontWeight(FontWeight.Medium)
-              .fontColor(this.selectedCardId === card.id ? Color.White : AppTheme.ink)
+              .fontColor(AppTheme.ink)
             Text(card.saveLine)
               .fontSize(11)
-              .fontColor(this.selectedCardId === card.id ? '#D6E8FF' : AppTheme.inkMuted)
+              .fontColor(AppTheme.inkMuted)
           }
           .alignItems(HorizontalAlign.End)
         }
@@ -1123,7 +1087,7 @@ struct PlanPage {
       .width('100%')
       .padding(16)
       .borderRadius(16)
-      .backgroundColor(this.summaryTitle === '最快方案' ? AppTheme.accent : AppTheme.glassBgStrong)
+      .backgroundColor(AppTheme.accent)
       .border({ width: 1, color: AppTheme.glassBorder })
 
       // meeting point — solid dark glass only (no white/light fills)
@@ -1160,13 +1124,13 @@ struct PlanPage {
         .width('100%')
         .padding(12)
         .borderRadius(12)
-        .backgroundColor('#E61A2030')
+        .backgroundColor(AppTheme.fieldBg)
         .border({ width: 1, color: AppTheme.lineStrong })
       }
       .width('100%')
       .padding(14)
       .borderRadius(16)
-      .backgroundColor('#F0121620')
+      .backgroundColor(AppTheme.bg1)
       .border({ width: 1, color: AppTheme.glassBorder })
 
       // actions: confirm lock + share + maps
@@ -1210,7 +1174,7 @@ struct PlanPage {
           .textAlign(TextAlign.Center)
       }
 
-      Text('确认后方案锁定（v1 不自动改点）。分享复制文案；地图用设置中的应用或网页回退。')
+      Text('确认后会合地点保持不变。你可以分享给同行人，或随时主动重新规划。')
         .fontSize(11)
         .fontColor(AppTheme.inkSoft)
         .width('100%')

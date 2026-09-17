@@ -143,7 +143,7 @@ Unresolved locations → agent asks a clarification **or** UI requires map selec
 1. Final recommended ID must exist in last `generate_and_score_plans` output.
 2. UI binds minutes from that JSON only.
 3. Model prose is display-only; never parsed back into coordinates.
-4. Tool trace stored on the turn for optional “决策过程” panel.
+4. Tool trace stored on the turn internally for grounding and tests; production screens do not expose raw tool traces.
 
 ## Prompt injection / abuse
 
@@ -164,3 +164,10 @@ Unresolved locations → agent asks a clarification **or** UI requires map selec
 - `replan_from_remaining_route` (mid-trip)
 - `notify_counterparty` (dual-phone)
 - `voice_transcribe`
+
+## Semifinal interface
+
+Free-text preferences require a configured LLM. In offline mode the assistant links to
+structured planning controls instead of accepting text that the local engine cannot parse.
+Offline replies show grounded times and recommendation explanations without internal plan IDs.
+Model/network failure retains automatic engine fallback; raw HTTP errors remain internal.

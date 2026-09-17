@@ -82,7 +82,7 @@ and first-map-frame times, frame loss during route switching, process CPU, and p
 Repeat at least five times; report medians and range. Keep keys and precise personal locations
 out of captures and logs.
 
-1. Start without keys / fixture mode; map must paint on first entry.
+1. Start without keys; the offline schematic must paint on first entry.
 2. Assign driver and passenger repeatedly; final pins match the latest selection.
 3. Plan, switch all cards rapidly, then confirm; routes and ETAs match the selected snapshot.
 4. Repeat through offline chat and the locked-plan page; sharing preserves grounded fields.
@@ -91,7 +91,32 @@ out of captures and logs.
 7. Compare measurements; reconsider retry removal if first-paint reliability regresses.
 
 
-The native smoke test uses the device's existing map configuration and does not edit settings.
-For a deterministic network-free run, enable **演示 Fixture 优先** in Settings beforehand.
+The live native smoke test uses the device's existing map configuration. The offline case
+temporarily clears provider settings and restores the original settings in a `finally` block.
+The production fixture toggle has been removed.
 Screenshots are written to the application sandbox `files/meetagent-{home,form,plan,locked}.png`;
 they are test artifacts, not committed assets. The test creates an in-memory locked session.
+
+## Semifinal visual cleanup — 2026-09-17
+
+Removed the full-screen decorative photo and its overlay. Shared surfaces are light and
+opaque; map reload coalescing remains owned by `InteractiveMapView`. No parent refresh timers
+were introduced. Native screen checks cover map selection, live results, lock and navigation;
+this establishes functional/rendering correctness, not measured frame-rate improvement.
+
+Verification: app and test HAP SDK builds passed; 28 domain tests, 6 Node host tests, and
+4 native emulator tests passed. Screenshots were inspected for the home map, planning form,
+results, meeting-point details, locked trip, assistant, settings, and offline states. Offline
+selection labels and estimate badges were checked, and original settings were restored.
+Physical-phone validation and frame-rate profiling remain outstanding.
+
+Visual evidence can be exported from the debug app after the native suite, for example:
+
+```bash
+/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc file recv \
+  -b com.rinalic.meetAgentHarmony /data/storage/el2/base/files/meetagent-home.png /tmp/meetagent-home.png
+```
+
+The default AMap palette is softened with a map-layer saturation filter; route coordinates,
+labels, and vendor attribution are unchanged. Style reference:
+[AMap official map themes](https://lbs.amap.com/demo/javascript-api-v2/example/personalized-map/set-theme-style/).

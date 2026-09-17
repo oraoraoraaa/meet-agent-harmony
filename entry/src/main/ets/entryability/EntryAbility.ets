@@ -3,39 +3,34 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 
 const DOMAIN = 0x0000;
-/** App stage black — must match AppTheme.bg0 / start_window_background. */
-const WINDOW_BG: string = '#07080C';
+/** App window background — must match AppTheme.bg0 / start_window_background. */
+const WINDOW_BG: string = '#F2F2F7';
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     try {
-      this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
+      this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT);
     } catch (err) {
       hilog.error(DOMAIN, 'testTag', 'Failed to set colorMode. Cause: %{public}s', JSON.stringify(err));
     }
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
   }
 
   onDestroy(): void {
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onDestroy');
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
 
     windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {
         hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
         return;
       }
-      hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
       this.paintImmersiveWindow(windowStage);
     });
   }
 
   /**
-   * Edge-to-edge dark window so status/nav bars do not flash light gray
-   * (legacy start_window_background #F1F5F9) above/below content.
+   * Match the light launch surface and keep dark system-bar text readable.
    */
   private paintImmersiveWindow(windowStage: window.WindowStage): void {
     windowStage.getMainWindow().then((win: window.Window) => {
@@ -53,9 +48,9 @@ export default class EntryAbility extends UIAbility {
         const bar: window.SystemBarProperties = {
           statusBarColor: '#00000000',
           navigationBarColor: '#00000000',
-          // Light icons on dark stage
-          statusBarContentColor: '#F5F5F7',
-          navigationBarContentColor: '#F5F5F7'
+          // Dark icons on the light surface
+          statusBarContentColor: '#1C1C1E',
+          navigationBarContentColor: '#1C1C1E'
         };
         win.setWindowSystemBarProperties(bar);
       } catch (e) {
@@ -67,14 +62,11 @@ export default class EntryAbility extends UIAbility {
   }
 
   onWindowStageDestroy(): void {
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageDestroy');
   }
 
   onForeground(): void {
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onForeground');
   }
 
   onBackground(): void {
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onBackground');
   }
 }

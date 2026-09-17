@@ -71,7 +71,7 @@ export class AgentOrchestrator {
       const errObj: Object = e as Object;
       const offline: AgentTurnResult = await this.runOffline();
       offline.error = `${errObj}`;
-      offline.replyText = `大模型调用异常，已回退本地引擎。\n\n${offline.replyText}`;
+      offline.replyText = `智能服务暂不可用，已使用当前偏好生成会合方案。\n\n${offline.replyText}`;
       offline.offlineFallback = true;
       return offline;
     }
@@ -97,7 +97,7 @@ export class AgentOrchestrator {
     } catch (e) {
       const errObj: Object = e as Object;
       result.error = `${errObj}`;
-      result.replyText = `本地规划失败：${errObj}`;
+      result.replyText = '暂时无法规划，请检查所选位置后重试。';
       const tr: ToolTraceEntry = new ToolTraceEntry();
       tr.name = TOOL_GENERATE_AND_SCORE;
       tr.ok = false;
@@ -150,7 +150,7 @@ export class AgentOrchestrator {
       if (resp.error.length > 0) {
         const offline: AgentTurnResult = await this.runOffline();
         offline.error = resp.error;
-        offline.replyText = `大模型不可用（${resp.error}），已用本地引擎。\n\n${offline.replyText}`;
+        offline.replyText = `智能服务暂不可用，已使用当前偏好生成会合方案。\n\n${offline.replyText}`;
         offline.offlineFallback = true;
         for (let t = 0; t < offline.toolTrace.length; t++) {
           trace.push(offline.toolTrace[t]);
@@ -185,7 +185,7 @@ export class AgentOrchestrator {
     }
 
     const offline: AgentTurnResult = await this.runOffline();
-    offline.replyText = `工具调用次数已达上限，改用本地引擎结果。\n\n${offline.replyText}`;
+    offline.replyText = `已根据当前偏好生成会合方案。\n\n${offline.replyText}`;
     offline.offlineFallback = true;
     for (let t = 0; t < offline.toolTrace.length; t++) {
       trace.push(offline.toolTrace[t]);

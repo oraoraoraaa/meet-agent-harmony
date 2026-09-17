@@ -1,3 +1,4 @@
+import { BottomNavigation } from '../common/BottomNavigation';
 /**
  * Locked trip session screen — confirmed plan snapshot.
  * Share + open maps; explicit re-plan only (does not mutate locked session).
@@ -60,7 +61,7 @@ struct LockedSessionPage {
   private mapMountTimer: number = -1;
   private disposed: boolean = false;
 
-  aboutToAppear(): void {
+  onPageShow(): void {
     this.disposed = false;
     this.bootstrap();
   }
@@ -240,7 +241,7 @@ struct LockedSessionPage {
   private onReplan(): void {
     TripSessionStore.replan();
     promptAction.showToast({ message: '已关闭锁定会话，可重新规划', duration: 1600 });
-    router.replaceUrl({ url: 'pages/PlanPage' }).catch(() => {
+    router.pushUrl({ url: 'pages/Index' }, router.RouterMode.Single).catch(() => {
       router.back();
     });
   }
@@ -268,7 +269,7 @@ struct LockedSessionPage {
             this.goBack();
           })
 
-          Text('已锁定方案')
+          Text('我的行程')
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
             .fontColor(AppTheme.ink)
@@ -303,7 +304,7 @@ struct LockedSessionPage {
 
         if (!this.hasSession) {
           Column({ space: 14 }) {
-            Text('暂无锁定方案')
+            Text('下一次会合，从这里开始')
               .fontSize(18)
               .fontWeight(FontWeight.Bold)
               .fontColor(AppTheme.ink)
@@ -314,13 +315,13 @@ struct LockedSessionPage {
               .fontColor(AppTheme.inkMuted)
               .width('100%')
               .textAlign(TextAlign.Center)
-            Button('去普通规划', { type: ButtonType.Capsule })
+            Button('到地图选择地点', { type: ButtonType.Capsule })
               .width('100%')
               .height(46)
               .backgroundColor(AppTheme.accent)
               .fontColor(Color.White)
               .onClick(() => {
-                router.replaceUrl({ url: 'pages/PlanPage' }).catch(() => {
+                router.pushUrl({ url: 'pages/Index' }, router.RouterMode.Single).catch(() => {
                   router.back();
                 });
               })
@@ -347,7 +348,7 @@ struct LockedSessionPage {
               Stack() {
                 if (this.mapReady) {
                   InteractiveMapView({
-                    mapWebKey: this.settings.demoFixtures ? '' : this.settings.mapWebKey,
+                    mapWebKey: this.settings.mapWebKey,
                     pickRole: 'none',
                     driverLon: this.driverLon,
                     driverLat: this.driverLat,
@@ -361,8 +362,7 @@ struct LockedSessionPage {
                     title: `已锁定 · ${this.dataSourceBadge}`,
                     driverLine: this.driverLine,
                     passengerLine: this.passengerLine,
-                    showTraffic: !this.settings.demoFixtures &&
-                      this.settings.mapWebKey.trim().length > 0,
+                    showTraffic: false,
                     allowRoleSwitch: false,
                     showChrome: false,
                     reloadToken: this.mapToken
@@ -501,12 +501,6 @@ struct LockedSessionPage {
                   this.onReplan();
                 })
 
-              Text(`会话 ${this.sessionId} · ${this.lockedAt}`)
-                .fontSize(11)
-                .fontColor(AppTheme.inkSoft)
-                .width('100%')
-                .textAlign(TextAlign.Center)
-                .margin({ bottom: 12 })
             }
             .width('100%')
             .padding({ left: 14, right: 14, bottom: 28, top: 4 })
@@ -516,6 +510,7 @@ struct LockedSessionPage {
           .edgeEffect(EdgeEffect.Spring)
           .align(Alignment.Top)
         }
+        BottomNavigation({ active: 'trip' })
       }
       .width('100%')
       .height('100%')

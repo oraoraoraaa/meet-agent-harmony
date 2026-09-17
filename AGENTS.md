@@ -193,7 +193,7 @@ Read `docs/AI_AGENT.md` before changing agent behavior.
 
 - Max tool iterations per user turn: **6** (configurable, keep small for mobile latency).
 - On LLM failure mid-loop: finish with engine-only ranking + template copy.
-- Persist a **tool trace** for the session turn (for debug UI / judges).
+- Persist a **tool trace** internally for the session turn (grounding/tests); do not expose raw debug traces in production UI.
 
 ### Grounding checklist (must pass in review)
 
@@ -318,7 +318,7 @@ A complete contribution:
 cd domain && node --experimental-strip-types --test test/**/*.test.ts
 
 # Map host lifecycle checks (Node 22.13+; not native Web rendering)
-node --test tests/map-lifecycle.test.mjs
+node --test tests/map-lifecycle.test.mjs tests/production-reply.test.mjs
 
 # Unsigned SDK build (macOS default DevEco installation)
 PATH="/Applications/DevEco-Studio.app/Contents/tools/node/bin:$PATH" \
@@ -328,6 +328,10 @@ DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk \
   --mode module -p product=default -p module=entry@default \
   -p buildMode=debug assembleHap --no-daemon
 
+
+# Start the existing local emulator (preserve its data; adjust name/imageRoot if needed).
+/Applications/DevEco-Studio.app/Contents/tools/emulator/Emulator \
+  -start 'Pura 90' -imageRoot "$HOME/Library/Huawei/Sdk" -bootmode coldboot
 
 # Native suite (connected device/emulator; current map settings)
 # Build the test HAP with the same Hvigor command, using -p module=entry@ohosTest.

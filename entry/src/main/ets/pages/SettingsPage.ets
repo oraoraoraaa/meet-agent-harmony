@@ -1,10 +1,8 @@
+import { BottomNavigation } from '../common/BottomNavigation';
 import { common } from '@kit.AbilityKit';
 import { promptAction, router } from '@kit.ArkUI';
 import {
-  AppLanguage,
   AppSettings,
-  LANG_EN,
-  LANG_ZH_CN,
   LLM_MODE_OFFLINE,
   LLM_MODE_PROXY,
   LLM_MODE_USER_KEY,
@@ -42,7 +40,7 @@ struct SettingsPage {
     try {
       this.settings = await SettingsStore.load(this.hostContext());
       this.loaded = true;
-      this.statusText = '已从本机偏好加载';
+      this.statusText = '设置仅保存在此设备';
     } catch (e) {
       const _ignored: Object = e as Object;
       this.settings = new AppSettings();
@@ -100,11 +98,6 @@ struct SettingsPage {
     this.settings = next;
   }
 
-  private setLanguage(lang: AppLanguage): void {
-    const next: AppSettings = this.settings.clone();
-    next.language = lang;
-    this.settings = next;
-  }
 
   private setMapApp(app: MapAppChoice): void {
     const next: AppSettings = this.settings.clone();
@@ -169,18 +162,6 @@ struct SettingsPage {
           Scroll() {
             Column({ space: 14 }) {
               Column() {
-                this.sectionTitle('语言')
-                Row({ space: 8 }) {
-                  this.langChip(LANG_ZH_CN, '简体中文')
-                  this.langChip(LANG_EN, 'English')
-                }
-                .width('100%')
-                Text('日语界面 · 即将接入')
-                  .fontSize(11)
-                  .fontColor(AppTheme.inkSoft)
-                  .margin({ top: 8 })
-                  .width('100%')
-
                 this.sectionTitle('默认地图应用')
                 Column({ space: 8 }) {
                   this.mapAppRow(MAP_APP_AMAP, '高德地图 (AMap)')
@@ -189,7 +170,7 @@ struct SettingsPage {
                   this.mapAppRow(MAP_APP_BROWSER, '浏览器网页地图')
                 }
                 .width('100%')
-                Text('打开会合点：优先所选 App 深链，失败则回退高德网页 marker（GCJ-02）。')
+                Text('确认会合后，使用此地图打开路线。')
                   .fontSize(11)
                   .fontColor(AppTheme.inkSoft)
                   .margin({ top: 6 })
@@ -203,25 +184,13 @@ struct SettingsPage {
               .border({ width: 1, color: AppTheme.glassBorder })
               .shadow({
                 radius: 28,
-                color: '#59000000',
+                color: '#08000000',
                 offsetX: 0,
                 offsetY: 12
               })
 
               Column() {
                 this.sectionTitle('地图 Key')
-                this.fieldLabel('Map API Key（SDK / 通用）')
-                TextInput({ text: this.settings.mapApiKey, placeholder: '可选，稍后地图集成使用' })
-                  .type(InputType.Password)
-                  .height(46)
-                  .borderRadius(14)
-                  .backgroundColor(AppTheme.fieldBg)
-                  .fontColor(AppTheme.ink)
-                  .placeholderColor(AppTheme.inkFaint)
-                  .border({ width: 1, color: AppTheme.lineStrong })
-                  .onChange((v: string) => {
-                    this.settings.mapApiKey = v;
-                  })
                 this.fieldLabel('Map Web Key（HTTP 路线 / POI · 高德 Web 服务）')
                 TextInput({ text: this.settings.mapWebKey, placeholder: 'restapi.amap.com Web Key' })
                   .type(InputType.Password)
@@ -234,7 +203,7 @@ struct SettingsPage {
                   .onChange((v: string) => {
                     this.settings.mapWebKey = v;
                   })
-                Text('启用：驾车/步行/骑行/公交路径 + 逆地理 + 地点搜索。坐标 GCJ-02。失败自动回退估算。')
+                Text('用于地点搜索和实时路线。网络不可用时，仍可使用离线估算。')
                   .fontSize(11)
                   .fontColor(AppTheme.inkSoft)
                   .width('100%')
@@ -295,40 +264,6 @@ struct SettingsPage {
                     this.settings.proxyBaseUrl = v;
                   })
 
-                this.sectionTitle('体验')
-                Row() {
-                  Text('演示 Fixture 优先')
-                    .fontSize(14)
-                    .fontColor(AppTheme.ink)
-                    .layoutWeight(1)
-                  Toggle({ type: ToggleType.Switch, isOn: this.settings.demoFixtures })
-                    .selectedColor(AppTheme.accent)
-                    .onChange((on: boolean) => {
-                      this.settings.demoFixtures = on;
-                    })
-                }
-                .width('100%')
-                .margin({ top: 8 })
-                Text('开启后强制估算提供方（忽略 Map Web Key），舞台演示更稳。关闭后有 Key 则走 AMap 实时。')
-                  .fontSize(11)
-                  .fontColor(AppTheme.inkSoft)
-                  .width('100%')
-                  .margin({ bottom: 4 })
-
-                Row() {
-                  Text('Agent 工具轨迹（调试）')
-                    .fontSize(14)
-                    .fontColor(AppTheme.ink)
-                    .layoutWeight(1)
-                  Toggle({ type: ToggleType.Switch, isOn: this.settings.verboseAgentTrace })
-                    .selectedColor(AppTheme.accent)
-                    .onChange((on: boolean) => {
-                      this.settings.verboseAgentTrace = on;
-                    })
-                }
-                .width('100%')
-                .margin({ top: 8 })
-
                 Text(this.statusText)
                   .fontSize(12)
                   .fontColor(AppTheme.inkMuted)
@@ -356,7 +291,7 @@ struct SettingsPage {
                   .border({ width: 1, color: '#59FFFFFF' })
                   .shadow({
                     radius: 20,
-                    color: '#590A84FF',
+                    color: '#18007AFF',
                     offsetX: 0,
                     offsetY: 8
                   })
@@ -373,7 +308,7 @@ struct SettingsPage {
               .border({ width: 1, color: AppTheme.glassBorder })
               .shadow({
                 radius: 28,
-                color: '#59000000',
+                color: '#08000000',
                 offsetX: 0,
                 offsetY: 12
               })
@@ -387,6 +322,7 @@ struct SettingsPage {
           .scrollBar(BarState.Off)
           .edgeEffect(EdgeEffect.Spring)
         }
+        BottomNavigation({ active: 'settings' })
       }
       .width('100%')
       .height('100%')
@@ -409,18 +345,6 @@ struct SettingsPage {
       })
   }
 
-  @Builder
-  langChip(lang: AppLanguage, label: string) {
-    Button(label, { type: ButtonType.Capsule })
-      .fontSize(12)
-      .height(32)
-      .backgroundColor(this.settings.language === lang ? AppTheme.accent : AppTheme.glassBgLight)
-      .fontColor(this.settings.language === lang ? Color.White : AppTheme.ink)
-      .border({ width: 1, color: this.settings.language === lang ? AppTheme.lineFocus : AppTheme.glassBorder })
-      .onClick(() => {
-        this.setLanguage(lang);
-      })
-  }
 
   @Builder
   mapAppRow(app: MapAppChoice, label: string) {

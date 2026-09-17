@@ -86,3 +86,15 @@ test('failed loadData uses the URL fallback and failed loads remain retryable', 
   h.view.reloadToken++; h.view.onReloadTokenChanged(); h.flush();
   assert.equal(h.loads.length, 2);
 });
+
+test('generated live and offline map scripts are valid JavaScript', () => {
+  const context = vm.createContext({});
+  vm.runInContext(stripTypeScriptTypes(plainTs(htmlSource)) +
+    '\nglobalThis.make = key => { const m = new MapViewMarkers(); m.mapWebKey = key; return buildInteractiveMapHtml(m); };', context);
+  for (const key of ['', 'test-placeholder']) {
+    const html = context.make(key);
+    const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+    assert.doesNotThrow(() => new vm.Script(script));
+    assert.match(html, /textContent=\(poi.name/);
+  }
+});

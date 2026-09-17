@@ -1,3 +1,4 @@
+import { BottomNavigation } from '../common/BottomNavigation';
 /**
  * Agent chat UI — Mode A/B tool loop or Mode C offline engine explanations.
  */
@@ -25,10 +26,9 @@ import {
   TripSession
 } from '../domain/Models';
 import { AgentOrchestrator } from '../services/agent/AgentOrchestrator';
-import { AgentTurnResult, ToolTraceEntry } from '../services/agent/AgentTypes';
+import { AgentTurnResult } from '../services/agent/AgentTypes';
 import { MapProvider, PlanningService } from '../services/map/MapProvider';
 import { InteractiveMapView } from '../services/map/InteractiveMapView';
-import { FixtureCatalog, FixtureScenario } from '../services/planning/FixtureCatalog';
 import { SettingsStore } from '../services/settings/SettingsStore';
 import { TripSessionStore } from '../services/session/TripSessionStore';
 import { TripDraftStore } from '../services/session/TripDraftStore';
@@ -54,8 +54,6 @@ class PlanMiniCard {
 @Component
 struct ChatPage {
   @State settings: AppSettings = new AppSettings();
-  @State fixtureId: string = 'xian-demo-1';
-  @State fixtureTitle: string = '西安：高新 → 钟楼';
   @State city: string = '西安';
   @State driverName: string = '司机起点';
   @State passengerName: string = '乘客位置';
@@ -81,9 +79,6 @@ struct ChatPage {
   @State dataSourceBadge: string = '';
   @State busy: boolean = false;
   @State statusLine: string = '离线引擎随时可用';
-  @State showTrace: boolean = false;
-  @State traceLines: string[] = [];
-  @State modeLabel: string = 'Offline';
   @State lastRec: RecommendationSet | null = null;
   @State confirming: boolean = false;
   private orch: AgentOrchestrator | null = null;
@@ -92,7 +87,7 @@ struct ChatPage {
   private mapMountTimer: number = -1;
   private disposed: boolean = false;
 
-  aboutToAppear(): void {
+  onPageShow(): void {
     this.disposed = false;
     this.bootstrap();
   }
@@ -119,22 +114,23 @@ struct ChatPage {
       const _ignored: Object = e as Object;
       this.settings = new AppSettings();
     }
-    this.modeLabel = this.settings.modeLabel();
     this.hydratePoints();
     this.resetOrchestrator();
-    this.pushSystem(this.buildLocationIntro());
-    const mapHint: string = PlanningService.describeProvider(
-      this.settings.mapWebKey,
-      this.settings.demoFixtures
-    );
-    this.statusLine = this.settings.llmConfigured()
-      ? `LLM ${this.settings.modeLabel()} · ${this.settings.llmModel} · ${mapHint}`
-      : `LLM Offline · ${mapHint}`;
+    if (this.bubbles.length === 0) this.pushSystem(this.buildLocationIntro());
+    this.statusLine = this.settings.llmConfigured() ? '告诉我你的出行偏好' : '离线规划可用';
   }
 
   private hydratePoints(): void {
     const d = TripDraftStore.get();
     if (d.hasDriver && d.hasPassenger) {
+      if (this.driverLon !== d.driverLon || this.driverLat !== d.driverLat ||
+        this.passengerLon !== d.passengerLon || this.passengerLat !== d.passengerLat) {
+        this.bubbles = [];
+        this.planCards = [];
+        this.lastRec = null;
+        this.selectedPlanId = '';
+        this.chatMapReady = false;
+      }
       this.driverLon = d.driverLon;
       this.driverLat = d.driverLat;
       this.driverName = d.driverName.length > 0 ? d.driverName : '司机起点';
@@ -144,13 +140,9 @@ struct ChatPage {
       if (d.city.length > 0) {
         this.city = d.city;
       }
-      this.fixtureId = 'draft';
-      this.fixtureTitle = '主页选点';
       return;
     }
-    // Incomplete or empty draft → demo fixture only as last resort
-    this.applyFixture(FixtureCatalog.byId(this.fixtureId));
-    this.fixtureTitle = this.fixtureTitle + '（未从主页带入）';
+
   }
 
   private placeLabel(name: string): string {
@@ -182,39 +174,28 @@ struct ChatPage {
   }
 
   private buildLocationIntro(): string {
+    const draft = TripDraftStore.get();
+    if (!draft.hasDriver || !draft.hasPassenger) {
+      return '想在哪里会合？先到地图选择司机出发地和乘客位置，再告诉我你的出行偏好。';
+    }
     const dLabel: string = this.placeLabel(this.driverName);
     const pLabel: string = this.placeLabel(this.passengerName);
     return (
       '你好，我是会合助手。\n' +
         `当前司机出发地：${dLabel}\n` +
         `当前乘客位置：${pLabel}\n` +
-        '用快捷语或描述约束即可规划（数值只来自引擎）。如需改点请返回主页地图。'
+        '告诉我你愿意走多久、是否可以骑车，我会帮你比较会合方案。'
     );
   }
 
   private resetOrchestrator(): void {
     const provider: MapProvider = PlanningService.createProvider(
       this.settings.mapWebKey,
-      this.settings.demoFixtures
+      false
     );
     this.orch = new AgentOrchestrator(this.settings, this.buildScenario(), provider);
   }
 
-  private applyFixture(fix: FixtureScenario): void {
-    this.fixtureId = fix.id;
-    this.fixtureTitle = fix.title;
-    this.city = fix.city;
-    this.driverLon = fix.driver.lon;
-    this.driverLat = fix.driver.lat;
-    this.driverName = fix.driver.name;
-    this.passengerLon = fix.passenger.lon;
-    this.passengerLat = fix.passenger.lat;
-    this.passengerName = fix.passenger.name;
-    if (fix.constraints.maxPassengerWalkMin >= 0) {
-      this.maxWalkMin = fix.constraints.maxPassengerWalkMin;
-    }
-    this.avoidTransit = fix.constraints.avoidTransit;
-  }
 
   private buildAllowedModes(): MobilityMode[] {
     const modes: MobilityMode[] = [];
@@ -363,22 +344,19 @@ struct ChatPage {
     }
   }
 
-  private applyTrace(entries: ToolTraceEntry[]): void {
-    const lines: string[] = [];
-    for (let i = 0; i < entries.length; i++) {
-      const t: ToolTraceEntry = entries[i];
-      const flag: string = t.ok ? '✓' : '✗';
-      let line: string = `${flag} ${t.name} · ${t.durationMs}ms · ${t.summary}`;
-      if (t.error.length > 0) {
-        line = `${line} · ${t.error}`;
-      }
-      lines.push(line);
-    }
-    this.traceLines = lines;
-  }
 
   private async onSend(textOverride: string = ''): Promise<void> {
     if (this.busy) {
+      return;
+    }
+    const draft = TripDraftStore.get();
+    if (!draft.hasDriver || !draft.hasPassenger) {
+      promptAction.showToast({ message: '请先在地图选择司机和乘客的位置' });
+      return;
+    }
+    this.hydratePoints();
+    if (!this.settings.llmConfigured()) {
+      router.pushUrl({ url: 'pages/PlanPage' }, router.RouterMode.Single);
       return;
     }
     const text: string = textOverride.length > 0 ? textOverride : this.composer.trim();
@@ -396,7 +374,6 @@ struct ChatPage {
         return;
       }
       const turn: AgentTurnResult = await this.orch.handleUserTurn(text);
-      this.applyTrace(turn.toolTrace);
       if (turn.recommendation !== null) {
         this.applyRecommendation(turn.recommendation, turn.selectedPlanId);
         this.pushAssistant(turn.replyText, true);
@@ -404,13 +381,13 @@ struct ChatPage {
         this.pushAssistant(turn.replyText, false);
       }
       if (turn.usedLlm && !turn.offlineFallback) {
-        this.statusLine = `LLM 完成 · ${this.dataSourceBadge}`;
+        this.statusLine = `规划完成 · ${this.dataSourceBadge}`;
       } else {
         this.statusLine = `离线引擎 · ${this.dataSourceBadge.length > 0 ? this.dataSourceBadge : '估算'}`;
       }
     } catch (e) {
       const errObj: Object = e as Object;
-      this.pushAssistant(`出错了：${errObj}`, false);
+      this.pushAssistant('暂时无法完成规划，请稍后重试。', false);
       this.statusLine = '出错';
     } finally {
       this.busy = false;
@@ -440,7 +417,7 @@ struct ChatPage {
       this.applyMapForPlan(id, this.lastRec);
     }
     promptAction.showToast({
-      message: id === 'stayPut' ? '已选择：原地等待' : `已选择：${id}`,
+      message: id === 'stayPut' ? '已选择：原地等待' : '已切换会合方案',
       duration: 1200
     });
   }
@@ -455,11 +432,7 @@ struct ChatPage {
     }
     this.confirming = true;
     try {
-      if (TripSessionStore.getPlanning() === null) {
-        TripSessionStore.beginPlanning(this.buildScenario(), this.lastRec, this.selectedPlanId);
-      } else {
-        TripSessionStore.selectPlan(this.selectedPlanId);
-      }
+      TripSessionStore.beginPlanning(this.buildScenario(), this.lastRec, this.selectedPlanId);
       let meetName: string = '';
       if (this.selectedPlanId === 'stayPut') {
         meetName = this.lastRec.stayPut.meetingPoint.name;
@@ -517,17 +490,7 @@ struct ChatPage {
     );
   }
 
-  private openSettings(): void {
-    router.pushUrl({ url: 'pages/SettingsPage' }).catch(() => {
-      promptAction.showToast({ message: '无法打开设置', duration: 2000 });
-    });
-  }
 
-  private openPlanForm(): void {
-    router.pushUrl({ url: 'pages/PlanPage' }).catch(() => {
-      promptAction.showToast({ message: '无法打开规划页', duration: 2000 });
-    });
-  }
 
   private openLockedPage(): void {
     router.pushUrl({ url: 'pages/LockedSessionPage' }).catch(() => {
@@ -568,84 +531,10 @@ struct ChatPage {
           .layoutWeight(1)
           .alignItems(HorizontalAlign.Start)
 
-          Button('轨迹', { type: ButtonType.Capsule })
-            .fontSize(12)
-            .height(30)
-            .backgroundColor(AppTheme.glassBgLight)
-            .fontColor(AppTheme.ink)
-            .border({ width: 1, color: AppTheme.glassBorder })
-            .onClick(() => {
-              this.showTrace = !this.showTrace;
-            })
+
         }
         .width('100%')
         .padding({ left: 8, right: 12, top: AppLayout.headerTop(), bottom: 6 })
-
-        // fixture chips
-        Scroll() {
-          Row({ space: 8 }) {
-            this.fixtureChip('xian-demo-1', '西安示例')
-            this.fixtureChip('shanghai-demo-1', '上海示例')
-            Button('表单规划', { type: ButtonType.Capsule })
-              .fontSize(12)
-              .height(30)
-              .backgroundColor(AppTheme.glassBgLight)
-              .fontColor(AppTheme.ink)
-              .border({ width: 1, color: AppTheme.glassBorder })
-              .onClick(() => {
-                this.openPlanForm();
-              })
-            Button('设置', { type: ButtonType.Capsule })
-              .fontSize(12)
-              .height(30)
-              .backgroundColor(AppTheme.glassBgLight)
-              .fontColor(AppTheme.ink)
-              .border({ width: 1, color: AppTheme.glassBorder })
-              .onClick(() => {
-                this.openSettings();
-              })
-          }
-          .padding({ left: 14, right: 14 })
-        }
-        .scrollable(ScrollDirection.Horizontal)
-        .scrollBar(BarState.Off)
-        .width('100%')
-        .height(40)
-
-        Text(this.fixtureTitle)
-          .fontSize(12)
-          .fontColor(AppTheme.inkMuted)
-          .width('100%')
-          .padding({ left: 16, right: 16, top: 4, bottom: 4 })
-
-        if (this.showTrace) {
-          Column({ space: 4 }) {
-            Text('决策过程（工具轨迹）')
-              .fontSize(12)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(AppTheme.link)
-              .width('100%')
-            if (this.traceLines.length === 0) {
-              Text('暂无工具调用')
-                .fontSize(12)
-                .fontColor(AppTheme.inkSoft)
-            } else {
-              ForEach(this.traceLines, (line: string, idx: number) => {
-                Text(line)
-                  .fontSize(11)
-                  .fontColor(AppTheme.inkMuted)
-                  .width('100%')
-              }, (line: string, idx: number) => `tr-${idx}-${line.length}`)
-            }
-          }
-          .width('100%')
-          .padding(12)
-          .margin({ left: 14, right: 14, bottom: 6 })
-          .borderRadius(14)
-          .backgroundColor(AppTheme.glassBgStrong)
-          .border({ width: 1, color: AppTheme.glassBorder })
-          .backdropBlur(AppTheme.blurSoft)
-        }
 
         // messages
         Scroll() {
@@ -663,7 +552,7 @@ struct ChatPage {
 
               if (this.chatMapReady) {
                 InteractiveMapView({
-                  mapWebKey: this.settings.demoFixtures ? '' : this.settings.mapWebKey,
+                  mapWebKey: this.settings.mapWebKey,
                   pickRole: 'none',
                   driverLon: this.driverLon,
                   driverLat: this.driverLat,
@@ -681,7 +570,7 @@ struct ChatPage {
                   title: this.dataSourceBadge.length > 0 ? this.dataSourceBadge : '方案路线',
                   driverLine: this.previewDriver,
                   passengerLine: this.previewPassenger,
-                  showTraffic: !this.settings.demoFixtures && this.settings.mapWebKey.trim().length > 0,
+                  showTraffic:  this.settings.mapWebKey.trim().length > 0,
                   allowRoleSwitch: false,
                   showChrome: false,
                   reloadToken: this.chatMapToken
@@ -703,7 +592,7 @@ struct ChatPage {
                 .backgroundColor(AppTheme.mapPanel)
               }
 
-              Text('方案卡片（点选切换 · 数值来自引擎）')
+              Text('选择适合你的方案')
                 .fontSize(12)
                 .fontColor(AppTheme.inkSoft)
                 .width('100%')
@@ -767,6 +656,7 @@ struct ChatPage {
         .edgeEffect(EdgeEffect.Spring)
         .align(Alignment.Top)
 
+        if (this.settings.llmConfigured()) {
         // quick prompts
         Scroll() {
           Row({ space: 8 }) {
@@ -814,6 +704,16 @@ struct ChatPage {
         }
         .width('100%')
         .padding({ left: 14, right: 14, bottom: 18, top: 6 })
+        } else {
+          Column({ space: 10 }) {
+            Text('离线模式下，可直接选择出行方式和步行上限。')
+              .fontSize(13).fontColor(AppTheme.inkSoft)
+            Button('设置偏好并规划').width('100%').height(48)
+              .backgroundColor(AppTheme.accent).fontColor(Color.White)
+              .onClick(() => { router.pushUrl({ url: 'pages/PlanPage' }, router.RouterMode.Single); })
+          }.width('100%').padding(20)
+        }
+        BottomNavigation({ active: 'chat' })
       }
       .width('100%')
       .height('100%')
@@ -823,20 +723,6 @@ struct ChatPage {
     .backgroundColor(AppTheme.bg0)
   }
 
-  @Builder
-  fixtureChip(id: string, label: string) {
-    Button(label, { type: ButtonType.Capsule })
-      .fontSize(12)
-      .height(30)
-      .backgroundColor(this.fixtureId === id ? AppTheme.accent : AppTheme.glassBgLight)
-      .fontColor(this.fixtureId === id ? Color.White : AppTheme.ink)
-      .border({ width: 1, color: this.fixtureId === id ? AppTheme.lineFocus : AppTheme.glassBorder })
-      .onClick(() => {
-        this.applyFixture(FixtureCatalog.byId(id));
-        this.resetOrchestrator();
-        this.pushSystem(`已切换示例：${this.fixtureTitle}`);
-      })
-  }
 
   @Builder
   quickChip(text: string) {
@@ -864,7 +750,7 @@ struct ChatPage {
       }
 
       Column({ space: 4 }) {
-        Text(b.role === 'user' ? '你' : (b.role === 'system' ? '系统' : '会合助手'))
+        Text(b.role === 'user' ? '你' : (b.role === 'system' ? '会合助手' : '会合助手'))
           .fontSize(10)
           .fontColor(AppTheme.inkSoft)
           .width('100%')
@@ -911,12 +797,12 @@ struct ChatPage {
         Text(c.title)
           .fontSize(15)
           .fontWeight(FontWeight.Medium)
-          .fontColor(this.selectedPlanId === c.id ? Color.White : AppTheme.ink)
+          .fontColor(AppTheme.ink)
           .layoutWeight(1)
         if (c.recommended) {
           Text('推荐')
             .fontSize(10)
-            .fontColor(this.selectedPlanId === c.id ? Color.White : AppTheme.link)
+            .fontColor(AppTheme.link)
             .padding({ left: 8, right: 8, top: 2, bottom: 2 })
             .borderRadius(999)
             .backgroundColor(this.selectedPlanId === c.id ? '#33FFFFFF' : AppTheme.accentSoft)
@@ -925,11 +811,7 @@ struct ChatPage {
       .width('100%')
       Text(c.detail)
         .fontSize(12)
-        .fontColor(this.selectedPlanId === c.id ? '#E6FFFFFF' : AppTheme.inkMuted)
-        .width('100%')
-      Text(c.id)
-        .fontSize(10)
-        .fontColor(this.selectedPlanId === c.id ? '#B3FFFFFF' : AppTheme.inkSoft)
+        .fontColor(AppTheme.inkMuted)
         .width('100%')
     }
     .width('100%')

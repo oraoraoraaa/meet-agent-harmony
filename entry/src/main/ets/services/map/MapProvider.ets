@@ -2,7 +2,7 @@
  * Map / routing provider surface.
  *
  * Hybrid:
- *  - demoFixtures=true  → force EstimateMapProvider (stage-safe)
+ *  - forceEstimate=true  → force EstimateMapProvider (stage-safe)
  *  - mapWebKey present  → AmapWebMapProvider with estimate fallback
  *  - else               → estimate only
  *
@@ -236,7 +236,7 @@ class MapProviderAsAnalysis implements AnalysisProviders {
 export class PlanningService {
   /**
    * @param mapWebKey AMap Web service key (preferences only)
-   * @param forceEstimate when true (demoFixtures), ignore key and use estimate
+   * @param forceEstimate when true (tests), ignore key and use estimate
    */
   static createProvider(mapWebKey: string, forceEstimate: boolean = false): MapProvider {
     if (forceEstimate) {
@@ -245,13 +245,6 @@ export class PlanningService {
     return new HybridMapProvider(mapWebKey, false);
   }
 
-  /** Create Hybrid with POI detailed search when live. */
-  static createHybrid(mapWebKey: string, forceEstimate: boolean = false): HybridMapProvider {
-    if (forceEstimate) {
-      return new HybridMapProvider('', true);
-    }
-    return new HybridMapProvider(mapWebKey, false);
-  }
 
   static async plan(
     scenario: Scenario,
@@ -264,12 +257,12 @@ export class PlanningService {
 
   static describeProvider(mapWebKey: string, forceEstimate: boolean): string {
     if (forceEstimate) {
-      return '演示 Fixture · 强制估算';
+      return '离线估算';
     }
     if (mapWebKey.trim().length > 0) {
-      return 'AMap 实时（失败回退估算）';
+      return '实时路线 · 自动离线回退';
     }
-    return '估算模式（无 Map Web Key）';
+    return '离线估算';
   }
 
   static mergeDataSourceLabel(source: DataSource): string {

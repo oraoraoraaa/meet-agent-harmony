@@ -1,3 +1,5 @@
+> Current semifinal UI (2026-09-17): historical fixture/debug/language tasks below record earlier implementation work, not available production controls. See the implementation note at the end for the current shipped surface.
+
 # Implementation Plan (Plan B · Session AI Agent)
 
 This is the **delivery source of truth** for building MeetAgent.
@@ -477,3 +479,17 @@ home, planning/result maps, and confirm/lock.
 Removed the unused `PolylineMath.ets` canvas implementation, replaced generated string
 assertion tests with ArkTS engine checks, and corrected obsolete module/proxy documentation.
 The portable domain and ArkTS ports, fixtures, and submission assets are intentionally retained.
+
+## Semifinal interface implementation — 2026-09-17
+
+- [x] Light native visual system, flat backgrounds, coherent typography and labeled bottom navigation.
+- [x] Larger map with floating search and secondary traffic/center controls; traffic starts off on home.
+- [x] Explicit empty pickup state; both locations must be chosen before planning. No sample locations are silently accepted.
+- [x] Remove production fixture catalog/switches, raw tool trace UI, cosmetic role mode, unused SDK key, and ineffective language switch.
+- [x] Remove unreferenced GPS helper and its permissions, decorative stage photo, unused map formatter and provider factory.
+- [x] Offline assistant directs preference entry to structured controls. Grounded estimate badges and plan locking remain.
+- [x] Native smoke updated to select actual map locations and exercise result → lock → tabs.
+
+Map styling uses the existing AMap service and its documented `fresh` style. This is an
+Apple-inspired presentation, not Apple Maps cartography. Vendor attribution stays visible.
+Fixtures remain under `fixtures/` and domain tests as development data only.

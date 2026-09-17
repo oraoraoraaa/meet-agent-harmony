@@ -9,30 +9,29 @@ import {
   StayPutSuggestion,
   Suggestion
 } from '../../domain/Models';
-import { resolveGroundedSelection, stayPutPlanId, suggestionPlanId } from './Grounding';
+import { resolveGroundedSelection, stayPutPlanId } from './Grounding';
 
 export function buildOfflinePlanReply(rec: RecommendationSet): string {
   const selected: string = resolveGroundedSelection('', rec);
   const lines: string[] = [];
-  lines.push(`已用本地引擎完成会合规划（${dataSourceLabelZh(rec.dataSource)}模式，未调用大模型）。`);
+  lines.push(`已为你比较会合方案 · ${dataSourceLabelZh(rec.dataSource)}`);
   lines.push('');
 
   const stay: StayPutSuggestion = rec.stayPut;
   lines.push(
-    `· 原地等待 [stayPut]：司机约 ${stay.driverEtaMin.toFixed(0)} 分钟到达乘客位置` +
+    `· 原地等待：司机约 ${stay.driverEtaMin.toFixed(0)} 分钟到达乘客位置` +
       (stay.recommended ? '  ← 推荐' : '')
   );
 
   for (let i = 0; i < rec.suggestions.length; i++) {
     const s: Suggestion = rec.suggestions[i];
-    const id: string = suggestionPlanId(i);
     const mark: string = s.recommended ? '  ← 推荐' : '';
     let save: string = '';
     if (s.driverSavedMin > 0.4) {
       save = `，司机省约 ${s.driverSavedMin.toFixed(0)} 分钟`;
     }
     lines.push(
-      `· ${modeLabelZh(s.mode)} [${id}]：乘客约 ${s.passengerEtaMin.toFixed(0)} 分钟，` +
+      `· ${modeLabelZh(s.mode)}：乘客约 ${s.passengerEtaMin.toFixed(0)} 分钟，` +
         `司机约 ${s.driverEtaMin.toFixed(0)} 分钟，会合约 ${s.completionMin.toFixed(0)} 分钟` +
         save +
         mark
@@ -42,17 +41,15 @@ export function buildOfflinePlanReply(rec: RecommendationSet): string {
   lines.push('');
   if (selected === stayPutPlanId()) {
     lines.push(stay.rationale);
-    lines.push(`推荐方案 ID：${selected}`);
   } else {
     const idx: number = Number(selected.substring('suggestion:'.length));
     if (idx >= 0 && idx < rec.suggestions.length) {
       lines.push(rec.suggestions[idx].rationale);
     }
-    lines.push(`推荐方案 ID：${selected}`);
   }
 
   lines.push('');
-  lines.push('可在设置中配置大模型 Key 以启用自然语言约束解析与解释。');
+  lines.push('你可以在路线规划中调整出行方式和步行上限。');
   return lines.join('\n');
 }
 

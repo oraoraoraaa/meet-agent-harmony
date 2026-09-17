@@ -111,7 +111,7 @@ DevEco Studio opens the **repository root** (not a nested `app/` folder).
 | Client OS | HarmonyOS (phone) |
 | UI | ArkTS + ArkUI (Stage model) |
 | Domain / engine | TypeScript-first portable core under `domain/` (mirrored or imported into the app as practical) |
-| Maps & routing | `MapProvider` Hybrid: **estimate** always; **AMap Web REST** when Map Web Key set and 演示 Fixture OFF; Map Kit optional later for basemap only |
+| Maps & routing | `MapProvider` Hybrid: **estimate** always; **AMap Web REST** when Map Web Key is set; Map Kit optional later for basemap only |
 | LLM | OpenAI-compatible HTTP API (DeepSeek / Qwen / OpenAI / custom gateway) |
 | Optional server | Lightweight proxy (`server/`) to hold a demo key |
 | Tests | Domain unit tests + app UI smoke + fixture replay |
@@ -130,20 +130,19 @@ DevEco Studio opens the **repository root** (not a nested `app/` folder).
 
 ### 2) Client config (keys never in git)
 
-1. In-app **设置**:
+1. Open the **设置** tab:
    - **Map Web Key** — 高德 Web 服务 Key（`restapi.amap.com`）
    - Console 启用：路径规划（驾车/步行/骑行/公交）、地理编码 regeo、搜索 place/text
-   - **演示 Fixture 优先** — ON = 强制估算（舞台稳）；OFF + Key = 实时路线
    - LLM（可选）：Base URL + API Key + Model，或 Proxy，或 Offline
 2. Save → re-open Plan / Chat so provider rebuilds.
 3. Optional template: copy `.env.example` → local `.env` (gitignored) for your notes only; the app reads **preferences**, not `.env`.
 
-### 3) Three demo paths
+### 3) Planning paths
 
 | Path | How |
 | --- | --- |
-| **Offline / Fixture** | 演示 Fixture ON · 普通规划 · 主页选点或示例回退 · badge **估算** |
-| **Live map** | Fixture OFF · Map Web Key · 主页地图选点 → 普通规划 · badge **实时** / **实时+估算** |
+| **Offline** | No map key · select both points · 路线规划 · badge **估算** |
+| **Live map** | Map Web Key · 地图选点 → 路线规划 · badge **实时** / **实时+估算** |
 | **LLM agent** | Mode A/B keys · 智能助手规划 · tools still use Hybrid map |
 
 ### 4) Optional LLM proxy
@@ -159,7 +158,7 @@ cd domain && npm test
 Map host lifecycle regression checks (Node 22.13+; native rendering still needs DevEco/device):
 
 ```bash
-node --test tests/map-lifecycle.test.mjs
+node --test tests/map-lifecycle.test.mjs tests/production-reply.test.mjs
 ```
 
 Unsigned SDK build on macOS with the default DevEco installation:
@@ -177,6 +176,10 @@ The local emulator accepts the unsigned HAP. Physical-device installation needs 
 in DevEco; do not commit signing credentials. Native smoke commands:
 
 ```bash
+# Start the existing local emulator (preserve its data; adjust name/imageRoot if needed).
+/Applications/DevEco-Studio.app/Contents/tools/emulator/Emulator \
+  -start 'Pura 90' -imageRoot "$HOME/Library/Huawei/Sdk" -bootmode coldboot
+
 # Native suite (connected device/emulator; current map settings)
 # Build the test HAP with the same Hvigor command, using -p module=entry@ohosTest.
 /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc install \
@@ -188,8 +191,8 @@ in DevEco; do not commit signing credentials. Native smoke commands:
   -s unittest OpenHarmonyTestRunner -s timeout 120000 -w 125
 ```
 
-The native smoke creates a locked session using current map settings. Enable fixture mode
-before running it if you want a network-free test. Inspect the `Tests run` summary: the test
+The native smoke selects both locations on the map and creates a locked session using current map settings.
+Leave the map key empty for network-free testing. Screenshots are written to the app’s `filesDir` (`meetagent-*.png`). Inspect the `Tests run` summary: the test
 launcher can exit successfully even when a test fails.
 
 ---
@@ -199,15 +202,12 @@ launcher can exit successfully even when a test fails.
 | Setting | Purpose |
 | --- | --- |
 | Map Web Key | AMap REST: driving/walking/bike/transit + regeo + POI |
-| Map API Key | Optional SDK slot (not required for Hybrid REST) |
-| 演示 Fixture 优先 | Force estimate provider (ignore Map Web Key) |
 | LLM base URL | OpenAI-compatible endpoint |
 | LLM API key | User-provided key (Mode A) |
 | LLM model | e.g. `deepseek-chat`, `qwen-plus`, … |
 | Proxy base URL | Optional contest/demo server (Mode B) |
 | Prefer modes | Walk / bike / transit allow-list (plan form) |
 | Max passenger walk minutes | Soft constraint for ranking |
-| Language | zh-CN (default); EN/JP deferred |
 
 ### LLM modes
 
@@ -239,14 +239,14 @@ Mode C must always work.
 
 ## Current status
 
-**Phase 4 largely landed** — live AMap Hybrid (REST + JS basemap), home search-first assign, plan/chat route maps, demo polish. Remaining: page transitions, icons/about, optional `server/` proxy, JP l10n.
+**Semifinal interface** — a light native UI, map-first pickup selection, and labeled 地图 / 助手 / 行程 / 设置 navigation. Production screens contain no demo fixtures, debug traces, unfinished language switches, or sample trips. Offline planning uses explicit location selections and structured preferences. The optional proxy server remains a documented external integration, not a bundled feature.
 
 | Layer | Status |
 | --- | --- |
 | Domain engine | Multi-modal ranking + agent grounding + session + AMap polyline helpers (`cd domain && npm test` → 28 pass) |
 | Pickup validation | Live shortlist is routed to each candidate; destinations snapped over 60 m away are rejected. Nearby entrance names are landmarks, while parking legality remains for on-site confirmation. |
-| Home map | Interactive AMap JS (traffic) · search/tap → assign passenger/driver · POI labels |
-| 普通规划 | Draft-first read-only points · result map + card routes · lock/share |
+| Home map | Interactive AMap JS (calm basemap, optional traffic) · search/tap → assign passenger/driver · POI labels |
+| 路线规划 | Draft-first read-only points · result map + card routes · lock/share |
 | Agent | OpenAI-compatible client, tool registry, orchestrator, `ChatPage` + route map |
 | Session lock / share | `TripSessionStore` + `LockedSessionPage` + clipboard + map deep links |
 | Map stack | `AmapWebMapProvider` + Hybrid + `InteractiveMapView` / `AmapMapHtml` |
