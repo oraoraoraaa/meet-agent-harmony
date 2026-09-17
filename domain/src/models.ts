@@ -62,7 +62,22 @@ export interface EvaluatedOption {
   readonly score: number;
 }
 
+export interface PassengerLeg {
+  readonly mode: string;
+  readonly lineName: string;
+  readonly fromName: string;
+  readonly toName: string;
+  readonly durationMin: number;
+  readonly distanceM: number;
+  readonly stopCount: number;
+  readonly entrance: string;
+  readonly exit: string;
+  readonly serviceHours: string;
+  readonly instructions: readonly string[];
+}
+
 export interface Suggestion {
+  readonly passengerLegs?: readonly PassengerLeg[];
   readonly mode: MobilityMode;
   readonly recommended: boolean;
   readonly meetingPoint: NamedPoint;

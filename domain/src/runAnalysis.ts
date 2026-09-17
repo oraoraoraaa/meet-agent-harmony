@@ -19,6 +19,7 @@ import {
 import { buildStraightDrivingRoute, estimatePassengerPath } from './estimate.ts';
 import type {
   DataSource,
+  PassengerLeg,
   EvaluatedOption,
   GeoPoint,
   MobilityMode,
@@ -38,6 +39,7 @@ export interface DrivingRouteResult {
 }
 
 export interface PassengerPathResult {
+  readonly legs?: readonly PassengerLeg[];
   readonly usesRail?: boolean;
   readonly etaMin: number;
   readonly polyline: readonly GeoPoint[];
@@ -150,6 +152,7 @@ export async function runAnalysis(
   const baselineDriverEtaMin = end.driverSecs / 60;
 
   type EvalWithPath = EvaluatedOption & {
+    passengerLegs: readonly PassengerLeg[];
     passengerPolyline: readonly GeoPoint[];
     driverPolyline: readonly GeoPoint[];
     landmark: string;
@@ -203,6 +206,7 @@ export async function runAnalysis(
         passengerEtaMin: path.etaMin,
         completionMin: Math.max(driverEtaMin, path.etaMin),
         score,
+        passengerLegs: (path.legs ?? []).map(leg => ({ ...leg, instructions: [...leg.instructions] })),
         passengerPolyline: path.polyline,
         driverPolyline,
         pickupNote,
@@ -232,6 +236,7 @@ export async function runAnalysis(
 
     return {
       mode: opt.mode,
+      passengerLegs: withPath?.passengerLegs ?? [],
       recommended: isRec,
       meetingPoint: asNamed(opt.meetingPoint, withPath?.landmark
         ? (opt.routeIndex < 0 ? withPath.landmark : `${withPath.landmark}附近`) : `会合点·${modeLabelZh(opt.mode)}`, undefined),

@@ -6,7 +6,7 @@
  * Features vs prototype:
  *  - live traffic layer (AMap.TileLayer.Traffic)
  *  - dual role: 司机起点 / 乘客位置 (tap + search both)
- *  - drag/zoom, recenter, POI search
+ *  - drag/zoom and recenter; search lives in the native endpoint sheet
  */
 
 export class MapViewMarkers {
@@ -30,7 +30,7 @@ export class MapViewMarkers {
   /** Allow in-map chips to switch driver/passenger pick (home). */
   allowRoleSwitch: boolean = true;
   /**
-   * Home: search/路况/居中 chrome.
+   * Home: 路况/居中 controls; endpoint search is native.
    * Result/preview: false — pan/zoom only, no POI pick UI.
    */
   showChrome: boolean = true;
@@ -96,32 +96,20 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     '.amap-layer{filter:saturate(.5);}' +
     'body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;overflow:hidden;}' +
     '#top{position:absolute;left:16px;right:16px;top:16px;z-index:30;}' +
-    '#bar{display:flex;gap:8px;padding:6px;background:rgba(255,255,255,.96);border-radius:18px;box-shadow:0 4px 22px #182d4218;backdrop-filter:blur(16px);}' +
-    '#q{min-width:0;flex:1;width:0;height:38px;border:0;outline:0;background:transparent;color:#1c1c1e;padding:0 8px;font-size:15px;}' +
     'button{font-family:inherit;cursor:pointer;}' +
-    '#btn{height:38px;border:0;border-radius:13px;padding:0 15px;font-size:13px;font-weight:600;background:#007aff;color:white;}' +
-    '#btnMe,#btnTr{position:absolute;right:0;top:68px;width:46px;height:46px;border:0;border-radius:15px;background:#ffffffed;color:#007aff;box-shadow:0 3px 14px #182d4218;font-size:12px;font-weight:600;}' +
-    '#btnMe{top:122px;}#btnTr.off{color:#636366;}' +
+    '#btnMe,#btnTr{position:absolute;right:0;top:0;width:46px;height:46px;border:0;border-radius:15px;background:#ffffffed;color:#007aff;box-shadow:0 3px 14px #182d4218;font-size:12px;font-weight:600;}' +
+    '#btnMe{top:54px;}#btnTr.off{color:#636366;}' +
     '#hint{position:absolute;left:16px;right:74px;bottom:28px;z-index:30;color:#636366;font-size:11px;background:#ffffffeb;padding:9px 12px;border-radius:12px;line-height:1.4;pointer-events:none;box-shadow:0 2px 12px #182d420a;}' +
-    '#list{position:absolute;left:16px;right:16px;top:76px;z-index:31;max-height:60%;overflow:auto;display:none;background:#fffffff5;border-radius:18px;padding:10px;box-shadow:0 8px 24px #182d4220;}' +
-    '#list.open{display:block;}#listHead{display:flex;align-items:center;justify-content:space-between;padding:4px 4px 8px;}' +
-    '#listTitle{font-size:12px;color:#636366;font-weight:600;}#listClose{border:0;background:#f2f2f7;color:#007aff;border-radius:12px;height:32px;padding:0 12px;}' +
-    '.hit{background:#f7f8fa;color:#1c1c1e;padding:14px;border-radius:12px;margin-bottom:6px;font-size:14px;line-height:1.5;}' +
-    (showChrome ? '' : '#top,#list,#hint{display:none!important;}') +
+    (showChrome ? '' : '#top,#hint{display:none!important;}') +
     '</style>' +
     (hasKey
-      ? '<script src="https://webapi.amap.com/maps?v=2.0&key=' + keyEsc + '&plugin=AMap.PlaceSearch,AMap.Geocoder"></script>'
+      ? '<script src="https://webapi.amap.com/maps?v=2.0&key=' + keyEsc + '"></script>'
       : '') +
     '</head><body>' +
     '<div id="top">' +
-    '<div id="bar">' +
-    '<input id="q" placeholder="' + (hasKey ? '搜索地点或地址' : '离线选点') + '"/>' +
-    '<button id="btn" type="button">搜索</button>' +
     '<button id="btnTr" type="button" class="">路况</button>' +
     '<button id="btnMe" type="button">居中</button>' +
-    '</div></div>' +
-    '<div id="list"><div id="listHead"><span id="listTitle">搜索结果</span>' +
-    '<button type="button" id="listClose">关闭</button></div><div id="listBody"></div></div>' +
+    '</div>' +
     '<div id="map"></div>' +
     '<div id="hint">' + title + '</div>' +
     '<script>' +
@@ -138,9 +126,6 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     'var showChrome=' + showChrome + ';' +
     'var trafficOn=!!showTraffic;' +
     'function setHint(t){ var h=document.getElementById("hint"); if(h) h.textContent=t; }' +
-    'function setListOpen(on){ var el=document.getElementById("list"); if(!el) return; el.className=on?"open":""; }' +
-    'function clearList(){ var body=document.getElementById("listBody"); if(body) body.innerHTML=""; setListOpen(false); }' +
-    'function syncRoleUi(){ var q=document.getElementById("q"); if(q){ q.placeholder="搜索地点或地址"; } }' +
     'function sendChoose(lon,lat,name){' +
     '  if(PICK==="none") return;' +
     '  var u="meetagent://choose?lon="+encodeURIComponent(String(lon))' +
@@ -180,10 +165,8 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     '    var p=unproj(e.clientX-r.left,e.clientY-r.top);' +
     '    sendChoose(p.lon,p.lat,"地图选点"); setHint("已选地点，请选择用途"); });' +
     '  var elMe=document.getElementById("btnMe"); if(elMe) elMe.onclick=function(){ ox=cLon; oy=cLat; draw(); };' +
-    '  var elBtn=document.getElementById("btn"); if(elBtn) elBtn.onclick=function(){ setHint("离线地图暂不支持搜索，请轻点选择位置"); };' +
     '  var elTr=document.getElementById("btnTr"); if(elTr) elTr.onclick=function(){ setHint("离线状态暂不支持路况"); };' +
-    '  var elClose=document.getElementById("listClose"); if(elClose) elClose.onclick=function(){ clearList(); setHint("已关闭搜索"); };' +
-    '  if(showChrome){document.getElementById("q").disabled=true;document.getElementById("btn").style.display="none";} window.addEventListener("resize",resize); resize();' +
+    '  window.addEventListener("resize",resize); resize();' +
     '  if(showChrome) setHint("离线示意 · 不含道路信息，仅供位置参考"); return;' +
     '}' +
     // —— AMap live ——
@@ -199,7 +182,7 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     '      if(!trafficLayer){ trafficLayer=new AMap.TileLayer.Traffic({zIndex:10,autoRefresh:true,interval:180}); }' +
     '      map.add(trafficLayer);' +
     '      setHint("已显示实时路况");' +
-    '    } else if(trafficLayer){ map.remove(trafficLayer); setHint("搜索或轻点地图选择地点"); }' +
+    '    } else if(trafficLayer){ map.remove(trafficLayer); setHint("轻点地图选点，或点下方位置搜索"); }' +
     '  }catch(e){ setHint("路况暂不可用，请稍后重试"); }' +
     '}' +
     'var dMarker=null,pMarker=null,dLine=null,pLine=null;' +
@@ -269,37 +252,7 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     '});' +
     'var bMe=document.getElementById("btnMe"); if(bMe) bMe.onclick=function(){ map.setZoomAndCenter(zoom,[cLon,cLat]); };' +
     'var bTr=document.getElementById("btnTr"); if(bTr) bTr.onclick=function(){ applyTraffic(!trafficOn); };' +
-    'var bClose=document.getElementById("listClose"); if(bClose) bClose.onclick=function(){ clearList(); setHint("已关闭搜索"); };' +
-    'document.getElementById("q").addEventListener("keydown",function(e){if(e.key==="Enter")document.getElementById("btn").click();});var bSearch=document.getElementById("btn"); if(bSearch) bSearch.onclick=function(){' +
-    '  if(PICK==="none"||!showChrome){ return; }' +
-    '  var q=(document.getElementById("q").value||"").trim(); if(!q){ setHint("请输入关键词"); return; }' +
-    '  setHint("搜索中…");' +
-    '  var body=document.getElementById("listBody"); if(body) body.innerHTML=""; setListOpen(true);' +
-    '  var center=map.getCenter();' +
-    '  var loc=center.getLng()+","+center.getLat();' +
-    '  var url="https://restapi.amap.com/v3/place/text?key="+encodeURIComponent(KEY)' +
-    '    +"&keywords="+encodeURIComponent(q)+"&offset=10&page=1&extensions=base"' +
-    '    +"&location="+encodeURIComponent(loc)+"&radius=8000&sortrule=distance";' +
-    '  fetch(url).then(function(r){return r.json();}).then(function(j){' +
-    '    if(String(j.status)!=="1"){ setHint("搜索暂不可用，请检查地图设置后重试"); setListOpen(false); return; }' +
-    '    var pois=j.pois||[]; var listBody=document.getElementById("listBody"); if(!listBody) return; listBody.innerHTML="";' +
-    '    if(!pois.length){ setHint("无结果"); setListOpen(false); return; }' +
-    '    setHint("找到 "+pois.length+" 个 · 点选后选择用途"); setListOpen(true);' +
-    '    pois.forEach(function(poi){' +
-    '      var loc2=(poi.location||"").split(","); if(loc2.length<2) return;' +
-    '      var lon=parseFloat(loc2[0]), lat=parseFloat(loc2[1]); if(isNaN(lon)||isNaN(lat)) return;' +
-    '      var div=document.createElement("div"); div.className="hit";' +
-    '      div.textContent=(poi.name||"")+" · "+(poi.address||"");' +
-    '      div.onclick=function(){' +
-    '        map.setZoomAndCenter(16,[lon,lat]);' +
-    '        showPending(lon,lat,poi.name||"POI");' +
-    '        sendChoose(lon,lat,poi.name||"POI"); clearList();' +
-    '        setHint("已选地点 · 请选择用途 · "+(poi.name||""));' +
-    '      }; listBody.appendChild(div);' +
-    '    });' +
-    '  }).catch(function(){ setHint("搜索网络失败"); setListOpen(false); });' +
-    '};' +
-    'if(showChrome){ syncRoleUi(); applyTraffic(showTraffic); setHint("搜索或轻点地图选择地点"); }' +
+    'if(showChrome){ applyTraffic(showTraffic); setHint("轻点地图选点，或点下方位置搜索"); }' +
     'else { if(showTraffic){ try{ applyTraffic(true); }catch(e){} } }' +
     '})();</script></body></html>';
   return html;

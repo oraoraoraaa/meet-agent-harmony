@@ -47,6 +47,12 @@ export class TripDraftStore {
     TripDraftStore.draft.hasPassenger = has;
   }
 
+  /** Fill only unset endpoints; manual selections always take precedence. */
+  static fillMissingFromCurrentLocation(lon: number, lat: number): void {
+    if (!TripDraftStore.draft.hasDriver) TripDraftStore.setDriver(lon, lat, '当前位置', true);
+    if (!TripDraftStore.draft.hasPassenger) TripDraftStore.setPassenger(lon, lat, '当前位置', true);
+  }
+
   static setCity(city: string): void {
     TripDraftStore.draft.city = city;
   }

@@ -23,6 +23,7 @@ import {
   MODE_WALKING,
   MobilityMode,
   NamedPoint,
+  PassengerLeg,
   RoutePoint
 } from '../../domain/Models';
 import {
@@ -295,6 +296,17 @@ export class AmapWebMapProvider {
       }
     }
     return '';
+  }
+
+  async lookupCity(point: GeoPoint): Promise<string> {
+    const query: string = encodeQuery([`key=${urlEncode(this.key)}`,
+      `location=${urlEncode(lonLatParam(point))}`, 'extensions=base']);
+    const root: Record<string, Object> = await this.getJson(`${AMAP_BASE}/geocode/regeo?${query}`);
+    this.assertStatus(root, 'city');
+    const regeo: Record<string, Object> | null = asObject(root['regeocode']);
+    const address: Record<string, Object> | null = regeo === null ? null : asObject(regeo['addressComponent']);
+    if (address === null) return '';
+    return asString(address['city']) || asString(address['province']) || asString(address['citycode']);
   }
 
   async reverseGeocodeLabel(point: GeoPoint): Promise<string> {
@@ -602,11 +614,82 @@ export class AmapWebMapProvider {
       polyline = ensureEndpoints(polyline, from, to);
     }
     const out: PassengerPathResult = new PassengerPathResult();
+    out.legs = this.transitLegs(first);
     out.usesRail = this.transitUsesRail(first);
     out.etaMin = durationSec / 60;
     out.polyline = polyline;
     out.dataSource = DATA_LIVE;
     return out;
+  }
+
+  private transitLegs(transit: Record<string, Object>): PassengerLeg[] {
+    const result: PassengerLeg[] = [];
+    const segments: Object[] = asArray(transit['segments']);
+    for (let i = 0; i < segments.length; i++) {
+      const segment: Record<string, Object> | null = asObject(segments[i]);
+      if (segment === null) continue;
+      const walking: Record<string, Object> | null = asObject(segment['walking']);
+      if (walking !== null && asNumber(walking['distance'], 0) > 0) {
+        const leg: PassengerLeg = this.legMetrics(walking, 'walking');
+        const steps: Object[] = asArray(walking['steps']);
+        for (let j = 0; j < steps.length; j++) {
+          const step: Record<string, Object> | null = asObject(steps[j]);
+          if (step === null) continue;
+          const instruction: string = asString(step['instruction']);
+          if (instruction.length > 0) leg.instructions.push(instruction);
+        }
+        result.push(leg);
+      }
+      const bus: Record<string, Object> | null = asObject(segment['bus']);
+      const lines: Object[] = bus === null ? [] : asArray(bus['buslines']);
+      const line: Record<string, Object> | null = lines.length > 0 ? asObject(lines[0]) : null;
+      if (line !== null) {
+        const type: string = asString(line['type']);
+        const rail: boolean = type.indexOf('地铁') >= 0 || type.indexOf('轻轨') >= 0 || type.indexOf('有轨电车') >= 0;
+        const leg: PassengerLeg = this.legMetrics(line, rail ? 'subway' : 'bus');
+        leg.lineName = asString(line['name']);
+        leg.fromName = this.nodeName(line['departure_stop']);
+        leg.toName = this.nodeName(line['arrival_stop']);
+        leg.stopCount = asNumber(line['via_num'], -1);
+        leg.entrance = this.nodeName(segment['entrance']);
+        leg.exit = this.nodeName(segment['exit']);
+        const start: string = asString(line['start_time']);
+        const end: string = asString(line['end_time']);
+        if (start.length > 0 && end.length > 0) leg.serviceHours = `${start} – ${end}`;
+        result.push(leg);
+      }
+      const railway: Record<string, Object> | null = asObject(segment['railway']);
+      if (railway !== null && asString(railway['id']).length > 0) {
+        const leg: PassengerLeg = this.legMetrics(railway, 'railway');
+        leg.lineName = asString(railway['name'], asString(railway['trip']));
+        leg.fromName = this.nodeName(railway['departure_stop']);
+        leg.toName = this.nodeName(railway['arrival_stop']);
+        result.push(leg);
+      }
+      const taxi: Record<string, Object> | null = asObject(segment['taxi']);
+      if (taxi !== null && asNumber(taxi['distance'], 0) > 0) {
+        const leg: PassengerLeg = this.legMetrics(taxi, 'taxi');
+        leg.fromName = asString(taxi['sname']);
+        leg.toName = asString(taxi['tname']);
+        result.push(leg);
+      }
+    }
+    return result;
+  }
+
+  private nodeName(value: Object | undefined): string {
+    const node: Record<string, Object> | null = asObject(value);
+    return node === null ? '' : asString(node['name']);
+  }
+
+  private legMetrics(node: Record<string, Object>, mode: string): PassengerLeg {
+    const leg: PassengerLeg = new PassengerLeg();
+    leg.mode = mode;
+    const seconds: number = asNumber(node['duration'], -1);
+    leg.durationMin = Number.isFinite(seconds) && seconds >= 0 ? seconds / 60 : -1;
+    const distance: number = asNumber(node['distance'], -1);
+    leg.distanceM = Number.isFinite(distance) && distance >= 0 ? distance : -1;
+    return leg;
   }
 
   private transitUsesRail(transit: Record<string, Object>): boolean {

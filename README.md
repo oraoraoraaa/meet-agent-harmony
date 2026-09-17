@@ -158,7 +158,7 @@ cd domain && npm test
 Map host lifecycle regression checks (Node 22.13+; native rendering still needs DevEco/device):
 
 ```bash
-node --test tests/map-lifecycle.test.mjs tests/production-reply.test.mjs tests/rail-provider.test.mjs
+node --test tests/map-lifecycle.test.mjs tests/production-reply.test.mjs tests/rail-provider.test.mjs tests/current-location.test.mjs
 ```
 
 Unsigned SDK build on macOS with the default DevEco installation:
@@ -239,13 +239,13 @@ Mode C must always work.
 
 ## Current status
 
-**Semifinal interface** — a light native UI, map-first pickup selection, and labeled 地图 / 助手 / 行程 / 设置 navigation. Production screens contain no demo fixtures, debug traces, unfinished language switches, or sample trips. Offline planning uses explicit location selections and structured preferences. The optional proxy server remains a documented external integration, not a bundled feature.
+**Semifinal interface** — a light native UI, map-first pickup selection, and labeled 地图 / 助手 / 行程 / 设置 navigation. Production screens contain no demo fixtures, debug traces, unfinished language switches, or sample trips. Planning uses selected locations, filling unset endpoints from a permitted current-location fix, and structured preferences. A map Web Service key is required: missing-key screens show a setup warning and block planning. LLM configuration remains optional. The optional proxy server remains a documented external integration, not a bundled feature.
 
 | Layer | Status |
 | --- | --- |
-| Domain engine | Multi-modal ranking + agent grounding + session + AMap polyline helpers (`cd domain && npm test` → 34 pass) |
+| Domain engine | Multi-modal ranking + agent grounding + session + AMap polyline helpers (`cd domain && npm test` → 35 pass) |
 | Pickup validation | Live shortlist is routed to each candidate; destinations snapped over 60 m away are rejected. Nearby entrance names are landmarks, while parking legality remains for on-site confirmation. |
-| Home map | Interactive AMap JS (calm basemap, optional traffic) · search/tap → assign passenger/driver · POI labels |
+| Home map | Interactive AMap JS (calm basemap, traffic enabled initially) · location-row search / map selection · current-location defaults |
 | 路线规划 | Draft-first read-only points · result map + card routes · lock/share |
 | Agent | OpenAI-compatible client, tool registry, orchestrator, `ChatPage` + route map |
 | Session lock / share | `TripSessionStore` + `LockedSessionPage` + clipboard + map deep links |

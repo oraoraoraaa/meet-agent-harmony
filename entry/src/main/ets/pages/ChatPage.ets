@@ -174,6 +174,9 @@ struct ChatPage {
   }
 
   private buildLocationIntro(): string {
+    if (this.settings.mapWebKey.trim().length === 0) {
+      return '请先在设置中配置高德 Web 服务 Key，再开始规划。';
+    }
     const draft = TripDraftStore.get();
     if (!draft.hasDriver || !draft.hasPassenger) {
       return '想在哪里会合？先到地图选择司机出发地和乘客位置，再告诉我你的出行偏好。';
@@ -347,6 +350,11 @@ struct ChatPage {
 
   private async onSend(textOverride: string = ''): Promise<void> {
     if (this.busy) {
+      return;
+    }
+    if (this.settings.mapWebKey.trim().length === 0) {
+      this.statusLine = '请先在设置中配置高德 Web 服务 Key';
+      promptAction.showToast({ message: this.statusLine });
       return;
     }
     const draft = TripDraftStore.get();

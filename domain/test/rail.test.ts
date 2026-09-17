@@ -64,3 +64,12 @@ test('station path fallback is labeled and does not masquerade as verified rail'
   assert.equal(result.dataSource,'live_with_fallback');
   assert.ok(result.suggestions.find(s=>s.mode==='transit'));
 });
+
+test('passenger itinerary flows from selected provider route to recommendation without aliasing instructions',async()=>{
+  const p=provider();const instructions=['步行至地铁站'];
+  p.getPassengerPath=(mode,from,to)=>({etaMin:5,polyline:[from,to],dataSource:'live',usesRail:mode==='transit',
+    legs:[{mode:'walking',lineName:'',fromName:'',toName:'',durationMin:2,distanceM:120,
+      stopCount:-1,entrance:'A口',exit:'',serviceHours:'',instructions}]});
+  const rec=await runAnalysis(scenario,p);instructions[0]='mutated';
+  assert.equal(rec.suggestions.find(s=>s.mode==='transit')?.passengerLegs?.[0]?.instructions[0],'步行至地铁站');
+});

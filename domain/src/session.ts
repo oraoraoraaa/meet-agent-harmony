@@ -5,6 +5,7 @@
 
 import type {
   NamedPoint,
+  PassengerLeg,
   RecommendationSet,
   SelectedPlan,
   SessionStatus,
@@ -17,6 +18,7 @@ import { resolveGroundedSelection, stayPutPlanId, suggestionPlanId } from './age
 import { haversineM } from './geo.ts';
 
 export interface LockedPlanSnapshot {
+  readonly passengerLegs?: readonly PassengerLeg[];
   readonly planId: string;
   readonly kind: 'stayPut' | 'suggestion';
   readonly modeLabel: string;
@@ -212,6 +214,7 @@ export function resolveLockedPlan(session: TripSession): LockedPlanSnapshot {
     rationale: s.rationale,
     driverRoutePolyline: s.driverRoutePolyline,
     passengerPathPolyline: s.passengerPathPolyline,
+    passengerLegs: s.passengerLegs,
     dataSource: rec.dataSource,
     recommended: s.recommended,
   };

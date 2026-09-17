@@ -8,6 +8,8 @@ import {
   GeoPoint,
   modeLabelZh,
   NamedPoint,
+  PassengerLeg,
+  clonePassengerLegs,
   RecommendationSet,
   SelectedPlan,
   SESSION_CLOSED,
@@ -26,6 +28,7 @@ import { haversineM } from '../../domain/Geo';
 export const DEFAULT_POI_SNAP_RADIUS_M: number = 80;
 
 export class LockedPlanSnapshot {
+  passengerLegs: PassengerLeg[] = [];
   planId: string = '';
   kind: string = 'stayPut'; // stayPut | suggestion
   modeLabel: string = '';
@@ -124,6 +127,7 @@ function cloneSuggestion(s: Suggestion): Suggestion {
   out.rationale = s.rationale;
   out.driverRoutePolyline = cloneGeoList(s.driverRoutePolyline);
   out.passengerPathPolyline = cloneGeoList(s.passengerPathPolyline);
+  out.passengerLegs = clonePassengerLegs(s.passengerLegs);
   return out;
 }
 
@@ -296,6 +300,7 @@ export function resolveLockedPlan(session: TripSession): LockedPlanSnapshot {
   out.rationale = s.rationale;
   out.driverRoutePolyline = cloneGeoList(s.driverRoutePolyline);
   out.passengerPathPolyline = cloneGeoList(s.passengerPathPolyline);
+  out.passengerLegs = clonePassengerLegs(s.passengerLegs);
   out.recommended = s.recommended;
   return out;
 }

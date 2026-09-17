@@ -84,6 +84,7 @@ export class Candidate {
 }
 
 export class EvaluatedOption {
+  passengerLegs: PassengerLeg[] = [];
   usesRail: boolean = false;
   isStation: boolean = false;
   meetingPoint: GeoPoint = new GeoPoint();
@@ -99,7 +100,41 @@ export class EvaluatedOption {
   landmark: string = '';
 }
 
+/** One provider-returned passenger leg, never generated from model prose. */
+export class PassengerLeg {
+  mode: string = '';
+  lineName: string = '';
+  fromName: string = '';
+  toName: string = '';
+  durationMin: number = -1;
+  distanceM: number = -1;
+  stopCount: number = -1;
+  entrance: string = '';
+  exit: string = '';
+  serviceHours: string = '';
+  instructions: string[] = [];
+}
+
+export function clonePassengerLegs(legs: PassengerLeg[]): PassengerLeg[] {
+  return legs.map((leg: PassengerLeg) => {
+    const copy: PassengerLeg = new PassengerLeg();
+    copy.mode = leg.mode;
+    copy.lineName = leg.lineName;
+    copy.fromName = leg.fromName;
+    copy.toName = leg.toName;
+    copy.durationMin = leg.durationMin;
+    copy.distanceM = leg.distanceM;
+    copy.stopCount = leg.stopCount;
+    copy.entrance = leg.entrance;
+    copy.exit = leg.exit;
+    copy.serviceHours = leg.serviceHours;
+    copy.instructions = leg.instructions.slice();
+    return copy;
+  });
+}
+
 export class Suggestion {
+  passengerLegs: PassengerLeg[] = [];
   mode: MobilityMode = MODE_WALKING;
   recommended: boolean = false;
   meetingPoint: NamedPoint = new NamedPoint();

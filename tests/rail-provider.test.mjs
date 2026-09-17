@@ -7,11 +7,11 @@ import test from 'node:test';
 const root = new URL('../entry/src/main/ets/', import.meta.url);
 const files = ['domain/Models.ets','domain/EngineConfig.ets','domain/Geo.ets',
   'domain/Engine.ets','domain/Estimate.ets','domain/RunAnalysis.ets',
-  'services/map/AmapPolyline.ets','services/map/AmapWebMapProvider.ets'];
+  'services/session/SessionLogic.ets','services/map/AmapPolyline.ets','services/map/AmapWebMapProvider.ets'];
 const source = files.map(p=>readFileSync(new URL(p,root),'utf8')
   .replace(/^import\s[\s\S]*?;\n/gm,'').replace(/\bexport /g,'')).join('\n');
 const context=vm.createContext({Array});
-vm.runInContext(stripTypeScriptTypes(source)+ '\nglobalThis.api = {AmapWebMapProvider,GeoPoint,NamedPoint,Scenario,runAnalysis,DrivingRouteResult,PassengerPathResult,RoutePoint};',context);
+vm.runInContext(stripTypeScriptTypes(source)+ '\nglobalThis.api = {AmapWebMapProvider,GeoPoint,NamedPoint,Scenario,runAnalysis,DrivingRouteResult,PassengerPathResult,RoutePoint,cloneRecommendationSet,RecommendationSet,Suggestion,PassengerLeg};',context);
 const {AmapWebMapProvider,GeoPoint}=context.api;
 const a=new GeoPoint(108.9,34.2),b=new GeoPoint(108.95,34.2);
 const line=(type,polyline)=>({type,polyline});
@@ -66,4 +66,33 @@ test('ArkTS production engine accepts station coordinates beyond road snap limit
   const rail=rec.suggestions.find(s=>s.mode==='transit');
   assert.equal(rail?.recommended,true);assert.equal(rail.meetingPoint.name,'地铁站A口');
   assert.equal(rail.driverEtaMin,10);assert.equal(rail.passengerEtaMin,5);
+});
+
+test('selected public-transport itinerary preserves walking, transfer, stations and exits without mixing alternatives',async()=>{
+  const p=new AmapWebMapProvider('test');
+  const metro={duration:'900',segments:[
+    {walking:{duration:'120',distance:'150',steps:[{instruction:'沿长安路向北步行150米'}]},
+      bus:{buslines:[{type:'地铁线路',name:'地铁3号线(鱼化寨--保税区)',duration:'600',distance:'4000',via_num:'3',
+        departure_stop:{name:'吉祥村'},arrival_stop:{name:'小寨'},start_time:'06:00',end_time:'23:00',polyline:'108.9,34.2;108.93,34.2'},
+        {type:'普通公交线路',name:'不应显示的替代路线'}]},entrance:{name:'A口'},exit:{name:'B口'}},
+    {walking:{duration:'180',distance:'200',steps:[{instruction:'从B口步行至会合点'}]}}
+  ]};
+  p.getJson=async()=>({status:'1',route:{transits:[trip('300','普通公交线路'),metro]}});
+  const path=await p.getPassengerPath('transit',a,b,'西安',true);
+  assert.deepEqual(Array.from(path.legs,l=>l.mode),['walking','subway','walking']);
+  assert.equal(path.legs[0].instructions[0],'沿长安路向北步行150米');
+  const leg=path.legs[1];assert.equal(leg.lineName,'地铁3号线(鱼化寨--保税区)');
+  assert.equal(leg.fromName,'吉祥村');assert.equal(leg.toName,'小寨');
+  assert.equal(leg.durationMin,10);assert.equal(leg.stopCount,3);assert.equal(leg.exit,'B口');
+  assert.equal(leg.entrance,'A口');assert.equal(path.etaMin,15);
+  assert.equal(path.legs[2].instructions[0],'从B口步行至会合点');
+});
+
+test('locked recommendation clones keep an independent passenger itinerary',()=>{
+  const {RecommendationSet,Suggestion,PassengerLeg,cloneRecommendationSet}=context.api;
+  const rec=new RecommendationSet();const suggestion=new Suggestion();const leg=new PassengerLeg();
+  leg.mode='walking';leg.instructions=['步行到A口'];suggestion.passengerLegs=[leg];rec.suggestions=[suggestion];
+  const copy=cloneRecommendationSet(rec);leg.instructions[0]='changed';leg.lineName='changed';
+  assert.equal(copy.suggestions[0].passengerLegs[0].instructions[0],'步行到A口');
+  assert.equal(copy.suggestions[0].passengerLegs[0].lineName,'');
 });

@@ -95,6 +95,7 @@ test('generated live and offline map scripts are valid JavaScript', () => {
     const html = context.make(key);
     const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
     assert.doesNotThrow(() => new vm.Script(script));
-    assert.match(html, /textContent=\(poi.name/);
+    assert.doesNotMatch(html, /<input|PlaceSearch|fetch\(/);
+    assert.match(html, /var showTraffic=1/);
   }
 });

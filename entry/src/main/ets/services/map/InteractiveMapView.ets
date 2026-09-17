@@ -46,7 +46,7 @@ export struct InteractiveMapView {
   /** In-map chips to switch driver/passenger pick target. */
   @Prop allowRoleSwitch: boolean = true;
   /**
-   * true = home chrome (search / 路况 / 居中).
+   * true = home controls (路况 / 居中).
    * false = result preview: pan+pinch only, no POI selection UI.
    */
   @Prop showChrome: boolean = true;
@@ -294,6 +294,13 @@ export struct InteractiveMapView {
 
   build() {
     Stack({ alignContent: Alignment.BottomStart }) {
+      if (this.mapWebKey.trim().length === 0) {
+        Column({ space: 12 }) {
+          Text('请先配置地图 Key').fontSize(20).fontWeight(FontWeight.Medium).fontColor(AppTheme.ink)
+          Text('前往「设置」填写高德 Web 服务 Key 后，即可搜索地点和规划路线。')
+            .fontSize(14).fontColor(AppTheme.inkSoft).textAlign(TextAlign.Center)
+        }.width('100%').height('100%').justifyContent(FlexAlign.Center).padding(28)
+      } else {
       Web({ src: 'about:blank', controller: this.controller })
         .width('100%')
         .height('100%')
@@ -331,8 +338,9 @@ export struct InteractiveMapView {
         })
         .borderRadius(16)
         .clip(true)
+      }
 
-      if (this.status.length > 0) {
+      if (this.mapWebKey.trim().length > 0 && this.status.length > 0) {
         Text(this.status)
           .fontSize(10)
           .fontColor(AppTheme.inkMuted)

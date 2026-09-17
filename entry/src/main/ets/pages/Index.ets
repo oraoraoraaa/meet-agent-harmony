@@ -1,3 +1,6 @@
+import { LocationSearchSheet } from '../common/LocationSearchSheet';
+import { LocationService } from '../services/location/LocationService';
+import { AmapWebMapProvider, PoiHit } from '../services/map/AmapWebMapProvider';
 import { common } from '@kit.AbilityKit';
 import { promptAction, router } from '@kit.ArkUI';
 import { AppTheme } from '../common/AppTheme';
@@ -15,6 +18,13 @@ import { TripDraftStore } from '../services/session/TripDraftStore';
 @Entry
 @Component
 struct Index {
+  @State searchOpen: boolean = false;
+  @State searchDriver: boolean = true;
+  @State locating: boolean = false;
+  @State openingPlan: boolean = false;
+  @State locationError: string = '';
+  private disposed: boolean = false;
+  private selectionRevision: number = 0;
   @State settings: AppSettings = new AppSettings();
   // Initial viewport is Xi’an; neither location is selected until the user chooses.
   @State driverLon: number = 108.8905;
@@ -41,8 +51,19 @@ struct Index {
   }
 
   onPageShow(): void {
+    this.disposed = false;
     this.hydrateDraft();
     this.refreshSettings();
+  }
+
+  onPageHide(): void { this.disposed = true; }
+
+  aboutToDisappear(): void { this.disposed = true; }
+
+  onBackPress(): boolean {
+    if (this.searchOpen) { this.searchOpen = false; return true; }
+    if (this.assignOpen) { this.assignOpen = false; return true; }
+    return false;
   }
 
   private hostContext(): common.UIAbilityContext {
@@ -106,7 +127,8 @@ struct Index {
   /** UI label: never show bare lat/lon. */
   private displayPlace(name: string): string {
     const n: string = name.trim();
-    if (n.length === 0 || n === '地图选点' || n === '当前位置') {
+    if (n === '当前位置') return n;
+    if (n.length === 0 || n === '地图选点') {
       return '附近地点';
     }
     // Strip trailing " · lat, lon" if any legacy string
@@ -132,7 +154,7 @@ struct Index {
 
   private looksLikeRawCoords(name: string): boolean {
     const n: string = name.trim();
-    if (n.length === 0 || n === '地图选点' || n === '当前位置' || n === '附近地点') {
+    if (n.length === 0 || n === '地图选点' || n === '附近地点') {
       return true;
     }
     // "34.21, 108.90" style
@@ -168,6 +190,7 @@ struct Index {
   }
 
   private assignAsPassenger(): void {
+    this.selectionRevision++;
     this.passengerLon = this.pendingLon;
     this.passengerLat = this.pendingLat;
     this.hasPassenger = true;
@@ -183,6 +206,7 @@ struct Index {
   }
 
   private assignAsDriver(): void {
+    this.selectionRevision++;
     this.driverLon = this.pendingLon;
     this.driverLat = this.pendingLat;
     this.hasDriver = true;
@@ -291,15 +315,74 @@ struct Index {
   }
 
 
-  private openPlan(): void {
-    this.persistDraft();
-    router.pushUrl({ url: 'pages/PlanPage' }).then(() => {
-    }).catch(() => {
-      promptAction.showToast({ message: '暂时无法打开规划，请重试' });
-    });
+  private async useCurrentLocation(target: string): Promise<boolean> {
+    if (this.locating) return false;
+    this.locating = true;
+    const revision: number = this.selectionRevision;
+    this.locationError = '';
+    try {
+      const point: GeoPoint = await LocationService.readOnce(this.hostContext());
+      if (this.disposed || (target !== 'missing' && revision !== this.selectionRevision)) return false;
+      // A manually chosen endpoint must survive a slower location request.
+      if (target === 'missing') {
+        TripDraftStore.fillMissingFromCurrentLocation(point.lon, point.lat);
+        this.hydrateDraft();
+      }
+      if (target === 'driver') {
+        this.driverLon = point.lon; this.driverLat = point.lat;
+        this.driverName = '当前位置'; this.hasDriver = true;
+      }
+      if (target === 'passenger') {
+        this.passengerLon = point.lon; this.passengerLat = point.lat;
+        this.passengerName = '当前位置'; this.hasPassenger = true;
+      }
+      this.focusLon = point.lon; this.focusLat = point.lat; this.hasFocus = true;
+      this.mapToken++;
+      this.persistDraft();
+      this.searchOpen = false;
+      return true;
+    } catch (_) {
+      if (!this.disposed) {
+        this.locationError = '未能获取当前位置，请允许定位后重试，或搜索地点、在地图选点。';
+        promptAction.showToast({ message: this.locationError });
+      }
+      return false;
+    } finally { this.locating = false; }
   }
 
+  private chooseSearchHit(hit: PoiHit): void {
+    this.pendingLon = hit.lon; this.pendingLat = hit.lat; this.pendingName = hit.name;
+    this.searchOpen = false;
+    this.locationError = '';
+    if (this.searchDriver) this.assignAsDriver();
+    else this.assignAsPassenger();
+  }
 
+  private async openPlan(): Promise<void> {
+    if (this.openingPlan || this.locating) return;
+    if (this.settings.mapWebKey.trim().length === 0) {
+      this.locationError = '请先在设置中配置高德 Web 服务 Key';
+      promptAction.showToast({ message: this.locationError });
+      return;
+    }
+    this.openingPlan = true;
+    try {
+      if ((!this.hasDriver || !this.hasPassenger) && !await this.useCurrentLocation('missing')) return;
+      if (this.disposed) return;
+      this.persistDraft();
+      // Transit routing needs the passenger's actual city, including when GPS supplied it.
+      if (this.settings.mapWebKey.trim().length > 0) {
+        try {
+          const city: string = await new AmapWebMapProvider(this.settings.mapWebKey).lookupCity(
+            new GeoPoint(this.passengerLon, this.passengerLat));
+          if (city.length > 0) TripDraftStore.setCity(city);
+        } catch (_) { /* Existing city remains available during a geocoder outage. */ }
+      }
+      if (!this.disposed) await router.pushUrl({ url: 'pages/PlanPage' });
+    } catch (_) {
+      promptAction.showToast({ message: '暂时无法打开规划，请重试' });
+    } finally { this.openingPlan = false; }
+  }
 
   @Builder
   locationRow(isDriver: boolean) {
@@ -307,10 +390,12 @@ struct Index {
       Circle().width(10).height(10).fill(isDriver ? AppTheme.accent : AppTheme.success)
       Text(isDriver ? '司机' : '乘客').fontSize(13).fontColor(AppTheme.inkSoft).width(34)
       Text(isDriver
-        ? (this.hasDriver ? this.displayPlace(this.driverName) : '在地图上选择出发地')
-        : (this.hasPassenger ? this.displayPlace(this.passengerName) : '在地图上选择乘客位置')).fontSize(15).fontWeight(FontWeight.Medium).fontColor(AppTheme.ink)
+        ? (this.hasDriver ? this.displayPlace(this.driverName) : '当前位置 · 点此更改')
+        : (this.hasPassenger ? this.displayPlace(this.passengerName) : '当前位置 · 点此更改')).fontSize(15).fontWeight(FontWeight.Medium).fontColor(AppTheme.ink)
         .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis }).layoutWeight(1)
-    }.width('100%').height(38)
+      Text('›').fontSize(20).fontColor(AppTheme.inkSoft)
+    }.width('100%').height(38).id(isDriver ? 'driver-location' : 'passenger-location').accessibilityText(isDriver ? '搜索司机出发地' : '搜索乘客位置')
+      .onClick(() => { this.searchDriver = isDriver; this.searchOpen = true; })
   }
 
   pageTransition() {
@@ -337,8 +422,8 @@ struct Index {
           driverLon: this.driverLon, driverLat: this.driverLat, hasDriver: this.hasDriver,
           passengerLon: this.passengerLon, passengerLat: this.passengerLat, hasPassenger: this.hasPassenger,
           centerLon: this.mapCenterLon(), centerLat: this.mapCenterLat(), zoom: this.mapZoom(),
-          title: '搜索或轻点地图，选择出发地和乘客位置', reloadToken: this.mapToken,
-          showTraffic: false, allowRoleSwitch: false,
+          title: '轻点地图选点，或点下方位置搜索', reloadToken: this.mapToken,
+          showTraffic: true, allowRoleSwitch: false,
           onPick: (ev: MapPickEvent) => { this.onMapPick(ev); },
           onChoose: (ev: MapChooseEvent) => { this.onMapChoose(ev); }
         }).width('100%').layoutWeight(1)
@@ -347,7 +432,7 @@ struct Index {
           Row() {
             Text('在哪里会合？').fontSize(21).fontWeight(FontWeight.Bold).fontColor(AppTheme.ink)
             Blank()
-            Text('选好两地，即可规划').fontSize(11).fontColor(AppTheme.inkSoft)
+            Text('未设置的位置使用当前位置').fontSize(11).fontColor(AppTheme.inkSoft)
           }.width('100%')
           Column() {
             this.locationRow(true)
@@ -355,16 +440,28 @@ struct Index {
             this.locationRow(false)
           }.width('100%').padding({ left: 14, right: 14, top: 4, bottom: 4 })
             .backgroundColor(AppTheme.fieldBg).borderRadius(18)
-          Button('规划会合路线', { type: ButtonType.Capsule })
+          if (this.locationError.length > 0) {
+            Text(this.locationError).fontSize(12).fontColor(AppTheme.danger).width('100%')
+          }
+          Button(this.openingPlan ? '正在准备路线…' : '规划会合路线', { type: ButtonType.Capsule })
             .width('100%').height(48).fontSize(16).fontWeight(FontWeight.Medium)
             .backgroundColor(AppTheme.accent).fontColor(Color.White)
-            .enabled(this.hasDriver && this.hasPassenger)
+            .enabled(!this.openingPlan && !this.locating)
             .onClick(() => { this.openPlan(); })
         }.width('100%').padding({ left: 20, right: 20, top: 18, bottom: 14 })
           .backgroundColor(AppTheme.bg1)
         BottomNavigation({ active: 'map' })
       }.width('100%').height('100%')
 
+      if (this.searchOpen) {
+        LocationSearchSheet({
+          isDriver: this.searchDriver, mapKey: this.settings.mapWebKey,
+          nearLon: this.mapCenterLon(), nearLat: this.mapCenterLat(), locating: this.locating,
+          onChoose: (hit: PoiHit) => { this.chooseSearchHit(hit); },
+          onCurrent: () => { this.useCurrentLocation(this.searchDriver ? 'driver' : 'passenger'); },
+          onClose: () => { this.searchOpen = false; }
+        })
+      }
       if (this.assignOpen) {
         Stack({ alignContent: Alignment.Bottom }) {
           Column().width('100%').height('100%').backgroundColor('#44000000')

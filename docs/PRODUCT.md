@@ -84,11 +84,12 @@ Receives a shared plan (text/link). Does not need the app installed for v1.
 
 ### US-6 Offline / no-LLM
 
-**As** a demo user without keys, **I want** a plan anyway **so that** the product remains usable.
+**As** a user without an LLM key, **I want** deterministic planning **so that** the product remains usable. A configured AMap Web Service key is required by the current app UI.
 
 **Acceptance**
 
-- Engine returns estimate plans.
+- A missing map key shows a setup warning and blocks UI planning; there is no selectable no-key map.
+- Engine returns labeled estimate plans when routing fails after map setup.
 - UI badges `估算` / `Estimates only`.
 - Chat may degrade to form-only planning.
 

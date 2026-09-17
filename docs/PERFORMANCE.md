@@ -132,3 +132,23 @@ validation, not a device performance benchmark.
 
 Verification passed: app/test SDK builds, 34 domain tests, 10 host tests and 4 native
 emulator tests. Offline test settings were restored; no physical-device benchmark was run.
+
+## Passenger route details and location entry — 2026-09-18
+
+The route sheet reuses the selected AMap transit response; opening it issues no extra
+routing requests. It renders ordered walking and transit legs and explicitly handles
+missing itineraries. Native endpoint search replaces the embedded map search controls.
+Home enables the traffic layer initially. Planning adds a single foreground location
+request only when an endpoint is unset, plus passenger-city lookup when configured.
+
+Host verification covers itinerary parsing, snapshot isolation, permission denial,
+coordinate conversion and preservation of manual endpoints (16 tests). Domain suite:
+35 tests. App and native test HAPs build with the SDK. The emulator permission dialog
+was exercised; no usable location fix was returned, and manual selection remained
+available. Successful native GPS fixes still need a physical-device check. These are
+functional checks, not startup or frame-rate measurements.
+
+Final native suite: 4/4 passed. Live POI searches, map selection, a metro-first
+journey from the Xi’an North Station area, the populated passenger itinerary, confirmation/lock,
+main tabs and missing-map-key blocking were exercised. The key is stored only in the
+emulator settings and was restored after the missing-key test.

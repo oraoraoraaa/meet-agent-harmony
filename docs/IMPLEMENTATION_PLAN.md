@@ -483,8 +483,8 @@ The portable domain and ArkTS ports, fixtures, and submission assets are intenti
 ## Semifinal interface implementation — 2026-09-17
 
 - [x] Light native visual system, flat backgrounds, coherent typography and labeled bottom navigation.
-- [x] Larger map with floating search and secondary traffic/center controls; traffic starts off on home.
-- [x] Explicit empty pickup state; both locations must be chosen before planning. No sample locations are silently accepted.
+- [x] Larger map with traffic/center controls; traffic starts on. Search opens from either location row.
+- [x] Unset pickup locations use a permitted current-location fix when planning; manual selections are preserved. No sample locations are silently accepted.
 - [x] Remove production fixture catalog/switches, raw tool trace UI, cosmetic role mode, unused SDK key, and ineffective language switch.
 - [x] Remove unreferenced GPS helper and its permissions, decorative stage photo, unused map formatter and provider factory.
 - [x] Offline assistant directs preference entry to structured controls. Grounded estimate badges and plan locking remain.
@@ -513,3 +513,21 @@ session snapshots. “公交” mode labels are now “公共交通”.
 
 Provider references: [AMap transit routing](https://lbs.amap.com/api/webservice/guide/api/direction)
 and [station/entrance POI categories](https://lbs.amap.com/faq/webservice/webservice-api/poi-search/43253).
+
+## Passenger itinerary and location entry — 2026-09-18
+
+- [x] Tapping a public-transport result opens a native, scrollable passenger timeline.
+  Walking instructions, lines, boarding/alighting stops, entrances/exits and service hours
+  appear only when returned for the selected provider alternative. Estimates explicitly
+  report that detailed routing is unavailable. Itineraries are cloned into locked plans.
+- [x] Traffic is enabled initially. The embedded map search bar is removed; either
+  endpoint row opens native POI search, current-location selection or map selection.
+- [x] Planning fills only unset endpoints with a foreground current-location fix.
+  Approximate permission is accepted; SDK WGS84→GCJ02 conversion keeps map alignment.
+  Denied permission or a failed fix leaves manual search/map selection available.
+- [x] Passenger city is reverse-geocoded before planning for public-transport routing.
+
+Current map setup requirement: per product direction, an absent map Web Service key
+shows a native setup warning and blocks home, form and chat planning. It no longer
+exposes a selectable no-key map. Missing LLM configuration still uses the local engine;
+routing outages after map setup retain explicitly labeled estimates.

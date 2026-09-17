@@ -13,6 +13,8 @@ import { defaultEngineConfig, EngineConfig } from './EngineConfig';
 import { buildStraightDrivingRoute, estimatePassengerPath, PassengerPathEstimate, StraightRouteBuild } from './Estimate';
 import {
   Candidate,
+  PassengerLeg,
+  clonePassengerLegs,
   DATA_ESTIMATE,
   DATA_LIVE,
   DATA_LIVE_FALLBACK,
@@ -37,6 +39,7 @@ export class DrivingRouteResult {
 }
 
 export class PassengerPathResult {
+  legs: PassengerLeg[] = [];
   usesRail: boolean = false;
   etaMin: number = 0;
   polyline: GeoPoint[] = [];
@@ -195,6 +198,7 @@ export async function runAnalysis(
       opt.completionMin = Math.max(driverEtaMin, path.etaMin);
       opt.score = scoreOption(driverEtaMin, path.etaMin, mode, cfg);
       opt.passengerPolyline = copyPolyline(path.polyline);
+      opt.passengerLegs = clonePassengerLegs(path.legs);
       opt.driverPolyline = driverLine;
       opt.pickupNote = pickupNote;
       opt.landmark = landmark;
@@ -221,6 +225,7 @@ export async function runAnalysis(
     }
     const s: Suggestion = new Suggestion();
     s.mode = opt.mode;
+    s.passengerLegs = clonePassengerLegs(opt.passengerLegs);
     s.recommended = isRec;
     s.meetingPoint = asNamed(opt.meetingPoint, opt.landmark.length > 0 ? (opt.isStation ? opt.landmark : `${opt.landmark}附近`) :
       `会合点·${modeLabelZh(opt.mode)}`, '');

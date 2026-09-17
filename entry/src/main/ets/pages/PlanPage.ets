@@ -1,3 +1,4 @@
+import { PassengerRouteDetails } from '../common/PassengerRouteDetails';
 import { BottomNavigation } from '../common/BottomNavigation';
 import { common } from '@kit.AbilityKit';
 import { promptAction, router } from '@kit.ArkUI';
@@ -8,6 +9,7 @@ import { AppSettings } from '../common/AppSettings';
 import {
   dataSourceLabelZh,
   GeoPoint,
+  PassengerLeg,
   MODE_BICYCLE,
   MODE_TRANSIT,
   MODE_WALKING,
@@ -30,6 +32,7 @@ import { TripDraftStore } from '../services/session/TripDraftStore';
 import { haversineM } from '../domain/Geo';
 
 class PlanCardModel {
+  passengerLegs: PassengerLeg[] = [];
   id: string = '';
   title: string = '';
   modeLabel: string = '';
@@ -66,6 +69,9 @@ struct PlanPage {
   @State allowTransit: boolean = true;
   @State avoidTransit: boolean = false;
   @State preferMetro: boolean = false;
+  @State routeDetailsOpen: boolean = false;
+  @State routeDetailsLegs: PassengerLeg[] = [];
+  @State routeDetailsEta: number = 0;
   @State maxWalkMin: number = 12;
   @State planning: boolean = false;
   @State statusText: string = '确认起终点后点击「开始路线优化」';
@@ -278,6 +284,12 @@ struct PlanPage {
     if (this.planning) {
       return;
     }
+    if (!this.settingsLoaded) await this.reloadSettings();
+    if (this.settings.mapWebKey.trim().length === 0) {
+      this.errorText = '请先在设置中配置高德 Web 服务 Key';
+      promptAction.showToast({ message: this.errorText });
+      return;
+    }
     const draft = TripDraftStore.get();
     if (!draft.hasDriver || !draft.hasPassenger) {
       promptAction.showToast({ message: '请先在地图选择司机和乘客的位置' });
@@ -426,6 +438,7 @@ struct PlanPage {
         card.saveLine = '节省有限';
       }
       card.rationale = s.rationale;
+      card.passengerLegs = s.passengerLegs;
       card.recommended = s.recommended;
       card.driverPolyline = s.driverRoutePolyline;
       card.passengerPolyline = s.passengerPathPolyline;
@@ -684,6 +697,11 @@ struct PlanPage {
     });
   }
 
+  onBackPress(): boolean {
+    if (this.routeDetailsOpen) { this.routeDetailsOpen = false; return true; }
+    return false;
+  }
+
   pageTransition() {
     // A bottom-tab selection can also leave this detail screen.
     PageTransitionExit({ duration: 0 })
@@ -787,6 +805,14 @@ struct PlanPage {
       }
       .width('100%')
       .height('100%')
+      if (this.routeDetailsOpen) {
+        PassengerRouteDetails({
+          legs: this.routeDetailsLegs, fromName: this.passengerName,
+          toName: this.previewMeeting.name, etaMin: this.routeDetailsEta,
+          source: this.dataSourceBadge,
+          onClose: () => { this.routeDetailsOpen = false; }
+        })
+      }
     }
     .width('100%')
     .height('100%')
@@ -1088,8 +1114,14 @@ struct PlanPage {
           width: 1,
           color: this.selectedCardId === card.id ? AppTheme.lineFocus : AppTheme.glassBorder
         })
+        .id(`plan-card-${card.modeKey}`)
         .onClick(() => {
           this.selectCard(card.id);
+          if (card.modeKey === MODE_TRANSIT) {
+            this.routeDetailsLegs = card.passengerLegs;
+            this.routeDetailsEta = card.passengerEtaMin;
+            this.routeDetailsOpen = true;
+          }
         })
       }, (card: PlanCardModel) => card.id)
 

@@ -1,9 +1,8 @@
 // Exercises real selections rather than production demo fixtures.
 import { SettingsStore } from '../../../main/ets/services/settings/SettingsStore';
-import { LLM_MODE_OFFLINE } from '../../../main/ets/common/AppSettings';
 import { application } from '@kit.AbilityKit';
 import { describe, it, expect } from '@ohos/hypium';
-import { abilityDelegatorRegistry, Driver, ON } from '@kit.TestKit';
+import { abilityDelegatorRegistry, Driver, ON, MatchPattern } from '@kit.TestKit';
 
 export default function mapSmokeTest(): void {
   describe('Native map smoke', () => {
@@ -15,6 +14,16 @@ export default function mapSmokeTest(): void {
       expect(await driver.waitForComponent(ON.text('在哪里会合？'), 10000)).not().assertNull();
       await driver.delayMs(3000);
       await driver.screenCap(context.filesDir + '/meetagent-home.png');
+      await (await driver.findComponent(ON.id('passenger-location'))).click();
+      expect(await driver.waitForComponent(ON.text('使用当前位置'), 5000)).not().assertNull();
+      await (await driver.waitForComponent(ON.type('TextInput'), 5000)).inputText('小寨地铁站');
+      await (await driver.findComponent(ON.text('搜索'))).click();
+      const firstHit = await driver.waitForComponent(ON.id('location-hit-0'), 20000);
+      expect(firstHit).not().assertNull();
+      await driver.delayMs(500);
+      await driver.screenCap(context.filesDir + '/meetagent-location-search.png');
+      await firstHit.click();
+      await driver.delayMs(500);
       const map = await driver.findComponent(ON.type('Web'));
       const bounds = await map.getBounds();
       await driver.click(Math.round(bounds.left + (bounds.right - bounds.left) * 0.3),
@@ -25,8 +34,13 @@ export default function mapSmokeTest(): void {
         Math.round(bounds.top + (bounds.bottom - bounds.top) * 0.65));
       await (await driver.waitForComponent(ON.text('设为乘客位置'), 5000)).click();
       await driver.delayMs(1800);
-      expect(await driver.findComponent(ON.text('在地图上选择出发地'))).assertNull();
-      expect(await driver.findComponent(ON.text('在地图上选择乘客位置'))).assertNull();
+      expect(await driver.findComponent(ON.text('当前位置 · 点此更改'))).assertNull();
+      // Search zooms close to a station; use a distant driver origin so transit is meaningful.
+      await (await driver.findComponent(ON.id('driver-location'))).click();
+      await (await driver.waitForComponent(ON.type('TextInput'), 5000)).inputText('西安北站');
+      await (await driver.findComponent(ON.text('搜索'))).click();
+      await (await driver.waitForComponent(ON.id('location-hit-0'), 20000)).click();
+      await driver.delayMs(500);
       await (await driver.waitForComponent(ON.text('规划会合路线'), 5000)).click();
       await driver.delayMs(500);
       expect(await driver.findComponent(ON.text('公共交通'))).not().assertNull();
@@ -41,6 +55,15 @@ export default function mapSmokeTest(): void {
       const resultScroll = await driver.findComponent(ON.type('Scroll'));
       await resultScroll.scrollToBottom();
       await driver.screenCap(context.filesDir + '/meetagent-plan-detail.png');
+      const transitCard = await resultScroll.scrollSearch(ON.id('plan-card-transit'));
+      expect(transitCard).not().assertNull();
+      await transitCard.click();
+      expect(await driver.waitForComponent(ON.text('乘客路线'), 5000)).not().assertNull();
+      expect(await driver.waitForComponent(ON.text('上车 ·', MatchPattern.STARTS_WITH), 5000)).not().assertNull();
+      await driver.delayMs(500);
+      await driver.screenCap(context.filesDir + '/meetagent-passenger-route.png');
+      await (await driver.findComponent(ON.text('关闭'))).click();
+      await resultScroll.scrollToBottom();
       await (await driver.waitForComponent(ON.text('确认并锁定方案'), 5000)).click();
       expect(await driver.waitForComponent(ON.text('我的行程'), 15000)).not().assertNull();
       await driver.delayMs(2000);
@@ -56,42 +79,22 @@ export default function mapSmokeTest(): void {
       await driver.screenCap(context.filesDir + '/meetagent-settings.png');
       expect(await driver.findComponent(ON.text('‹'))).assertNull();
     });
-    it('offline preferences still produce labeled estimates without sample trips', 0, async () => {
+    it('missing map key shows setup warning and blocks planning', 0, async () => {
       const delegator = abilityDelegatorRegistry.getAbilityDelegator();
       const context = await application.createModuleContext(delegator.getAppContext().getApplicationContext(), 'entry');
       const mainAbility = await delegator.getCurrentTopAbility();
       const saved = await SettingsStore.load(mainAbility.context);
-      const offline = saved.clone();
-      offline.mapWebKey = '';
-      offline.llmMode = LLM_MODE_OFFLINE;
+      const missing = saved.clone();
+      missing.mapWebKey = '';
       const driver: Driver = Driver.create();
       try {
-        await SettingsStore.save(mainAbility.context, offline);
-        await delegator.startAbility({ bundleName: 'com.rinalic.meetAgentHarmony', abilityName: 'EntryAbility' });
+        await SettingsStore.save(mainAbility.context, missing);
         await (await driver.waitForComponent(ON.text('地图'), 5000)).click();
-        await driver.delayMs(1800);
-        const bounds = await (await driver.findComponent(ON.type('Web'))).getBounds();
-        await driver.click(Math.round(bounds.left + (bounds.right - bounds.left) * 0.35),
-          Math.round(bounds.top + (bounds.bottom - bounds.top) * 0.5));
-        await (await driver.waitForComponent(ON.text('设为司机出发地'), 5000)).click();
-        await driver.delayMs(800);
-        await driver.click(Math.round(bounds.left + (bounds.right - bounds.left) * 0.62),
-          Math.round(bounds.top + (bounds.bottom - bounds.top) * 0.62));
-        await (await driver.waitForComponent(ON.text('设为乘客位置'), 5000)).click();
-        await driver.delayMs(800);
-        await driver.screenCap(context.filesDir + '/meetagent-offline-home.png');
+        expect(await driver.waitForComponent(ON.text('请先配置地图 Key'), 5000)).not().assertNull();
         await (await driver.findComponent(ON.text('规划会合路线'))).click();
-        await (await driver.findComponent(ON.type('Scroll'))).scrollToBottom();
-        await (await driver.waitForComponent(ON.text('开始路线优化'), 5000)).click();
-        expect(await driver.waitForComponent(ON.text('估算'), 10000)).not().assertNull();
-        await driver.delayMs(1000);
-        await driver.screenCap(context.filesDir + '/meetagent-offline-plan.png');
-        await (await driver.findComponent(ON.text('地图'))).click();
-        expect(await driver.waitForComponent(ON.text('在哪里会合？'), 5000)).not().assertNull();
-        await (await driver.findComponent(ON.text('助手'))).click();
-        expect(await driver.waitForComponent(ON.text('设置偏好并规划'), 5000)).not().assertNull();
-        await driver.delayMs(1000);
-        await driver.screenCap(context.filesDir + '/meetagent-offline-chat.png');
+        expect(await driver.waitForComponent(ON.text('请先在设置中配置高德 Web 服务 Key'), 5000)).not().assertNull();
+        expect(await driver.findComponent(ON.text('开始路线优化'))).assertNull();
+        await driver.screenCap(context.filesDir + '/meetagent-missing-key.png');
       } finally {
         await SettingsStore.save(mainAbility.context, saved);
       }

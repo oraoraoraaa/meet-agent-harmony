@@ -33,7 +33,7 @@ Not a generic chatbot. Not a full ride-hailing network. Not a dual-phone realtim
    - select among tool-returned candidate IDs,
    - explain grounded fields,
    - ask clarifying questions.
-3. **Local engine must work without LLM.** Missing key / proxy / network → Mode C offline planning with template explanations.
+3. **Local engine must work without LLM.** Missing LLM key / proxy / network → Mode C planning with template explanations. The current app UI requires a configured map Web Service key; missing map key shows a setup warning and blocks planning. Pure engine estimate fallbacks remain available for routing failures and tests.
 4. **v1 plan lock.** After user confirms a meeting plan, do not auto-change the meeting point. Manual “re-plan” is allowed as an explicit user action. Dual-phone sync is out of scope for v1.
 5. **No secrets in git.** No API keys, tokens, or private map credentials in source, fixtures committed for CI, or docs screenshots.
 6. **Small, focused changes.** Match existing module boundaries. Prefer extending interfaces over parallel “v2” stacks.
@@ -318,7 +318,7 @@ A complete contribution:
 cd domain && node --experimental-strip-types --test test/**/*.test.ts
 
 # Map host lifecycle checks (Node 22.13+; not native Web rendering)
-node --test tests/map-lifecycle.test.mjs tests/production-reply.test.mjs tests/rail-provider.test.mjs
+node --test tests/map-lifecycle.test.mjs tests/production-reply.test.mjs tests/rail-provider.test.mjs tests/current-location.test.mjs
 
 # Unsigned SDK build (macOS default DevEco installation)
 PATH="/Applications/DevEco-Studio.app/Contents/tools/node/bin:$PATH" \
