@@ -385,7 +385,7 @@ struct ChatPage {
     }
     this.composer = '';
     this.busy = true;
-    this.statusLine = '正在规划…';
+    this.statusLine = '助手正在分析出行需求…';
     this.pushUser(text);
     try {
       this.resetOrchestrator();
@@ -393,7 +393,11 @@ struct ChatPage {
         this.pushAssistant('编排器未就绪', false);
         return;
       }
+      this.orch.onProgress = (message: string): void => {
+        if (!this.disposed && this.busy) this.statusLine = message;
+      };
       const turn: AgentTurnResult = await this.orch.handleUserTurn(text);
+      if (this.disposed) return;
       if (turn.recommendation !== null) {
         this.applyRecommendation(turn.recommendation, turn.selectedPlanId);
         this.pushAssistant(turn.replyText, true);
@@ -671,6 +675,17 @@ struct ChatPage {
         .scrollBar(BarState.Off)
         .edgeEffect(EdgeEffect.Spring)
         .align(Alignment.Top)
+
+        if (this.busy) {
+          Row({ space: 10 }) {
+            LoadingProgress().width(20).height(20).color(AppTheme.accent)
+            Text(this.statusLine).fontSize(13).fontColor(AppTheme.ink)
+              .layoutWeight(1)
+          }
+          .id('agent-progress')
+          .width('100%').padding({ left: 20, right: 20, top: 12, bottom: 12 })
+          .backgroundColor(AppTheme.accentSoft)
+        }
 
         if (this.settings.llmConfigured()) {
         // quick prompts

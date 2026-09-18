@@ -547,3 +547,10 @@ claimed to be the city's official line colors. Missing geometry is not invented.
 Both routes display tool-derived ETA tags; estimate labeling is retained.
 
 Source: [AMap route and TMC response contract](https://lbs.amap.com/api/webservice/guide/api/direction).
+
+### Agent activity and location pins — 2026-09-18
+
+- Configured chat shows request-driven activity beside a spinner above the composer,
+  including local-engine fallback when the LLM service fails.
+- All map surfaces share circular blue driver and coral passenger pins, a precise
+  coordinate dot, and the labels 司机位置 / 乘客位置 underneath.

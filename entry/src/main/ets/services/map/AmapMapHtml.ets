@@ -196,26 +196,21 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     '  }catch(e){ setHint("路况暂不可用，请稍后重试"); }' +
     '}' +
     'var dMarker=null,pMarker=null,dLine=null,pLine=null;' +
-    'function pinSvg(color,label){' +
-    '  var svg="<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"36\\" height=\\"48\\" viewBox=\\"0 0 36 48\\">' +
-    '<defs><filter id=\\"s\\" x=\\"-20%\\" y=\\"-10%\\" width=\\"140%\\" height=\\"140%\\"><feDropShadow dx=\\"0\\" dy=\\"2\\" stdDeviation=\\"2\\" flood-opacity=\\"0.35\\"/></filter></defs>' +
-    '<path filter=\\"url(#s)\\" fill=\\""+color+"\\" d=\\"M18 0C9 0 2 7 2 16c0 12 16 32 16 32s16-20 16-32C34 7 27 0 18 0z\\"/>' +
-    '<circle cx=\\"18\\" cy=\\"16\\" r=\\"7\\" fill=\\"#fff\\"/>' +
-    '<text x=\\"18\\" y=\\"20\\" text-anchor=\\"middle\\" font-size=\\"10\\" font-family=\\"sans-serif\\" fill=\\""+color+"\\" font-weight=\\"700\\">"+label+"</text></svg>";' +
-    '  return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);' +
-    '}' +
+    "function locationPin(color,label){" +
+    "  return '<div style=\"width:100px;text-align:center;pointer-events:none\"><div style=\"position:relative;margin:auto;width:42px;height:42px;border-radius:50%;background:linear-gradient(155deg,#ffffff88,transparent 65%),'+color+';border:3px solid #233347;box-shadow:0 3px 8px #0005\"><span style=\"display:block;margin:10px auto 0;width:11px;height:11px;border-radius:50%;background:#172639\"></span><span style=\"display:block;margin:2px auto;width:4px;height:12px;border-radius:2px;background:#172639\"></span></div><div style=\"margin:-1px auto 0;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid #233347\"></div><div style=\"margin:3px auto 4px;width:8px;height:8px;border:2px solid white;border-radius:50%;background:'+color+';box-shadow:0 1px 4px #0005\"></div><div style=\"font:600 12px sans-serif;color:#172639;text-shadow:0 1px 2px white,0 -1px 2px white,1px 0 2px white,-1px 0 2px white;white-space:nowrap\">'+label+'</div></div>';" +
+    "}" +
     'function ensureDriver(lon,lat,name){' +
     '  if(dMarker){ dMarker.setPosition([lon,lat]); if(name) dMarker.setTitle(name); }' +
     '  else { dMarker=new AMap.Marker({position:[lon,lat],title:name||"司机",' +
-    '    icon:new AMap.Icon({size:new AMap.Size(36,48),imageSize:new AMap.Size(36,48),image:pinSvg("#0A84FF","司")}),' +
-    '    offset:new AMap.Pixel(-18,-46)}); map.add(dMarker); }' +
+    '    content:locationPin("#459CFF","司机位置"),' +
+    '    offset:new AMap.Pixel(-50,-66),zIndex:150}); map.add(dMarker); }' +
     '  dLon=lon; dLat=lat; hasD=1;' +
     '}' +
     'function ensurePassenger(lon,lat,name){' +
     '  if(pMarker){ pMarker.setPosition([lon,lat]); if(name) pMarker.setTitle(name); }' +
     '  else { pMarker=new AMap.Marker({position:[lon,lat],title:name||"乘客",' +
-    '    icon:new AMap.Icon({size:new AMap.Size(36,48),imageSize:new AMap.Size(36,48),image:pinSvg("#34C759","乘")}),' +
-    '    offset:new AMap.Pixel(-18,-46)}); map.add(pMarker); }' +
+    '    content:locationPin("#F47787","乘客位置"),' +
+    '    offset:new AMap.Pixel(-50,-66),zIndex:150}); map.add(pMarker); }' +
     '  pLon=lon; pLat=lat; hasP=1;' +
     '}' +
     'function clearDriver(){ if(dMarker){ map.remove(dMarker); dMarker=null; } hasD=0; }' +

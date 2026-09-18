@@ -43,7 +43,8 @@ export default function mapSmokeTest(): void {
       await driver.delayMs(500);
       await (await driver.waitForComponent(ON.text('规划会合路线'), 5000)).click();
       await driver.delayMs(500);
-      expect(await driver.findComponent(ON.text('公共交通'))).not().assertNull();
+      await driver.screenCap(context.filesDir + '/meetagent-before-form.png');
+      expect(await driver.waitForComponent(ON.text('公共交通'), 10000)).not().assertNull();
       await (await driver.waitForComponent(ON.text('地铁优先'), 5000)).click();
       await driver.delayMs(300);
       await driver.screenCap(context.filesDir + '/meetagent-form.png');
@@ -78,6 +79,32 @@ export default function mapSmokeTest(): void {
       await driver.delayMs(1000);
       await driver.screenCap(context.filesDir + '/meetagent-settings.png');
       expect(await driver.findComponent(ON.text('‹'))).assertNull();
+    });
+    it('configured assistant displays activity while planning and falls back on service failure', 0, async () => {
+      const delegator = abilityDelegatorRegistry.getAbilityDelegator();
+      const context = await application.createModuleContext(delegator.getAppContext().getApplicationContext(), 'entry');
+      const ability = await delegator.getCurrentTopAbility();
+      const saved = await SettingsStore.load(ability.context);
+      const configured = saved.clone();
+      configured.llmMode = 'proxy';
+      configured.proxyBaseUrl = 'http://127.0.0.1:1';
+      const driver: Driver = Driver.create();
+      try {
+        await SettingsStore.save(ability.context, configured);
+        await (await driver.waitForComponent(ON.text('助手'), 5000)).click();
+        await (await driver.waitForComponent(ON.text('帮我规划会合，我可以骑车'), 5000)).click();
+        expect(await driver.waitForComponent(ON.id('agent-progress'), 5000)).not().assertNull();
+        await driver.screenCap(context.filesDir + '/meetagent-progress.png');
+        for (let attempt = 0; attempt < 90; attempt++) {
+          if (await driver.findComponent(ON.id('agent-progress')) === null) break;
+          await driver.delayMs(1000);
+        }
+        await (await driver.findComponent(ON.type('Scroll'))).scrollToBottom();
+        expect(await driver.waitForComponent(ON.text('确认并锁定所选方案'), 5000)).not().assertNull();
+        expect(await driver.findComponent(ON.id('agent-progress'))).assertNull();
+      } finally {
+        await SettingsStore.save(ability.context, saved);
+      }
     });
     it('missing map key shows setup warning and blocks planning', 0, async () => {
       const delegator = abilityDelegatorRegistry.getAbilityDelegator();

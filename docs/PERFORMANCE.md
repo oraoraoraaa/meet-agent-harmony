@@ -173,3 +173,21 @@ Visual inspection confirmed three distinct metro line colors, traffic-colored dr
 segments, readable ETA callouts and walking transfers in the normal page scroll.
 Route traffic is the provider response captured when planning, not a continuously
 refreshed traffic feed. No physical-device performance benchmark was run.
+
+## Agent activity and location pins — 2026-09-18
+
+Agent activity is emitted at existing request boundaries, without polling, extra model
+requests or simulated progress timers. The indicator remains outside the chat scroll
+so long histories do not hide it. Shared map pins use CSS content and preserve marker
+reuse when endpoints move. Host verification covers request/tool progress ordering and
+ignoring callbacks after cancellation. This is functional validation, not a rendering
+performance benchmark.
+
+Verification: app/test HAP SDK builds and 20 host tests passed. The emulator exercised
+configured chat against an intentionally unavailable local proxy: the progress strip
+remained visible during engine fallback and disappeared when results arrived. A mocked
+LLM/tool loop verifies model-request and traffic-request status ordering; a live LLM
+provider was not required for this check. Visual review also moved ETA callouts apart
+from the larger location pins and put location markers above intermediate route stops.
+The final emulator suite passed 5/5 tests after the callout adjustment; result-map
+screenshots confirmed both pin labels and ETA tags remained readable.

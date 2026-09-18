@@ -143,7 +143,7 @@ DevEco Studio opens the **repository root** (not a nested `app/` folder).
 | --- | --- |
 | **Offline** | No map key · select both points · 路线规划 · badge **估算** |
 | **Live map** | Map Web Key · 地图选点 → 路线规划 · badge **实时** / **实时+估算** |
-| **LLM agent** | Mode A/B keys · 智能助手规划 · tools still use Hybrid map |
+| **LLM agent** | Mode A/B keys · 智能助手规划 · visible request-driven progress · tools still use Hybrid map |
 
 ### 4) Optional LLM proxy
 

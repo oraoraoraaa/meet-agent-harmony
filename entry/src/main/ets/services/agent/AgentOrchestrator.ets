@@ -45,6 +45,12 @@ export class AgentOrchestrator {
     }
   }
 
+  private progress(message: string): void {
+    if (!this.cancelled) this.onProgress(message);
+  }
+
+  onProgress: (message: string) => void = (_message: string): void => {};
+
   cancel(): void {
     this.cancelled = true;
     if (this.client !== null) {
@@ -78,6 +84,7 @@ export class AgentOrchestrator {
   }
 
   private async runOffline(): Promise<AgentTurnResult> {
+    this.progress('正在使用本地引擎优化路线…');
     const result: AgentTurnResult = new AgentTurnResult();
     result.usedLlm = false;
     result.offlineFallback = true;
@@ -146,6 +153,7 @@ export class AgentOrchestrator {
         return cancelled;
       }
 
+      this.progress(iter === 0 ? '助手正在分析出行需求…' : '助手正在整理会合建议…');
       const resp: LlmChatResult = await client.chat(messages, toolsJson, DEFAULT_LLM_TEMPERATURE, 1200);
       if (resp.error.length > 0) {
         const offline: AgentTurnResult = await this.runOffline();
@@ -168,6 +176,7 @@ export class AgentOrchestrator {
 
         for (let i = 0; i < resp.toolCalls.length; i++) {
           const call: ToolCall = resp.toolCalls[i];
+          this.progress(toolProgressLabel(call.name));
           const disp: ToolDispatchResult = await host.dispatch(call.name, call.argumentsJson);
           trace.push(disp.trace);
           const toolMsg: ChatMessage = new ChatMessage();
@@ -206,6 +215,7 @@ export class AgentOrchestrator {
 
     if (this.session.lastRecommendation === null) {
       try {
+        this.progress('正在比较出行方式并优化会合路线…');
         const rec: RecommendationSet = await PlanningService.plan(this.session.scenario, this.provider);
         this.session.lastRecommendation = rec;
         const tr: ToolTraceEntry = new ToolTraceEntry();
@@ -235,5 +245,19 @@ export class AgentOrchestrator {
       result.replyText = replyText;
     }
     return result;
+  }
+}
+
+/** Public activity labels describe actual requests, never model reasoning or raw tool arguments. */
+export function toolProgressLabel(name: string): string {
+  switch (name) {
+    case 'get_scenario_snapshot': return '正在确认司机和乘客的位置…';
+    case 'set_constraints': return '正在应用你的出行偏好…';
+    case 'get_driving_route': return '正在获取驾车路线与路况…';
+    case 'generate_and_score_plans': return '正在比较出行方式并优化会合路线…';
+    case 'reverse_geocode': return '正在确认会合地点…';
+    case 'search_poi_near': return '正在查找附近的会合地点…';
+    case 'format_share_text': return '正在整理会合信息…';
+    default: return '正在处理规划请求…';
   }
 }

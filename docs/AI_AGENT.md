@@ -176,3 +176,12 @@ Model/network failure retains automatic engine fallback; raw HTTP errors remain 
 `preferMetro=true` favors tool-verified rail routes that satisfy the existing stay-put
 improvement threshold. The agent must enable `transit` and clear `avoidTransit` when
 requested; explicit exclusion of public transport wins over the soft preference.
+
+## Visible planning activity
+
+Chat displays a persistent spinner and a concise activity label while a turn runs.
+Labels follow actual orchestrator boundaries: model request, preference updates,
+driving/traffic request, place lookup, route comparison and local-engine fallback.
+They are public task status summaries, not streamed private model reasoning or raw
+tool traces. No simulated percentage or timer-based sequence is shown. Progress is
+hidden when the turn finishes, and callbacks are ignored after the page is disposed.

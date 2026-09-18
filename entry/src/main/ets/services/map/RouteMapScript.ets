@@ -26,7 +26,7 @@ function etaTag(path,value,title,color,passenger){
   var label=document.createElement('div');label.textContent=title+(routeSource.indexOf('估算')>=0?' · 含估算':'');
   label.style.cssText='margin-top:2px;font-size:10px;color:#617083';tag.appendChild(label);
   map.add(new AMap.Marker({position:path[Math.floor((path.length-1)*(passenger ? 0.65 : 0.35))],content:tag,
-    anchor:passenger?'top-left':'bottom-left',offset:new AMap.Pixel(12,passenger?12:-14),zIndex:160}));
+    anchor:passenger?'top-left':'bottom-right',offset:new AMap.Pixel(passenger?32:-30,passenger?16:-14),zIndex:160}));
 }
 function stationDot(stop,color,endpoint){
   var el=document.createElement('div');

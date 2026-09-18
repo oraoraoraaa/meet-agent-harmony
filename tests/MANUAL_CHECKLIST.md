@@ -30,3 +30,11 @@ Location and itinerary checks:
 - Check driving traffic colors against returned TMC status; unknown sections stay blue.
 - Check two distinct transit lines use separate colors and walking stays dashed.
 - Check route ETA tags match the selected card and persist on the locked-trip map.
+
+## Agent activity and location pins
+
+- With an LLM configured, send a planning request: activity stays visible above the
+  composer, changes with actual requests, and disappears on completion or error.
+- On LLM failure, activity indicates local route optimization; results remain usable.
+- Home, result and locked maps show blue driver / coral passenger pins with readable
+  司机位置 / 乘客位置 labels. Moving an endpoint moves its pin and coordinate dot.
