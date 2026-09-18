@@ -53,6 +53,13 @@ export default function mapSmokeTest(): void {
       expect(await driver.waitForComponent(ON.text('优化结果'), 60000)).not().assertNull();
       await driver.delayMs(2000);
       expect(await driver.screenCap(context.filesDir + '/meetagent-plan.png')).assertTrue();
+      const resultMap = await driver.findComponent(ON.type('Web'));
+      await resultMap.pinchIn(0.4);
+      await driver.delayMs(1000);
+      await driver.screenCap(context.filesDir + '/meetagent-zoom-out.png');
+      await resultMap.pinchOut(1.5);
+      await driver.delayMs(1000);
+      await driver.screenCap(context.filesDir + '/meetagent-zoom-in.png');
       const resultScroll = await driver.findComponent(ON.type('Scroll'));
       await resultScroll.scrollToBottom();
       await driver.screenCap(context.filesDir + '/meetagent-plan-detail.png');

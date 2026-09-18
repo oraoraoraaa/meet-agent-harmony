@@ -554,3 +554,10 @@ Source: [AMap route and TMC response contract](https://lbs.amap.com/api/webservi
   including local-engine fallback when the LLM service fails.
 - All map surfaces share circular blue driver and coral passenger pins, a precise
   coordinate dot, and the labels 司机位置 / 乘客位置 underneath.
+
+### Zoom-aware location pins — 2026-09-18
+
+Driver/passenger markers scale from 38% at regional views to full size at street
+level (zoom 17). Labels retain a readable screen size above zoom 10 and hide below
+that threshold. Scaling is anchored at the coordinate dot so zooming does not shift
+locations. The shared renderer applies this on home, result, chat and locked maps.

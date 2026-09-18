@@ -38,3 +38,7 @@ Location and itinerary checks:
 - On LLM failure, activity indicates local route optimization; results remain usable.
 - Home, result and locked maps show blue driver / coral passenger pins with readable
   司机位置 / 乘客位置 labels. Moving an endpoint moves its pin and coordinate dot.
+
+- Pinch the result map out to a regional view and back to street level: both location
+  pins shrink/grow with zoom, coordinate dots remain attached to the same location,
+  and labels return when zooming back in. No map reload or route recalculation occurs.

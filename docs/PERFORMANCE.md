@@ -191,3 +191,17 @@ provider was not required for this check. Visual review also moved ETA callouts 
 from the larger location pins and put location markers above intermediate route stops.
 The final emulator suite passed 5/5 tests after the callout adjustment; result-map
 screenshots confirmed both pin labels and ETA tags remained readable.
+
+## Zoom-aware location pins — 2026-09-18
+
+The map's zoomchange event updates two existing marker elements with CSS transforms;
+there is no Web reload, route request, timer or marker reconstruction. Size changes
+are quantized to 2% steps and identical styles skip DOM writes. The transform origin
+matches the marker's coordinate anchor. Labels remain 12 screen pixels when visible.
+The event contract follows the [AMap JSAPI zoom example](https://lbs.amap.com/demo/javascript-api-v2/example/event/event-map-zoom).
+Host checks cover bounded scaling, both roles, label visibility and redundant updates.
+Native smoke includes pinch-out/in screenshots; these checks do not measure frame rate.
+Verification passed: app/test HAP SDK builds, eight map host tests and five native
+emulator tests. Screenshots show reduced marker sizes at city/regional zoom levels;
+pinch gestures retain the selected plan and route. Full-size and label thresholds are
+also checked by the host test against the generated renderer.

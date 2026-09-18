@@ -196,22 +196,33 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     '  }catch(e){ setHint("路况暂不可用，请稍后重试"); }' +
     '}' +
     'var dMarker=null,pMarker=null,dLine=null,pLine=null;' +
-    "function locationPin(color,label){" +
-    "  return '<div style=\"width:100px;text-align:center;pointer-events:none\"><div style=\"position:relative;margin:auto;width:42px;height:42px;border-radius:50%;background:linear-gradient(155deg,#ffffff88,transparent 65%),'+color+';border:3px solid #233347;box-shadow:0 3px 8px #0005\"><span style=\"display:block;margin:10px auto 0;width:11px;height:11px;border-radius:50%;background:#172639\"></span><span style=\"display:block;margin:2px auto;width:4px;height:12px;border-radius:2px;background:#172639\"></span></div><div style=\"margin:-1px auto 0;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid #233347\"></div><div style=\"margin:3px auto 4px;width:8px;height:8px;border:2px solid white;border-radius:50%;background:'+color+';box-shadow:0 1px 4px #0005\"></div><div style=\"font:600 12px sans-serif;color:#172639;text-shadow:0 1px 2px white,0 -1px 2px white,1px 0 2px white,-1px 0 2px white;white-space:nowrap\">'+label+'</div></div>';" +
+    "function locationPin(color,label,id){" +
+    "  return '<div id=\"'+id+'\" style=\"width:100px;text-align:center;pointer-events:none;transform-origin:50px 66px\"><div style=\"position:relative;margin:auto;width:42px;height:42px;border-radius:50%;background:linear-gradient(155deg,#ffffff88,transparent 65%),'+color+';border:3px solid #233347;box-shadow:0 3px 8px #0005\"><span style=\"display:block;margin:10px auto 0;width:11px;height:11px;border-radius:50%;background:#172639\"></span><span style=\"display:block;margin:2px auto;width:4px;height:12px;border-radius:2px;background:#172639\"></span></div><div style=\"margin:-1px auto 0;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid #233347\"></div><div style=\"margin:3px auto 4px;width:8px;height:8px;border:2px solid white;border-radius:50%;background:'+color+';box-shadow:0 1px 4px #0005\"></div><div style=\"font:600 12px sans-serif;color:#172639;text-shadow:0 1px 2px white,0 -1px 2px white,1px 0 2px white,-1px 0 2px white;white-space:nowrap\">'+label+'</div></div>';" +
     "}" +
+    'function updateLocationPins(){' +
+    '  var z=map.getZoom(),scale=Math.round(Math.max(0.38,Math.min(1,0.38+(z-9)*0.0775))*50)/50;' +
+    '  ["driver-pin","passenger-pin"].forEach(function(id){' +
+    '    var el=document.getElementById(id); if(!el)return;' +
+    '    var state=scale+":"+(z>10); if(el.getAttribute("data-zoom-style")===state)return;' +
+    '    el.setAttribute("data-zoom-style",state); el.style.transform="scale("+scale+")";' +
+    '    var label=el.lastElementChild; label.style.display=z>10?"block":"none";' +
+    '    label.style.fontSize=(12/scale)+"px";' +
+    '  });' +
+    '}' +
+    'map.on("zoomchange",updateLocationPins);' +
     'function ensureDriver(lon,lat,name){' +
     '  if(dMarker){ dMarker.setPosition([lon,lat]); if(name) dMarker.setTitle(name); }' +
     '  else { dMarker=new AMap.Marker({position:[lon,lat],title:name||"司机",' +
-    '    content:locationPin("#459CFF","司机位置"),' +
+    '    content:locationPin("#459CFF","司机位置","driver-pin"),' +
     '    offset:new AMap.Pixel(-50,-66),zIndex:150}); map.add(dMarker); }' +
-    '  dLon=lon; dLat=lat; hasD=1;' +
+    '  dLon=lon; dLat=lat; hasD=1; updateLocationPins();' +
     '}' +
     'function ensurePassenger(lon,lat,name){' +
     '  if(pMarker){ pMarker.setPosition([lon,lat]); if(name) pMarker.setTitle(name); }' +
     '  else { pMarker=new AMap.Marker({position:[lon,lat],title:name||"乘客",' +
-    '    content:locationPin("#F47787","乘客位置"),' +
+    '    content:locationPin("#F47787","乘客位置","passenger-pin"),' +
     '    offset:new AMap.Pixel(-50,-66),zIndex:150}); map.add(pMarker); }' +
-    '  pLon=lon; pLat=lat; hasP=1;' +
+    '  pLon=lon; pLat=lat; hasP=1; updateLocationPins();' +
     '}' +
     'function clearDriver(){ if(dMarker){ map.remove(dMarker); dMarker=null; } hasD=0; }' +
     'function clearPassenger(){ if(pMarker){ map.remove(pMarker); pMarker=null; } hasP=0; }' +

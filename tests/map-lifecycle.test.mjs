@@ -131,3 +131,25 @@ test('route metadata escapes HTML delimiters before entering the map script',()=
   h.attach();h.flush();assert.doesNotMatch(h.loads[0], /<script>unsafe/);
   assert.match(h.loads[0], /\\u003c\/script>/);
 });
+
+test('zoom scales both location pins with bounded size, readable labels and no redundant writes', () => {
+  const h = harness(); h.view.mapWebKey = 'test-placeholder'; h.attach(); h.flush();
+  const script = h.loads[0].match(/<script>([\s\S]*?)<\/script>/)[1];
+  const fn = script.slice(script.indexOf('function updateLocationPins(){'), script.indexOf('map.on("zoomchange",updateLocationPins)'));
+  let zoom = 17, writes = 0;
+  const make = () => ({ style:{}, lastElementChild:{style:{}}, state:'',
+    getAttribute(){return this.state;},setAttribute(_,v){this.state=v;writes++;} });
+  const pins = {'driver-pin':make(),'passenger-pin':make()};
+  const c=vm.createContext({map:{getZoom:()=>zoom}, document:{getElementById:id=>pins[id]}});
+  vm.runInContext(fn,c);
+  const update=()=>vm.runInContext('updateLocationPins()',c);
+  update(); assert.equal(pins['driver-pin'].style.transform,'scale(1)');
+  zoom=12;update();assert.equal(pins['driver-pin'].style.transform,'scale(0.62)');
+  assert.equal(pins['passenger-pin'].style.transform,'scale(0.62)');
+  assert.equal(pins['driver-pin'].lastElementChild.style.display,'block');
+  assert.equal(parseFloat(pins['driver-pin'].lastElementChild.style.fontSize)*0.62,12);
+  const previous=writes;update();assert.equal(writes,previous);
+  zoom=3;update();assert.equal(pins['driver-pin'].style.transform,'scale(0.38)');
+  assert.equal(pins['driver-pin'].lastElementChild.style.display,'none');
+  zoom=20;update();assert.equal(pins['driver-pin'].style.transform,'scale(1)');
+});
