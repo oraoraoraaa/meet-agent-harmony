@@ -20,6 +20,7 @@ import { buildStraightDrivingRoute, estimatePassengerPath } from './estimate.ts'
 import type {
   DataSource,
   PassengerLeg,
+  TrafficSegment,
   EvaluatedOption,
   GeoPoint,
   MobilityMode,
@@ -32,6 +33,7 @@ import type {
 } from './models.ts';
 
 export interface DrivingRouteResult {
+  readonly traffic?: readonly TrafficSegment[];
   readonly polyline: readonly GeoPoint[];
   readonly route: readonly RoutePoint[];
   readonly dataSource: DataSource;
@@ -136,7 +138,8 @@ export async function runAnalysis(
       completionMin: 0,
       meetingPoint: asNamed(passenger, passenger.name, passenger.address),
       rationale: '起终点相同或路线不可用，保持原地会合。',
-      driverRoutePolyline: fullPolyline.length > 0 ? fullPolyline : [driver, passenger],
+      driverTraffic: structuredClone(driving.traffic ?? []),
+    driverRoutePolyline: fullPolyline.length > 0 ? fullPolyline : [driver, passenger],
     };
     return {
       generatedAt: now().toISOString(),
@@ -152,6 +155,7 @@ export async function runAnalysis(
   const baselineDriverEtaMin = end.driverSecs / 60;
 
   type EvalWithPath = EvaluatedOption & {
+    driverTraffic: readonly TrafficSegment[];
     passengerLegs: readonly PassengerLeg[];
     passengerPolyline: readonly GeoPoint[];
     driverPolyline: readonly GeoPoint[];
@@ -172,6 +176,7 @@ export async function runAnalysis(
   }
   for (const cand of candidates) {
     const isStation = !!cand.stationName;
+    let driverTraffic: readonly TrafficSegment[] = [];
     let driverEtaMin = cand.driverEtaMin;
     let driverPolyline = sliceDriverPolyline(fullPolyline, cand.routeIndex);
     let pickupNote = '会合位置为路线采样点，请现场确认可停车与可步行到达';
@@ -182,6 +187,7 @@ export async function runAnalysis(
           checked.snappedDestinationM > 60)) continue;
       dataSource = mergeDataSource(dataSource, checked.dataSource);
       driverEtaMin = checked.route[checked.route.length - 1]!.driverSecs / 60;
+      driverTraffic = structuredClone(checked.traffic ?? []);
       driverPolyline = checked.polyline.map((p) => ({ ...p }));
       pickupNote = isStation ? '车站会合点' : '驾车可达附近；停车条件仍需现场确认';
     }
@@ -206,7 +212,8 @@ export async function runAnalysis(
         passengerEtaMin: path.etaMin,
         completionMin: Math.max(driverEtaMin, path.etaMin),
         score,
-        passengerLegs: (path.legs ?? []).map(leg => ({ ...leg, instructions: [...leg.instructions] })),
+        driverTraffic: structuredClone(driverTraffic),
+        passengerLegs: structuredClone(path.legs ?? []),
         passengerPolyline: path.polyline,
         driverPolyline,
         pickupNote,
@@ -236,6 +243,7 @@ export async function runAnalysis(
 
     return {
       mode: opt.mode,
+      driverTraffic: withPath?.driverTraffic ?? [],
       passengerLegs: withPath?.passengerLegs ?? [],
       recommended: isRec,
       meetingPoint: asNamed(opt.meetingPoint, withPath?.landmark
@@ -288,6 +296,7 @@ export async function runAnalysis(
     completionMin: baselineDriverEtaMin,
     meetingPoint: asNamed(passenger, passenger.name ?? '乘客位置', passenger.address),
     rationale: templateStayRationale(baselineDriverEtaMin) + strategyNote,
+    driverTraffic: structuredClone(driving.traffic ?? []),
     driverRoutePolyline: fullPolyline.length > 0 ? fullPolyline : [driver, passenger],
   };
 

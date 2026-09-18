@@ -24,5 +24,9 @@ Location and itinerary checks:
 - Plan with one or both endpoints unset; grant location and verify only unset endpoints use the fix.
 - Deny location or disable positioning; verify useful guidance and manual selection remain available.
 - Verify traffic is initially active and there is no map search bar.
-- Tap 公共交通 on results; inspect walking, boarding/alighting and transfer details, then dismiss.
+- Tap 公共交通 on results; scroll below the cards to inspect walking, boarding/alighting and transfer details. No popup, close button or forced scroll should occur.
 - When routing fails after map setup, verify the timeline explicitly reports unavailable detailed routing.
+
+- Check driving traffic colors against returned TMC status; unknown sections stay blue.
+- Check two distinct transit lines use separate colors and walking stays dashed.
+- Check route ETA tags match the selected card and persist on the locked-trip map.

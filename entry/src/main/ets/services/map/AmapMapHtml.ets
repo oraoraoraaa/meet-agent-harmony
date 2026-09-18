@@ -1,3 +1,4 @@
+import { routeMapScript } from './RouteMapScript';
 /**
  * Build self-contained HTML for interactive AMap JS map (GCJ-02).
  * Key injected at runtime from preferences — never commit real keys.
@@ -10,6 +11,12 @@
  */
 
 export class MapViewMarkers {
+  driverTrafficJson: string = '[]';
+  passengerLegsJson: string = '[]';
+  driverEtaMin: number = -1;
+  passengerEtaMin: number = -1;
+  passengerMode: string = '';
+  routeSource: string = '';
   driverLon: number = 0;
   driverLat: number = 0;
   hasDriver: boolean = false;
@@ -93,7 +100,7 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>' +
     '<style>' +
     'html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#e8eef5;}' +
-    '.amap-layer{filter:saturate(.5);}' +
+    '.amap-tile{filter:saturate(.65);}' +
     'body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;overflow:hidden;}' +
     '#top{position:absolute;left:16px;right:16px;top:16px;z-index:30;}' +
     'button{font-family:inherit;cursor:pointer;}' +
@@ -121,6 +128,9 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     'var cLon=' + cLon + ',cLat=' + cLat + ',zoom=' + zoom + ';' +
     'var dPoly=' + driverPoly + ';' +
     'var pPoly=' + passengerPoly + ';' +
+    'var driverTraffic=' + m.driverTrafficJson + ',passengerLegs=' + m.passengerLegsJson + ';' +
+    'var driverEta=' + m.driverEtaMin + ',passengerEta=' + m.passengerEtaMin + ';' +
+    'var passengerMode="' + escJs(m.passengerMode) + '",routeSource="' + escJs(m.routeSource) + '";' +
     'var showTraffic=' + showTraffic + ';' +
     'var allowSwitch=' + allowSwitch + ';' +
     'var showChrome=' + showChrome + ';' +
@@ -223,14 +233,11 @@ export function buildInteractiveMapHtml(m: MapViewMarkers): string {
     '  }catch(e){ setHint("暂时无法更新位置"); }' +
     '};' +
     'if(hasD) ensureDriver(dLon,dLat,"司机"); if(hasP) ensurePassenger(pLon,pLat,"乘客");' +
-    'if(dPoly && dPoly.length>=2){ dLine=new AMap.Polyline({path:dPoly.map(function(x){return [x[0],x[1]];}),' +
-    '  strokeColor:"#0A84FF",strokeWeight:6,strokeOpacity:.95,zIndex:50}); map.add(dLine); }' +
-    'if(pPoly && pPoly.length>=2){ pLine=new AMap.Polyline({path:pPoly.map(function(x){return [x[0],x[1]];}),' +
-    '  strokeColor:"#34C759",strokeWeight:5,strokeOpacity:.95,strokeStyle:"dashed",zIndex:50}); map.add(pLine); }' +
+    routeMapScript() +
     'try{ var fit=[]; if(hasD) fit.push([dLon,dLat]); if(hasP) fit.push([pLon,pLat]);' +
     '  if(dPoly) dPoly.forEach(function(x){fit.push([x[0],x[1]]);});' +
     '  if(pPoly) pPoly.forEach(function(x){fit.push([x[0],x[1]]);});' +
-    '  if(fit.length>=2) map.setFitView(null,false,[48,48,48,48]); }catch(e){}' +
+    '  if(fit.length>=2) map.setFitView(routeFitLines.length>0?routeFitLines:null,false,[54,60,54,60]); }catch(e){}' +
     'var pendingMarker=null;' +
     'function showPending(lon,lat,name){' +
     '  try{' +

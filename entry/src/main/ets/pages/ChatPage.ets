@@ -1,3 +1,4 @@
+import { TrafficSegment, PassengerLeg } from '../domain/Models';
 import { BottomNavigation } from '../common/BottomNavigation';
 /**
  * Agent chat UI — Mode A/B tool loop or Mode C offline engine explanations.
@@ -70,6 +71,11 @@ struct ChatPage {
   @State bubbles: ChatBubble[] = [];
   @State planCards: PlanMiniCard[] = [];
   @State selectedPlanId: string = '';
+  @State previewTraffic: TrafficSegment[] = [];
+  @State previewLegs: PassengerLeg[] = [];
+  @State previewDriverEta: number = -1;
+  @State previewPassengerEta: number = -1;
+  @State previewMode: string = '';
   @State previewDriver: GeoPoint[] = [];
   @State previewPassenger: GeoPoint[] = [];
   @State previewMeeting: NamedPoint = new NamedPoint();
@@ -328,6 +334,9 @@ struct ChatPage {
 
   private applyMapForPlan(id: string, rec: RecommendationSet): void {
     if (id === 'stayPut') {
+      this.previewTraffic = rec.stayPut.driverTraffic;
+      this.previewLegs = []; this.previewMode = 'stay';
+      this.previewDriverEta = rec.stayPut.driverEtaMin; this.previewPassengerEta = -1;
       this.previewDriver = rec.stayPut.driverRoutePolyline.slice();
       this.previewPassenger = [];
       this.previewMeeting = rec.stayPut.meetingPoint;
@@ -335,6 +344,9 @@ struct ChatPage {
       const idx: number = Number(id.substring('suggestion:'.length));
       if (!isNaN(idx) && idx >= 0 && idx < rec.suggestions.length) {
         const s: Suggestion = rec.suggestions[idx];
+        this.previewTraffic = s.driverTraffic;
+        this.previewLegs = s.passengerLegs; this.previewMode = s.mode;
+        this.previewDriverEta = s.driverEtaMin; this.previewPassengerEta = s.passengerEtaMin;
         this.previewDriver = s.driverRoutePolyline.slice();
         this.previewPassenger = s.passengerPathPolyline.slice();
         this.previewMeeting = s.meetingPoint;
@@ -569,6 +581,9 @@ struct ChatPage {
                     : (this.driverLat + this.passengerLat) / 2,
                   zoom: 13,
                   title: this.dataSourceBadge.length > 0 ? this.dataSourceBadge : '方案路线',
+                  driverTraffic: this.previewTraffic, passengerLegs: this.previewLegs,
+                  driverEtaMin: this.previewDriverEta, passengerEtaMin: this.previewPassengerEta,
+                  passengerMode: this.previewMode, routeSource: this.dataSourceBadge,
                   driverLine: this.previewDriver,
                   passengerLine: this.previewPassenger,
                   showTraffic:  this.settings.mapWebKey.trim().length > 0,

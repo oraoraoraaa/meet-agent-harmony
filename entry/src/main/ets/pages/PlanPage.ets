@@ -1,3 +1,4 @@
+import { TrafficSegment } from '../domain/Models';
 import { PassengerRouteDetails } from '../common/PassengerRouteDetails';
 import { BottomNavigation } from '../common/BottomNavigation';
 import { common } from '@kit.AbilityKit';
@@ -32,6 +33,7 @@ import { TripDraftStore } from '../services/session/TripDraftStore';
 import { haversineM } from '../domain/Geo';
 
 class PlanCardModel {
+  driverTraffic: TrafficSegment[] = [];
   passengerLegs: PassengerLeg[] = [];
   id: string = '';
   title: string = '';
@@ -69,7 +71,9 @@ struct PlanPage {
   @State allowTransit: boolean = true;
   @State avoidTransit: boolean = false;
   @State preferMetro: boolean = false;
-  @State routeDetailsOpen: boolean = false;
+  @State selectedMode: string = '';
+  @State previewTraffic: TrafficSegment[] = [];
+  @State previewDriverEta: number = -1;
   @State routeDetailsLegs: PassengerLeg[] = [];
   @State routeDetailsEta: number = 0;
   @State maxWalkMin: number = 12;
@@ -80,6 +84,7 @@ struct PlanPage {
   @State dataSourceBadge: string = '';
   @State cards: PlanCardModel[] = [];
   @State selectedCardId: string = '';
+  private pageScroller: Scroller = new Scroller();
   @State previewDriver: GeoPoint[] = [];
   @State previewPassenger: GeoPoint[] = [];
   @State previewMeeting: NamedPoint = new NamedPoint();
@@ -375,6 +380,7 @@ struct PlanPage {
       }
       this.mapMountTimer = setTimeout(() => {
         this.mapMountTimer = -1;
+        this.pageScroller.scrollTo({ xOffset: 0, yOffset: 0, animation: false });
         this.bootstrapResultMap();
       }, 80);
       if (rec.dataSource === 'live_with_fallback') {
@@ -411,6 +417,7 @@ struct PlanPage {
     stayCard.saveLine = '基准';
     stayCard.rationale = stay.rationale;
     stayCard.recommended = stay.recommended;
+    stayCard.driverTraffic = stay.driverTraffic;
     stayCard.driverPolyline = stay.driverRoutePolyline;
     stayCard.passengerPolyline = [];
     stayCard.meeting = stay.meetingPoint;
@@ -438,6 +445,7 @@ struct PlanPage {
         card.saveLine = '节省有限';
       }
       card.rationale = s.rationale;
+      card.driverTraffic = s.driverTraffic;
       card.passengerLegs = s.passengerLegs;
       card.recommended = s.recommended;
       card.driverPolyline = s.driverRoutePolyline;
@@ -549,6 +557,11 @@ struct PlanPage {
       const c: PlanCardModel = this.cards[i];
       if (c.id === id) {
         // New array refs so map @Prop sees change
+        this.selectedMode = c.modeKey;
+        this.previewTraffic = c.driverTraffic;
+        this.previewDriverEta = c.driverEtaMin;
+        this.routeDetailsLegs = c.passengerLegs;
+        this.routeDetailsEta = c.passengerEtaMin;
         this.previewDriver = c.driverPolyline.slice();
         this.previewPassenger = c.passengerPolyline.slice();
         this.previewMeeting = c.meeting;
@@ -697,11 +710,6 @@ struct PlanPage {
     });
   }
 
-  onBackPress(): boolean {
-    if (this.routeDetailsOpen) { this.routeDetailsOpen = false; return true; }
-    return false;
-  }
-
   pageTransition() {
     // A bottom-tab selection can also leave this detail screen.
     PageTransitionExit({ duration: 0 })
@@ -762,7 +770,7 @@ struct PlanPage {
         .width('100%')
         .padding({ left: 8, right: 12, top: AppLayout.headerTop(), bottom: 8 })
 
-        Scroll() {
+        Scroll(this.pageScroller) {
           Column({ space: 12 }) {
             if (this.showForm || !this.hasResult) {
               this.formSection()
@@ -805,14 +813,7 @@ struct PlanPage {
       }
       .width('100%')
       .height('100%')
-      if (this.routeDetailsOpen) {
-        PassengerRouteDetails({
-          legs: this.routeDetailsLegs, fromName: this.passengerName,
-          toName: this.previewMeeting.name, etaMin: this.routeDetailsEta,
-          source: this.dataSourceBadge,
-          onClose: () => { this.routeDetailsOpen = false; }
-        })
-      }
+
     }
     .width('100%')
     .height('100%')
@@ -1018,6 +1019,9 @@ struct PlanPage {
               centerLat: this.resultCenterLat(),
               zoom: 13,
               title: this.mapCaption(),
+              driverTraffic: this.previewTraffic, passengerLegs: this.routeDetailsLegs,
+              driverEtaMin: this.previewDriverEta, passengerEtaMin: this.routeDetailsEta,
+              passengerMode: this.selectedMode, routeSource: this.dataSourceBadge,
               driverLine: this.previewDriver,
               passengerLine: this.previewPassenger,
               showTraffic: false,
@@ -1026,7 +1030,7 @@ struct PlanPage {
               reloadToken: this.resultMapToken
             })
               .width('100%')
-              .height(260)
+              .height(320)
           } else {
             Column() {
               Text('地图加载中…')
@@ -1034,23 +1038,15 @@ struct PlanPage {
                 .fontColor(AppTheme.inkMuted)
             }
             .width('100%')
-            .height(260)
+            .height(320)
             .justifyContent(FlexAlign.Center)
             .backgroundColor(AppTheme.mapPanel)
           }
 
-          Column() {
-            Text(this.selectedModeBadge())
-              .fontSize(11)
-              .fontColor(Color.White)
-              .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-              .backgroundColor(AppTheme.accent)
-              .borderRadius(999)
-          }
-          .position({ x: 10, y: 10 })
+
         }
         .width('100%')
-        .height(260)
+        .height(320)
         .clip(true)
         .borderRadius(16)
         .border({ width: 1, color: AppTheme.glassBorder })
@@ -1117,13 +1113,13 @@ struct PlanPage {
         .id(`plan-card-${card.modeKey}`)
         .onClick(() => {
           this.selectCard(card.id);
-          if (card.modeKey === MODE_TRANSIT) {
-            this.routeDetailsLegs = card.passengerLegs;
-            this.routeDetailsEta = card.passengerEtaMin;
-            this.routeDetailsOpen = true;
-          }
         })
       }, (card: PlanCardModel) => card.id)
+
+      if (this.selectedMode === MODE_TRANSIT) {
+        PassengerRouteDetails({ legs: this.routeDetailsLegs, fromName: this.passengerName,
+          toName: this.previewMeeting.name, etaMin: this.routeDetailsEta, source: this.dataSourceBadge })
+      }
 
       // summary card
       Column({ space: 6 }) {
@@ -1256,16 +1252,4 @@ struct PlanPage {
     .width('100%')
   }
 
-  private selectedModeBadge(): string {
-    for (let i = 0; i < this.cards.length; i++) {
-      if (this.cards[i].id === this.selectedCardId) {
-        const c: PlanCardModel = this.cards[i];
-        if (c.recommended) {
-          return `${c.modeLabel} · 推荐`;
-        }
-        return c.modeLabel;
-      }
-    }
-    return '方案预览';
-  }
 }

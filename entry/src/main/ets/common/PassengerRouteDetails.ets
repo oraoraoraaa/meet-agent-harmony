@@ -9,7 +9,6 @@ export struct PassengerRouteDetails {
   @Prop toName: string = '';
   @Prop etaMin: number = 0;
   @Prop source: string = '';
-  onClose: () => void = () => {};
 
   private title(leg: PassengerLeg): string {
     if (leg.mode === 'walking') return '步行';
@@ -30,9 +29,6 @@ export struct PassengerRouteDetails {
   }
 
   build() {
-    Stack({ alignContent: Alignment.Bottom }) {
-      Column().width('100%').height('100%').backgroundColor('#44000000')
-        .onClick(() => { this.onClose(); })
       Column({ space: 12 }) {
         Row() {
           Column({ space: 3 }) {
@@ -40,10 +36,7 @@ export struct PassengerRouteDetails {
             Text(`公共交通 · 约 ${this.etaMin.toFixed(0)} 分钟 · ${this.source}`)
               .fontSize(13).fontColor(AppTheme.inkSoft)
           }.alignItems(HorizontalAlign.Start).layoutWeight(1)
-          Button('关闭').height(36).fontSize(14).fontColor(AppTheme.accent)
-            .backgroundColor(AppTheme.accentSoft).onClick(() => { this.onClose(); })
         }.width('100%')
-        Scroll() {
           Column({ space: 18 }) {
             Text(`出发 · ${this.fromName}`).fontSize(16).fontWeight(FontWeight.Medium)
               .fontColor(AppTheme.ink).width('100%')
@@ -85,9 +78,6 @@ export struct PassengerRouteDetails {
             Text(`到达 · ${this.toName}`).fontSize(16).fontWeight(FontWeight.Medium)
               .fontColor(AppTheme.ink).width('100%')
           }.width('100%').padding({ bottom: 20 })
-        }.layoutWeight(1).width('100%').align(Alignment.TopStart).scrollBar(BarState.Off)
-      }.width('100%').height('80%').padding({ left: 24, right: 24, top: 24, bottom: 28 })
-        .backgroundColor(AppTheme.bg1).borderRadius({ topLeft: 28, topRight: 28 })
-    }.width('100%').height('100%')
+      }.width('100%').padding(20).backgroundColor(AppTheme.bg1).borderRadius(22)
   }
 }

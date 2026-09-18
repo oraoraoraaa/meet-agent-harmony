@@ -73,7 +73,7 @@ test('selected public-transport itinerary preserves walking, transfer, stations 
   const metro={duration:'900',segments:[
     {walking:{duration:'120',distance:'150',steps:[{instruction:'沿长安路向北步行150米'}]},
       bus:{buslines:[{type:'地铁线路',name:'地铁3号线(鱼化寨--保税区)',duration:'600',distance:'4000',via_num:'3',
-        departure_stop:{name:'吉祥村'},arrival_stop:{name:'小寨'},start_time:'06:00',end_time:'23:00',polyline:'108.9,34.2;108.93,34.2'},
+        departure_stop:{name:'吉祥村',location:'108.9,34.2'},via_stops:[{name:'中间站',location:'108.91,34.2'}],arrival_stop:{name:'小寨',location:'108.93,34.2'},start_time:'06:00',end_time:'23:00',polyline:'108.9,34.2;108.93,34.2'},
         {type:'普通公交线路',name:'不应显示的替代路线'}]},entrance:{name:'A口'},exit:{name:'B口'}},
     {walking:{duration:'180',distance:'200',steps:[{instruction:'从B口步行至会合点'}]}}
   ]};
@@ -82,6 +82,7 @@ test('selected public-transport itinerary preserves walking, transfer, stations 
   assert.deepEqual(Array.from(path.legs,l=>l.mode),['walking','subway','walking']);
   assert.equal(path.legs[0].instructions[0],'沿长安路向北步行150米');
   const leg=path.legs[1];assert.equal(leg.lineName,'地铁3号线(鱼化寨--保税区)');
+  assert.equal(leg.polyline.length,2);assert.equal(leg.stops.length,3);assert.equal(leg.stops[1].name,'中间站');
   assert.equal(leg.fromName,'吉祥村');assert.equal(leg.toName,'小寨');
   assert.equal(leg.durationMin,10);assert.equal(leg.stopCount,3);assert.equal(leg.exit,'B口');
   assert.equal(leg.entrance,'A口');assert.equal(path.etaMin,15);
@@ -95,4 +96,22 @@ test('locked recommendation clones keep an independent passenger itinerary',()=>
   const copy=cloneRecommendationSet(rec);leg.instructions[0]='changed';leg.lineName='changed';
   assert.equal(copy.suggestions[0].passengerLegs[0].instructions[0],'步行到A口');
   assert.equal(copy.suggestions[0].passengerLegs[0].lineName,'');
+});
+
+test('driving traffic keeps provider geometry and unknown status; snapshots deeply clone route overlays',async()=>{
+  const p=new AmapWebMapProvider('test');
+  p.getJson=async()=>({status:'1',route:{paths:[{duration:'600',steps:[{duration:'600',polyline:'108.9,34.2;108.95,34.2',
+    tmcs:[{status:'拥堵',polyline:'108.9,34.2;108.92,34.2'},{status:'未知',polyline:'108.92,34.2;108.95,34.2'},
+      {status:'畅通',polyline:''}]}]}]}});
+  const path=await p.getDrivingRoute(a,b);
+  assert.equal(path.traffic.length,2);assert.equal(path.traffic[0].status,'拥堵');
+  assert.equal(path.traffic[0].polyline[1].lon,108.92);
+  const {RecommendationSet,Suggestion,PassengerLeg,cloneRecommendationSet}=context.api;
+  const rec=new RecommendationSet();const s=new Suggestion();const leg=new PassengerLeg();
+  s.driverTraffic=path.traffic;leg.polyline=[new GeoPoint(108.9,34.2)];leg.stops=[new context.api.NamedPoint(108.9,34.2,'A站')];
+  s.passengerLegs=[leg];rec.suggestions=[s];const copy=cloneRecommendationSet(rec);
+  path.traffic[0].polyline[0].lon=0;leg.polyline[0].lon=0;leg.stops[0].name='changed';
+  assert.equal(copy.suggestions[0].driverTraffic[0].polyline[0].lon,108.9);
+  assert.equal(copy.suggestions[0].passengerLegs[0].polyline[0].lon,108.9);
+  assert.equal(copy.suggestions[0].passengerLegs[0].stops[0].name,'A站');
 });

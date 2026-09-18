@@ -7,7 +7,7 @@ import test from 'node:test';
 // Exercise the actual ArkTS host methods with deterministic timers and a fake
 // Web controller. This does not emulate ArkUI Prop delivery or native Web paint.
 const mapRoot = new URL('../entry/src/main/ets/services/map/', import.meta.url);
-const htmlSource = readFileSync(new URL('AmapMapHtml.ets', mapRoot), 'utf8');
+const htmlSource = readFileSync(new URL('RouteMapScript.ets', mapRoot), 'utf8') + '\n' + readFileSync(new URL('AmapMapHtml.ets', mapRoot), 'utf8');
 const viewSource = readFileSync(new URL('InteractiveMapView.ets', mapRoot), 'utf8');
 function plainTs(source) {
   return source.replace(/^import .*;\n/gm, '')
@@ -98,4 +98,36 @@ test('generated live and offline map scripts are valid JavaScript', () => {
     assert.doesNotMatch(html, /<input|PlaceSearch|fetch\(/);
     assert.match(html, /var showTraffic=1/);
   }
+});
+
+test('route renderer uses supplied traffic, distinct transit colors, walking dashes and grounded ETA tags', () => {
+  const items=[];
+  class Polyline { constructor(options){ this.options=options;this.kind='line'; } }
+  class Marker { constructor(options){ this.options=options;this.kind='marker'; } }
+  const point=(lon,lat)=>({lon,lat});
+  const node=()=>({style:{cssText:''},children:[],appendChild(child){this.children.push(child);}});
+  const context=vm.createContext({AMap:{Polyline,Marker,Pixel:class{}},map:{add(item){items.push(item);}},
+    document:{createElement:node},dPoly:[[108,34],[109,34]],pPoly:[[109,34],[110,34]],
+    driverTraffic:[{status:'拥堵',polyline:[point(108,34),point(108.5,34)]}],
+    passengerLegs:[{mode:'walking',polyline:[point(109,34),point(109.1,34)]},
+      {mode:'subway',lineName:'2号线',polyline:[point(109.1,34),point(109.5,34)],stops:[{lon:109.1,lat:34,name:'A站'}]},
+      {mode:'bus',lineName:'15路',polyline:[point(109.5,34),point(110,34)],stops:[]}],
+    driverEta:23.2,passengerEta:16,passengerMode:'transit',routeSource:'实时',dLine:null,pLine:null});
+  vm.runInContext(stripTypeScriptTypes(plainTs(readFileSync(new URL('RouteMapScript.ets',mapRoot),'utf8')))+
+    '\nglobalThis.draw=routeMapScript();',context);
+  vm.runInContext(context.draw,context);
+  const lines=items.filter(i=>i.kind==='line').map(i=>i.options);
+  assert.ok(lines.some(l=>l.strokeColor==='#f26842'&&l.path[1][0]===108.5));
+  assert.ok(lines.some(l=>l.strokeColor==='#788898'&&l.strokeStyle==='dashed'));
+  assert.ok(lines.some(l=>l.strokeColor==='#ee4760'));
+  assert.ok(lines.some(l=>l.strokeColor==='#8e5bd5'));
+  const tags=items.filter(i=>i.kind==='marker').map(i=>i.options.content.children[0]?.textContent).filter(Boolean);
+  assert.deepEqual(tags,['23 分钟','16 分钟']);
+  assert.equal(vm.runInContext("trafficColor('未知')",context),'#4289e7');
+});
+
+test('route metadata escapes HTML delimiters before entering the map script',()=>{
+  const h=harness();h.view.passengerLegs=[{lineName:'</script><script>unsafe</script>',polyline:[]}];
+  h.attach();h.flush();assert.doesNotMatch(h.loads[0], /<script>unsafe/);
+  assert.match(h.loads[0], /\\u003c\/script>/);
 });

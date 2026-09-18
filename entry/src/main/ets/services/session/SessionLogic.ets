@@ -1,3 +1,4 @@
+import { TrafficSegment, cloneTraffic } from '../../domain/Models';
 /**
  * TripSession state machine — ArkTS port of domain/src/session.ts.
  * planning → confirmed → closed. Confirm freezes selection; re-plan closes old.
@@ -28,6 +29,7 @@ import { haversineM } from '../../domain/Geo';
 export const DEFAULT_POI_SNAP_RADIUS_M: number = 80;
 
 export class LockedPlanSnapshot {
+  driverTraffic: TrafficSegment[] = [];
   passengerLegs: PassengerLeg[] = [];
   planId: string = '';
   kind: string = 'stayPut'; // stayPut | suggestion
@@ -110,6 +112,7 @@ function cloneStay(s: StayPutSuggestion): StayPutSuggestion {
   out.completionMin = s.completionMin;
   out.meetingPoint = cloneNamed(s.meetingPoint);
   out.rationale = s.rationale;
+  out.driverTraffic = cloneTraffic(s.driverTraffic);
   out.driverRoutePolyline = cloneGeoList(s.driverRoutePolyline);
   return out;
 }
@@ -125,6 +128,7 @@ function cloneSuggestion(s: Suggestion): Suggestion {
   out.driverSavedMin = s.driverSavedMin;
   out.score = s.score;
   out.rationale = s.rationale;
+  out.driverTraffic = cloneTraffic(s.driverTraffic);
   out.driverRoutePolyline = cloneGeoList(s.driverRoutePolyline);
   out.passengerPathPolyline = cloneGeoList(s.passengerPathPolyline);
   out.passengerLegs = clonePassengerLegs(s.passengerLegs);
@@ -275,6 +279,7 @@ export function resolveLockedPlan(session: TripSession): LockedPlanSnapshot {
     out.completionMin = stay.completionMin;
     out.driverSavedMin = 0;
     out.rationale = stay.rationale;
+    out.driverTraffic = cloneTraffic(stay.driverTraffic);
     out.driverRoutePolyline = cloneGeoList(stay.driverRoutePolyline);
     out.passengerPathPolyline = [];
     out.recommended = stay.recommended;
@@ -298,6 +303,7 @@ export function resolveLockedPlan(session: TripSession): LockedPlanSnapshot {
   out.completionMin = s.completionMin;
   out.driverSavedMin = s.driverSavedMin;
   out.rationale = s.rationale;
+  out.driverTraffic = cloneTraffic(s.driverTraffic);
   out.driverRoutePolyline = cloneGeoList(s.driverRoutePolyline);
   out.passengerPathPolyline = cloneGeoList(s.passengerPathPolyline);
   out.passengerLegs = clonePassengerLegs(s.passengerLegs);

@@ -1,3 +1,4 @@
+import { TrafficSegment } from '../../domain/Models';
 /**
  * AMap Web REST map provider (GCJ-02).
  *
@@ -193,6 +194,7 @@ export class AmapWebMapProvider {
       route[0].point = polyline[0];
       route[route.length - 1].point = polyline[polyline.length - 1];
     }
+    out.traffic = this.drivingTraffic(steps);
     out.route = route;
     out.dataSource = interpolated ? DATA_LIVE_FALLBACK : DATA_LIVE;
     out.snappedDestinationM = snappedDestinationM;
@@ -622,6 +624,38 @@ export class AmapWebMapProvider {
     return out;
   }
 
+  private drivingTraffic(steps: Object[]): TrafficSegment[] {
+    const out: TrafficSegment[] = [];
+    for (const value of steps) {
+      const step: Record<string, Object> | null = asObject(value);
+      if (step === null) continue;
+      for (const item of asArray(step['tmcs'])) {
+        const tmc: Record<string, Object> | null = asObject(item);
+        if (tmc === null) continue;
+        const segment: TrafficSegment = new TrafficSegment();
+        segment.status = asString(tmc['status'], '未知');
+        segment.polyline = decodeAmapPolyline(asString(tmc['polyline']));
+        if (segment.polyline.length >= 2) out.push(segment);
+      }
+    }
+    return out;
+  }
+
+  private transitStops(line: Record<string, Object>): NamedPoint[] {
+    const nodes: Object[] = [];
+    if (line['departure_stop']) nodes.push(line['departure_stop']);
+    for (const stop of asArray(line['via_stops'])) nodes.push(stop);
+    if (line['arrival_stop']) nodes.push(line['arrival_stop']);
+    const stops: NamedPoint[] = [];
+    for (const value of nodes) {
+      const stop: Record<string, Object> | null = asObject(value);
+      if (stop === null) continue;
+      const points: GeoPoint[] = decodeAmapPolyline(asString(stop['location']));
+      if (points.length > 0) stops.push(new NamedPoint(points[0].lon, points[0].lat, asString(stop['name']), ''));
+    }
+    return stops;
+  }
+
   private transitLegs(transit: Record<string, Object>): PassengerLeg[] {
     const result: PassengerLeg[] = [];
     const segments: Object[] = asArray(transit['segments']);
@@ -635,6 +669,7 @@ export class AmapWebMapProvider {
         for (let j = 0; j < steps.length; j++) {
           const step: Record<string, Object> | null = asObject(steps[j]);
           if (step === null) continue;
+          leg.polyline = mergePolylines([leg.polyline, decodeAmapPolyline(asString(step['polyline']))]);
           const instruction: string = asString(step['instruction']);
           if (instruction.length > 0) leg.instructions.push(instruction);
         }
@@ -647,6 +682,8 @@ export class AmapWebMapProvider {
         const type: string = asString(line['type']);
         const rail: boolean = type.indexOf('地铁') >= 0 || type.indexOf('轻轨') >= 0 || type.indexOf('有轨电车') >= 0;
         const leg: PassengerLeg = this.legMetrics(line, rail ? 'subway' : 'bus');
+        leg.polyline = decodeAmapPolyline(asString(line['polyline']));
+        leg.stops = this.transitStops(line);
         leg.lineName = asString(line['name']);
         leg.fromName = this.nodeName(line['departure_stop']);
         leg.toName = this.nodeName(line['arrival_stop']);
@@ -661,6 +698,8 @@ export class AmapWebMapProvider {
       const railway: Record<string, Object> | null = asObject(segment['railway']);
       if (railway !== null && asString(railway['id']).length > 0) {
         const leg: PassengerLeg = this.legMetrics(railway, 'railway');
+        leg.polyline = decodeAmapPolyline(asString(railway['polyline']));
+        leg.stops = this.transitStops(railway);
         leg.lineName = asString(railway['name'], asString(railway['trip']));
         leg.fromName = this.nodeName(railway['departure_stop']);
         leg.toName = this.nodeName(railway['arrival_stop']);
@@ -669,6 +708,7 @@ export class AmapWebMapProvider {
       const taxi: Record<string, Object> | null = asObject(segment['taxi']);
       if (taxi !== null && asNumber(taxi['distance'], 0) > 0) {
         const leg: PassengerLeg = this.legMetrics(taxi, 'taxi');
+        leg.polyline = decodeAmapPolyline(asString(taxi['polyline']));
         leg.fromName = asString(taxi['sname']);
         leg.toName = asString(taxi['tname']);
         result.push(leg);

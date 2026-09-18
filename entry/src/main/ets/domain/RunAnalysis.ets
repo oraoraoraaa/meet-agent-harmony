@@ -14,6 +14,8 @@ import { buildStraightDrivingRoute, estimatePassengerPath, PassengerPathEstimate
 import {
   Candidate,
   PassengerLeg,
+  TrafficSegment,
+  cloneTraffic,
   clonePassengerLegs,
   DATA_ESTIMATE,
   DATA_LIVE,
@@ -32,6 +34,7 @@ import {
 } from './Models';
 
 export class DrivingRouteResult {
+  traffic: TrafficSegment[] = [];
   polyline: GeoPoint[] = [];
   route: RoutePoint[] = [];
   dataSource: DataSource = DATA_ESTIMATE;
@@ -129,6 +132,7 @@ export async function runAnalysis(
     stay.completionMin = 0;
     stay.meetingPoint = asNamed(passengerGeo, passenger.name, passenger.address);
     stay.rationale = '起终点相同或路线不可用，保持原地会合。';
+    stay.driverTraffic = cloneTraffic(driving.traffic);
     stay.driverRoutePolyline = fullPolyline.length > 0 ? fullPolyline : [driverGeo, passengerGeo];
     result.dataSource = dataSource;
     result.stayPut = stay;
@@ -154,6 +158,7 @@ export async function runAnalysis(
   for (let i = 0; i < candidates.length; i++) {
     const cand: Candidate = candidates[i];
     const isStation: boolean = cand.stationName.length > 0;
+    let driverTraffic: TrafficSegment[] = [];
     let driverEtaMin: number = cand.driverEtaMin;
     let driverLine: GeoPoint[] = sliceDriverPolyline(fullPolyline, cand.routeIndex);
     let pickupNote: string = '会合位置为路线采样点，请现场确认可停车与可步行到达';
@@ -167,6 +172,7 @@ export async function runAnalysis(
       dataSource = mergeDataSource(dataSource, candidateRoute.dataSource);
       driverEtaMin = candidateRoute.route[candidateRoute.route.length - 1].driverSecs / 60;
       driverLine = copyPolyline(candidateRoute.polyline);
+      driverTraffic = cloneTraffic(candidateRoute.traffic);
       pickupNote = isStation ? '车站会合点' : '驾车可达附近；停车条件仍需现场确认';
     }
     let landmark: string = cand.stationName;
@@ -200,6 +206,7 @@ export async function runAnalysis(
       opt.passengerPolyline = copyPolyline(path.polyline);
       opt.passengerLegs = clonePassengerLegs(path.legs);
       opt.driverPolyline = driverLine;
+      opt.driverTraffic = cloneTraffic(driverTraffic);
       opt.pickupNote = pickupNote;
       opt.landmark = landmark;
       evaluated.push(opt);
@@ -225,6 +232,7 @@ export async function runAnalysis(
     }
     const s: Suggestion = new Suggestion();
     s.mode = opt.mode;
+    s.driverTraffic = cloneTraffic(opt.driverTraffic);
     s.passengerLegs = clonePassengerLegs(opt.passengerLegs);
     s.recommended = isRec;
     s.meetingPoint = asNamed(opt.meetingPoint, opt.landmark.length > 0 ? (opt.isStation ? opt.landmark : `${opt.landmark}附近`) :
@@ -277,6 +285,7 @@ export async function runAnalysis(
   const stayName: string = passenger.name.length > 0 ? passenger.name : '乘客位置';
   stayPut.meetingPoint = asNamed(passengerGeo, stayName, passenger.address);
   stayPut.rationale = templateStayRationale(baselineDriverEtaMin) + strategyNote;
+  stayPut.driverTraffic = cloneTraffic(driving.traffic);
   stayPut.driverRoutePolyline = fullPolyline.length > 0 ? fullPolyline : [driverGeo, passengerGeo];
 
   result.dataSource = dataSource;

@@ -152,3 +152,24 @@ Final native suite: 4/4 passed. Live POI searches, map selection, a metro-first
 journey from the Xi’an North Station area, the populated passenger itinerary, confirmation/lock,
 main tabs and missing-map-key blocking were exercised. The key is stored only in the
 emulator settings and was restored after the missing-key test.
+
+## Inline itinerary and route styling — 2026-09-18
+
+The passenger timeline shares the result page scroll and has no modal or nested scroll.
+Route drawing reuses planning responses: opening details or selecting a card performs
+no additional routing request. TMC segments, transit geometry and stops are copied into
+plan snapshots. The map preserves polyline vertices instead of dropping to 64 points,
+so road bends remain aligned with traffic segments. Fitting uses route polylines only,
+excluding ETA callout dimensions. Existing map reload batching and disposal remain.
+
+Host checks cover traffic status colors and geometry, distinct transit colors, dashed
+walking, grounded ETA labels, HTML escaping and snapshot isolation (19 tests). Domain
+checks include candidate-specific traffic and absent traffic on estimates (36 tests).
+These establish behavior, not a measured frame-rate or memory improvement.
+
+Both app and native test HAP SDK builds passed. The final emulator suite passed 4/4
+tests, including live metro-first planning, inline itinerary scrolling and plan locking.
+Visual inspection confirmed three distinct metro line colors, traffic-colored driving
+segments, readable ETA callouts and walking transfers in the normal page scroll.
+Route traffic is the provider response captured when planning, not a continuously
+refreshed traffic feed. No physical-device performance benchmark was run.

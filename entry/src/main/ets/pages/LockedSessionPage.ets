@@ -1,3 +1,4 @@
+import { TrafficSegment, PassengerLeg } from '../domain/Models';
 import { BottomNavigation } from '../common/BottomNavigation';
 /**
  * Locked trip session screen — confirmed plan snapshot.
@@ -47,6 +48,11 @@ struct LockedSessionPage {
   @State planId: string = '';
   @State sharePreview: string = '';
   @State statusLine: string = '';
+  @State driverTraffic: TrafficSegment[] = [];
+  @State passengerLegs: PassengerLeg[] = [];
+  @State routeDriverEta: number = -1;
+  @State routePassengerEta: number = -1;
+  @State routeMode: string = '';
   @State driverLine: GeoPoint[] = [];
   @State passengerLine: GeoPoint[] = [];
   @State meeting: NamedPoint = new NamedPoint();
@@ -159,6 +165,10 @@ struct LockedSessionPage {
     this.sessionId = session.id;
     this.lockedAt = session.lockedAt.length > 0 ? session.lockedAt : '已锁定';
     const snap: LockedPlanSnapshot = resolveLockedPlan(session);
+    this.driverTraffic = snap.driverTraffic;
+    this.passengerLegs = snap.passengerLegs;
+    this.routeDriverEta = snap.driverEtaMin; this.routePassengerEta = snap.passengerEtaMin;
+    this.routeMode = snap.modeLabel === '公共交通' ? 'transit' : snap.modeLabel === '骑行' ? 'bicycle' : 'walking';
     this.planId = snap.planId;
     this.modeLabel = snap.modeLabel;
     this.dataSourceBadge = dataSourceLabelZh(snap.dataSource);
@@ -349,6 +359,9 @@ struct LockedSessionPage {
                     centerLat: this.mapCenterLat(),
                     zoom: 13,
                     title: `已锁定 · ${this.dataSourceBadge}`,
+                    driverTraffic: this.driverTraffic, passengerLegs: this.passengerLegs,
+                    driverEtaMin: this.routeDriverEta, passengerEtaMin: this.routePassengerEta,
+                    passengerMode: this.routeMode, routeSource: this.dataSourceBadge,
                     driverLine: this.driverLine,
                     passengerLine: this.passengerLine,
                     showTraffic: false,
@@ -357,7 +370,7 @@ struct LockedSessionPage {
                     reloadToken: this.mapToken
                   })
                     .width('100%')
-                    .height(240)
+                    .height(300)
                 } else {
                   Column() {
                     Text('地图加载中…')
@@ -365,7 +378,7 @@ struct LockedSessionPage {
                       .fontColor(AppTheme.inkMuted)
                   }
                   .width('100%')
-                  .height(240)
+                  .height(300)
                   .justifyContent(FlexAlign.Center)
                   .backgroundColor(AppTheme.mapPanel)
                 }
@@ -379,7 +392,7 @@ struct LockedSessionPage {
                   .position({ x: 10, y: 10 })
               }
               .width('100%')
-              .height(240)
+              .height(300)
               .clip(true)
               .borderRadius(16)
               .border({ width: 1, color: AppTheme.glassBorder })

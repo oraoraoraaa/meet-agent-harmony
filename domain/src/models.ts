@@ -62,7 +62,14 @@ export interface EvaluatedOption {
   readonly score: number;
 }
 
+export interface TrafficSegment {
+  readonly status: string;
+  readonly polyline: readonly GeoPoint[];
+}
+
 export interface PassengerLeg {
+  readonly polyline?: readonly GeoPoint[];
+  readonly stops?: readonly NamedPoint[];
   readonly mode: string;
   readonly lineName: string;
   readonly fromName: string;
@@ -77,6 +84,7 @@ export interface PassengerLeg {
 }
 
 export interface Suggestion {
+  readonly driverTraffic?: readonly TrafficSegment[];
   readonly passengerLegs?: readonly PassengerLeg[];
   readonly mode: MobilityMode;
   readonly recommended: boolean;
@@ -92,6 +100,7 @@ export interface Suggestion {
 }
 
 export interface StayPutSuggestion {
+  readonly driverTraffic?: readonly TrafficSegment[];
   readonly recommended: boolean;
   readonly driverEtaMin: number;
   readonly completionMin: number;

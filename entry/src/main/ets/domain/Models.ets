@@ -84,6 +84,7 @@ export class Candidate {
 }
 
 export class EvaluatedOption {
+  driverTraffic: TrafficSegment[] = [];
   passengerLegs: PassengerLeg[] = [];
   usesRail: boolean = false;
   isStation: boolean = false;
@@ -100,8 +101,24 @@ export class EvaluatedOption {
   landmark: string = '';
 }
 
+export class TrafficSegment {
+  status: string = '未知';
+  polyline: GeoPoint[] = [];
+}
+
+export function cloneTraffic(segments: TrafficSegment[]): TrafficSegment[] {
+  return segments.map((segment: TrafficSegment) => {
+    const copy: TrafficSegment = new TrafficSegment();
+    copy.status = segment.status;
+    copy.polyline = segment.polyline.map((p: GeoPoint) => new GeoPoint(p.lon, p.lat));
+    return copy;
+  });
+}
+
 /** One provider-returned passenger leg, never generated from model prose. */
 export class PassengerLeg {
+  polyline: GeoPoint[] = [];
+  stops: NamedPoint[] = [];
   mode: string = '';
   lineName: string = '';
   fromName: string = '';
@@ -118,6 +135,8 @@ export class PassengerLeg {
 export function clonePassengerLegs(legs: PassengerLeg[]): PassengerLeg[] {
   return legs.map((leg: PassengerLeg) => {
     const copy: PassengerLeg = new PassengerLeg();
+    copy.polyline = leg.polyline.map((p: GeoPoint) => new GeoPoint(p.lon, p.lat));
+    copy.stops = leg.stops.map((p: NamedPoint) => new NamedPoint(p.lon, p.lat, p.name, p.address));
     copy.mode = leg.mode;
     copy.lineName = leg.lineName;
     copy.fromName = leg.fromName;
@@ -134,6 +153,7 @@ export function clonePassengerLegs(legs: PassengerLeg[]): PassengerLeg[] {
 }
 
 export class Suggestion {
+  driverTraffic: TrafficSegment[] = [];
   passengerLegs: PassengerLeg[] = [];
   mode: MobilityMode = MODE_WALKING;
   recommended: boolean = false;
@@ -149,6 +169,7 @@ export class Suggestion {
 }
 
 export class StayPutSuggestion {
+  driverTraffic: TrafficSegment[] = [];
   recommended: boolean = true;
   driverEtaMin: number = 0;
   completionMin: number = 0;

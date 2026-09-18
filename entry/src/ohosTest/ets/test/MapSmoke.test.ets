@@ -16,7 +16,7 @@ export default function mapSmokeTest(): void {
       await driver.screenCap(context.filesDir + '/meetagent-home.png');
       await (await driver.findComponent(ON.id('passenger-location'))).click();
       expect(await driver.waitForComponent(ON.text('使用当前位置'), 5000)).not().assertNull();
-      await (await driver.waitForComponent(ON.type('TextInput'), 5000)).inputText('小寨地铁站');
+      await (await driver.waitForComponent(ON.type('TextInput'), 5000)).inputText('吉祥村地铁站');
       await (await driver.findComponent(ON.text('搜索'))).click();
       const firstHit = await driver.waitForComponent(ON.id('location-hit-0'), 20000);
       expect(firstHit).not().assertNull();
@@ -37,7 +37,7 @@ export default function mapSmokeTest(): void {
       expect(await driver.findComponent(ON.text('当前位置 · 点此更改'))).assertNull();
       // Search zooms close to a station; use a distant driver origin so transit is meaningful.
       await (await driver.findComponent(ON.id('driver-location'))).click();
-      await (await driver.waitForComponent(ON.type('TextInput'), 5000)).inputText('西安北站');
+      await (await driver.waitForComponent(ON.type('TextInput'), 5000)).inputText('西安北苑地铁站');
       await (await driver.findComponent(ON.text('搜索'))).click();
       await (await driver.waitForComponent(ON.id('location-hit-0'), 20000)).click();
       await driver.delayMs(500);
@@ -58,11 +58,11 @@ export default function mapSmokeTest(): void {
       const transitCard = await resultScroll.scrollSearch(ON.id('plan-card-transit'));
       expect(transitCard).not().assertNull();
       await transitCard.click();
-      expect(await driver.waitForComponent(ON.text('乘客路线'), 5000)).not().assertNull();
-      expect(await driver.waitForComponent(ON.text('上车 ·', MatchPattern.STARTS_WITH), 5000)).not().assertNull();
+      expect(await driver.findComponent(ON.text('关闭'))).assertNull();
+      expect(await resultScroll.scrollSearch(ON.text('乘客路线'))).not().assertNull();
+      expect(await resultScroll.scrollSearch(ON.text('上车 ·', MatchPattern.STARTS_WITH))).not().assertNull();
       await driver.delayMs(500);
       await driver.screenCap(context.filesDir + '/meetagent-passenger-route.png');
-      await (await driver.findComponent(ON.text('关闭'))).click();
       await resultScroll.scrollToBottom();
       await (await driver.waitForComponent(ON.text('确认并锁定方案'), 5000)).click();
       expect(await driver.waitForComponent(ON.text('我的行程'), 15000)).not().assertNull();

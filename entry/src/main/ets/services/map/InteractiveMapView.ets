@@ -6,7 +6,7 @@
 
 import { webview } from '@kit.ArkWeb';
 import { AppTheme } from '../../common/AppTheme';
-import { GeoPoint } from '../../domain/Models';
+import { GeoPoint, TrafficSegment, PassengerLeg } from '../../domain/Models';
 import { buildInteractiveMapHtml, MapViewMarkers } from './AmapMapHtml';
 
 export class MapPickEvent {
@@ -37,6 +37,12 @@ export struct InteractiveMapView {
   @Prop centerLat: number = 34.25;
   @Prop zoom: number = 13;
   @Prop title: string = '地图';
+  @Prop driverTraffic: TrafficSegment[] = [];
+  @Prop passengerLegs: PassengerLeg[] = [];
+  @Prop driverEtaMin: number = -1;
+  @Prop passengerEtaMin: number = -1;
+  @Prop passengerMode: string = '';
+  @Prop routeSource: string = '';
   @Prop driverLine: GeoPoint[] = [];
   @Prop passengerLine: GeoPoint[] = [];
   /** Bump to refresh the map snapshot after external state changes. */
@@ -98,8 +104,7 @@ export struct InteractiveMapView {
     if (line.length === 0) {
       return '[]';
     }
-    const maxPts: number = 64;
-    const step: number = line.length > maxPts ? Math.ceil(line.length / maxPts) : 1;
+    const step: number = 1;
     let s: string = '[';
     let first: boolean = true;
     for (let i = 0; i < line.length; i += step) {
@@ -136,6 +141,12 @@ export struct InteractiveMapView {
     m.centerLat = this.centerLat;
     m.zoom = this.zoom;
     m.title = this.title;
+    m.driverTrafficJson = JSON.stringify(this.driverTraffic).replace(/</g, '\\u003c');
+    m.passengerLegsJson = JSON.stringify(this.passengerLegs).replace(/</g, '\\u003c');
+    m.driverEtaMin = this.driverEtaMin;
+    m.passengerEtaMin = this.passengerEtaMin;
+    m.passengerMode = this.passengerMode;
+    m.routeSource = this.routeSource;
     m.driverPolyJson = this.polyJson(this.driverLine);
     m.passengerPolyJson = this.polyJson(this.passengerLine);
     m.showTraffic = this.showTraffic;

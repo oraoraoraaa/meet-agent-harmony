@@ -73,3 +73,17 @@ test('passenger itinerary flows from selected provider route to recommendation w
   const rec=await runAnalysis(scenario,p);instructions[0]='mutated';
   assert.equal(rec.suggestions.find(s=>s.mode==='transit')?.passengerLegs?.[0]?.instructions[0],'步行至地铁站');
 });
+
+test('traffic belongs to each routed destination and estimates never inherit baseline traffic',async()=>{
+  const p=provider();const original=p.getDrivingRoute;
+  p.getDrivingRoute=async(from,to)=>({...await original(from,to),traffic:[{
+    status:to.lon===station.lon?'拥堵':'畅通',polyline:[{...from},{...to}]}]});
+  const rec=await runAnalysis(scenario,p);
+  assert.equal(rec.stayPut.driverTraffic?.[0]?.status,'畅通');
+  const rail=rec.suggestions.find(s=>s.mode==='transit');
+  assert.equal(rail?.driverTraffic?.[0]?.status,'拥堵');
+  assert.equal(rail?.driverTraffic?.[0]?.polyline.at(-1)?.lon,station.lon);
+  const estimate=await runEstimateAnalysis(scenario);
+  assert.equal(estimate.stayPut.driverTraffic?.length??0,0);
+  assert.ok(estimate.suggestions.every(s=>(s.driverTraffic?.length??0)===0));
+});

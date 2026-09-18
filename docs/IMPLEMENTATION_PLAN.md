@@ -531,3 +531,19 @@ Current map setup requirement: per product direction, an absent map Web Service 
 shows a native setup warning and blocks home, form and chat planning. It no longer
 exposes a selectable no-key map. Missing LLM configuration still uses the local engine;
 routing outages after map setup retain explicitly labeled estimates.
+
+## Inline itinerary and route presentation — 2026-09-18
+
+Passenger transit details now flow directly below the suggestion cards in the result
+page's main scroll. Selecting a card updates the inline itinerary without a modal or
+a forced scroll.
+
+Selected driving routes carry AMap TMC geometry/status through the engine and locked
+snapshots. Known congestion uses green/amber/orange/red segments; unknown or absent
+TMC stays blue. This is the traffic returned at planning time; the home map retains its live traffic layer. Locked routes never silently re-plan. Transit legs preserve their own
+provider geometry and stops, with distinct presentation colors per line, white station
+dots, and dashed walking connections. These colors distinguish lines; they are not
+claimed to be the city's official line colors. Missing geometry is not invented.
+Both routes display tool-derived ETA tags; estimate labeling is retained.
+
+Source: [AMap route and TMC response contract](https://lbs.amap.com/api/webservice/guide/api/direction).
