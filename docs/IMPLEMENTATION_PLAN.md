@@ -561,3 +561,12 @@ Driver/passenger markers scale from 38% at regional views to full size at street
 level (zoom 17). Labels retain a readable screen size above zoom 10 and hide below
 that threshold. Scaling is anchored at the coordinate dot so zooming does not shift
 locations. The shared renderer applies this on home, result, chat and locked maps.
+
+### AppGallery release preparation — 2026-09-19
+
+- Added the publisher-supplied app/ability/launch icon and an in-app hosted privacy link.
+- Added `scripts/prepare_release.py`, `docs/RELEASE.md` and reviewer notes for repeatable
+  signed APP exports. Signing credentials remain local, outside commits and exports.
+- Signed APP and corresponding HAP signatures, release Profile identity/validity and
+  bundled code/resource consistency are verified before exporting. Submission is manual.
+- Existing map-key requirements remain; no private map/LLM credentials are bundled.

@@ -363,3 +363,10 @@ If a command is missing, **add it to README + this section** when you wire it â€
 - Meeting point chosen **once** at beginning (confirm = lock).
 - AI is a **tool-using planner/explainer**, not a free-form navigator inventing roads.
 - HarmonyOS phone HAP is the deliverable surface.
+
+### Release packaging
+
+`python3 scripts/prepare_release.py` builds and verifies a locally signed AppGallery
+APP and exports materials outside the repository. See `docs/RELEASE.md`. Keep the
+user's local signing changes in `build-profile.json5` out of commits, including encrypted
+password strings. Do not copy keystores or the DevEco `material/` folder into releases.

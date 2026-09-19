@@ -1,3 +1,4 @@
+import { privacyManager } from '@kit.AppGalleryKit';
 import { BottomNavigation } from '../common/BottomNavigation';
 import { common } from '@kit.AbilityKit';
 import { promptAction } from '@kit.ArkUI';
@@ -22,6 +23,28 @@ import { LlmPingResult, OpenAiCompatibleClient } from '../services/llm/OpenAiCom
 @Entry
 @Component
 struct SettingsPage {
+  private async openPrivacy(): Promise<void> {
+    let url: string = 'https://agreement-drcn.hispace.dbankcloud.cn/index.html?lang=zh&agreementId=2042833072528880704';
+    try {
+      const info: privacyManager.AppPrivacyMgmtInfo = privacyManager.getAppPrivacyMgmtInfo();
+      for (const link of info.privacyInfo) {
+        if (link.type === privacyManager.AppPrivacyLinkType.PRIVACY_STATEMENT_LINK && link.url.startsWith('https://')) {
+          url = link.url;
+          break;
+        }
+      }
+    } catch (_) {
+      // Direct installations may not yet have AppGallery privacy metadata.
+    }
+    try {
+      await (getContext(this) as common.UIAbilityContext).startAbility({
+        action: 'ohos.want.action.viewData', uri: url
+      });
+    } catch (_) {
+      promptAction.showToast({ message: '暂时无法打开隐私声明，请稍后重试' });
+    }
+  }
+
   @State settings: AppSettings = new AppSettings();
   @State loaded: boolean = false;
   @State saving: boolean = false;
@@ -182,6 +205,11 @@ struct SettingsPage {
               })
 
               Column() {
+                Button('隐私声明', { type: ButtonType.Capsule })
+                  .width('100%').height(44).margin({ bottom: 16 })
+                  .backgroundColor(AppTheme.accentSoft).fontColor(AppTheme.accent)
+                  .onClick(() => { this.openPrivacy(); })
+
                 this.sectionTitle('地图 Key')
                 this.fieldLabel('Map Web Key（HTTP 路线 / POI · 高德 Web 服务）')
                 TextInput({ text: this.settings.mapWebKey, placeholder: 'restapi.amap.com Web Key' })

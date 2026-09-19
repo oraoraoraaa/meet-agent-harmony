@@ -205,3 +205,13 @@ Verification passed: app/test HAP SDK builds, eight map host tests and five nati
 emulator tests. Screenshots show reduced marker sizes at city/regional zoom levels;
 pinch gestures retain the selected plan and route. Full-size and label thresholds are
 also checked by the host test against the generated renderer.
+
+## Release preparation verification — 2026-09-19
+
+Release SDK build and Huawei signature verification passed for the APP and matching
+standalone HAP; embedded module code/resources matched. An unsigned release HAP was
+installed in the emulator for UI inspection: the supplied icon fills the launcher tile,
+and Settings → 隐私声明 launches the system browser. The hosted page remained blank
+in the emulator, so agreement content and AGC-managed consent still need a distribution
+or physical-device check. This does not certify store acceptance or privacy compliance.
+No route or engine behavior changed and no runtime performance gain is claimed.

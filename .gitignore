@@ -63,3 +63,10 @@ fixtures/runtime/
 
 # Domain Node (if used for pure TS unit tests)
 domain/node_modules/
+
+# Local release signing material (never distribute or commit)
+*.p12
+*.p7b
+*.cer
+*.csr
+/material/

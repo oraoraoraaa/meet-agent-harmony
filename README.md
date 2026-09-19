@@ -260,3 +260,9 @@ Private project unless otherwise stated by the owners. Do not commit secrets, la
 Public transport planning includes real subway/train-station meeting candidates. Select
 “地铁优先” in planning preferences to favor verified rail routes that improve on waiting
 in place; unavailable rail data falls back transparently to ordinary planning.
+
+## AppGallery release
+
+Configure signing locally, then run `python3 scripts/prepare_release.py` to build,
+verify and export the signed APP and listing materials. See [RELEASE.md](docs/RELEASE.md)
+for signing, repeat releases, artifact paths and remaining submission checks.
