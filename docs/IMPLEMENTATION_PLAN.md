@@ -570,3 +570,8 @@ locations. The shared renderer applies this on home, result, chat and locked map
 - Signed APP and corresponding HAP signatures, release Profile identity/validity and
   bundled code/resource consistency are verified before exporting. Submission is manual.
 - Existing map-key requirements remain; no private map/LLM credentials are bundled.
+
+### Store name correction — 2026-09-23
+
+App-level and launcher ability labels now match the AGC name `MeetAgent接驾优化`.
+The replacement 1.0.0 package increments versionCode to 1000001 and buildVersion to 2.

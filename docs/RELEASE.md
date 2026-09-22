@@ -5,6 +5,8 @@ exporting it does not upload it to AppGallery or guarantee store acceptance.
 
 ## Identity and tools
 
+- AGC listing name and installed label: `MeetAgent接驾优化`. Keep both
+  `AppScope` app_name and `entry` EntryAbility_label identical to the submitted name.
 - Bundle: `com.rinalic.meetAgentHarmony`
 - AGC APP ID: `6917616810342569054` (also carried in the release Profile)
 - Version: `AppScope/app.json5`; increase `versionCode` for subsequent releases and
@@ -118,3 +120,15 @@ The icon and privacy entry were exercised using an unsigned release HAP in the e
 The privacy entry launched the browser, but the hosted page remained blank there;
 confirm the declaration is published and readable before submitting. A signed AGC
 installation on a physical phone has not been verified in this workspace.
+
+## Name-mismatch review correction (2026-09-23)
+
+Both installed-name resources now use `MeetAgent接驾优化`, matching the submitted
+listing. The replacement keeps versionName `1.0.0`, with versionCode `1000001` and
+buildVersion `2`. Select the replacement package in the existing AGC version before
+resubmitting. Bundle ID, signing identity and supplied icon remain the same.
+
+Verification: release build and APP/HAP signature checks passed. The unsigned HAP
+from the same release build was installed in the emulator; launcher accessibility
+reported the exact full label `MeetAgent接驾优化`. The launcher tile may visually
+ellipsize the name because of its width; the installed label is not shortened.

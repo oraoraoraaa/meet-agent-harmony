@@ -1,6 +1,6 @@
-# MeetAgent review information
+# MeetAgent接驾优化 review information
 
-Bundle: `com.rinalic.meetAgentHarmony`  
+Bundle: `com.rinalic.meetAgentHarmony`
 AGC APP ID: `6917616810342569054`
 
 MeetAgent helps a driver and passenger choose a meeting point at the start of a trip.
