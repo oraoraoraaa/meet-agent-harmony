@@ -93,7 +93,7 @@ def main():
     symbols = ROOT / 'build/outputs/default/symbol/release/app-symbol.zip'
     if symbols.exists():
         shutil.copy2(symbols, destination / 'app-symbol.zip')
-    for document in ('RELEASE.md', 'REVIEWER_NOTES.md'):
+    for document in ('RELEASE.md', 'REVIEWER_NOTES.md', 'AI_REVIEW.md'):
         shutil.copy2(ROOT / 'docs' / document, destination / document)
     material = Path.home() / 'Downloads/meet-agent-harmony/screenshots'
     if material.is_dir():
@@ -101,6 +101,13 @@ def main():
         target.mkdir()
         for screenshot in material.glob('*.png'):
             shutil.copy2(screenshot, target / screenshot.name)
+    evidence = Path.home() / 'Downloads/meet-agent-harmony' / f"ai-review-evidence-build{app.get('buildVersion', '')}"
+    if evidence.is_dir():
+        target = destination / 'ai-review-evidence'
+        target.mkdir()
+        for item in evidence.iterdir():
+            if item.is_file() and (item.suffix.lower() in ('.png', '.jpg', '.jpeg') or item.name == 'README.md'):
+                shutil.copy2(item, target / item.name)
     (destination / 'BUILD_INFO.json').write_text(json.dumps({
         'bundleName': BUNDLE, 'appId': APP_ID, 'versionName': app['versionName'],
         'versionCode': app['versionCode'], 'buildVersion': app.get('buildVersion'),

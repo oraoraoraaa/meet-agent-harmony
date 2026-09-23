@@ -575,3 +575,9 @@ locations. The shared renderer applies this on home, result, chat and locked map
 
 App-level and launcher ability labels now match the AGC name `MeetAgent接驾优化`.
 The replacement 1.0.0 package increments versionCode to 1000001 and buildVersion to 2.
+
+### AI review labeling (2026-09-23)
+
+Added persistent chat disclosure, per-model-reply attribution and labeled full-text copying.
+Release build 3 retains AI features; safety assessment and genuine approval evidence remain
+publisher tasks, not completed milestones. See [AI_REVIEW.md](AI_REVIEW.md).

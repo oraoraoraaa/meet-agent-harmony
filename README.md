@@ -181,6 +181,8 @@ in DevEco; do not commit signing credentials. Native smoke commands:
   -start 'Pura 90' -imageRoot "$HOME/Library/Huawei/Sdk" -bootmode coldboot
 
 # Native suite (connected device/emulator; current map settings)
+# Start in another terminal: python3 scripts/test_ai_label_server.py
+/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc rport tcp:18766 tcp:18766
 # Build the test HAP with the same Hvigor command, using -p module=entry@ohosTest.
 /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc install \
   entry/build/default/outputs/default/entry-default-unsigned.hap
@@ -188,7 +190,7 @@ in DevEco; do not commit signing credentials. Native smoke commands:
   entry/build/default/outputs/ohosTest/entry-ohosTest-unsigned.hap
 /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc shell \
   aa test -b com.rinalic.meetAgentHarmony -m entry_test \
-  -s unittest OpenHarmonyTestRunner -s timeout 120000 -w 125
+  -s unittest OpenHarmonyTestRunner -s timeout 240000 -w 245
 ```
 
 The native smoke selects both locations on the map and creates a locked session using current map settings.
@@ -266,3 +268,5 @@ in place; unavailable rail data falls back transparently to ordinary planning.
 Configure signing locally, then run `python3 scripts/prepare_release.py` to build,
 verify and export the signed APP and listing materials. See [RELEASE.md](docs/RELEASE.md)
 for signing, repeat releases, artifact paths and remaining submission checks.
+
+AI review resubmission: [qualification, labeling and screenshot guide](docs/AI_REVIEW.md).

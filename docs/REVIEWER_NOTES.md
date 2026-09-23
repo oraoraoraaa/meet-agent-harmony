@@ -27,3 +27,9 @@ Route estimates are labeled when provider routing fails. No account registration
 payment is required by this app. Third-party map/LLM access may require separate credentials.
 
 Current minimum supported system is HarmonyOS 6.1.1 (API 24).
+
+AI disclosure: model replies display 「人工智能生成内容」 and the assistant page has a
+persistent notice. 「复制（含 AI 标识）」 retains attribution. Engine-only fallback replies
+are not model-generated. The app retains optional AI text generation and has no generated
+file download/export. Publisher qualification materials must be supplied separately;
+this document makes no claim that the safety assessment has been approved.

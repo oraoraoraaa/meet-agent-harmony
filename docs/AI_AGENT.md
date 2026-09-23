@@ -185,3 +185,11 @@ driving/traffic request, place lookup, route comparison and local-engine fallbac
 They are public task status summaries, not streamed private model reasoning or raw
 tool traces. No simulated percentage or timer-based sequence is shown. Progress is
 hidden when the turn finishes, and callbacks are ignored after the page is disposed.
+
+## AI output disclosure (2026-09-23)
+
+ChatPage marks model responses using `usedLlm`, with client-owned visible text and a
+persistent notice. AI reply copying goes through `labeledAiCopy`; native partial selection
+is disabled for these bubbles so copying cannot omit the attribution. Engine fallback and
+user messages retain their own provenance. No model reply file export is implemented.
+See [AI review guide](AI_REVIEW.md) for publisher qualifications, evidence and agreement work.

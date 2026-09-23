@@ -334,6 +334,8 @@ DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk \
   -start 'Pura 90' -imageRoot "$HOME/Library/Huawei/Sdk" -bootmode coldboot
 
 # Native suite (connected device/emulator; current map settings)
+# Start the loopback AI fixture in another terminal: python3 scripts/test_ai_label_server.py
+/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc rport tcp:18766 tcp:18766
 # Build the test HAP with the same Hvigor command, using -p module=entry@ohosTest.
 /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc install \
   entry/build/default/outputs/default/entry-default-unsigned.hap
@@ -341,7 +343,7 @@ DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk \
   entry/build/default/outputs/ohosTest/entry-ohosTest-unsigned.hap
 /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc shell \
   aa test -b com.rinalic.meetAgentHarmony -m entry_test \
-  -s unittest OpenHarmonyTestRunner -s timeout 120000 -w 125
+  -s unittest OpenHarmonyTestRunner -s timeout 240000 -w 245
 
 # Optional proxy is not implemented; server/README.md describes the contract.
 
@@ -370,3 +372,7 @@ If a command is missing, **add it to README + this section** when you wire it â€
 APP and exports materials outside the repository. See `docs/RELEASE.md`. Keep the
 user's local signing changes in `build-profile.json5` out of commits, including encrypted
 password strings. Do not copy keystores or the DevEco `material/` folder into releases.
+
+AI review regression: chat model output must retain client-owned disclosure based on
+`usedLlm`; copying must preserve it. See `docs/AI_REVIEW.md` for the loopback native test
+setup and publisher tasks. Do not present test fixture screenshots as live-model evidence.

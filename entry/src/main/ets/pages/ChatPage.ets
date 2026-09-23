@@ -10,6 +10,7 @@ import { AppSettings } from '../common/AppSettings';
 import { AppTheme } from '../common/AppTheme';
 import { AppLayout } from '../common/AppLayout';
 import { StageBackground } from '../common/GlassChrome';
+import { AI_CONTENT_LABEL, AI_CONTENT_NOTICE, labeledAiCopy } from '../common/AiDisclosure';
 import { formatReplyForBubble } from '../common/ReplyFormat';
 import {
   dataSourceLabelZh,
@@ -41,6 +42,7 @@ class ChatBubble {
   role: string = 'assistant'; // user | assistant | system
   text: string = '';
   hasPlans: boolean = false;
+  aiGenerated: boolean = false;
 }
 
 class PlanMiniCard {
@@ -255,12 +257,13 @@ struct ChatPage {
     this.bubbles = this.bubbles.concat([b]);
   }
 
-  private pushAssistant(text: string, hasPlans: boolean): void {
+  private pushAssistant(text: string, hasPlans: boolean, aiGenerated: boolean = false): void {
     const b: ChatBubble = new ChatBubble();
     b.id = this.nextId('a');
     b.role = 'assistant';
     b.text = formatReplyForBubble(text);
     b.hasPlans = hasPlans;
+    b.aiGenerated = aiGenerated;
     this.bubbles = this.bubbles.concat([b]);
   }
 
@@ -400,9 +403,9 @@ struct ChatPage {
       if (this.disposed) return;
       if (turn.recommendation !== null) {
         this.applyRecommendation(turn.recommendation, turn.selectedPlanId);
-        this.pushAssistant(turn.replyText, true);
+        this.pushAssistant(turn.replyText, true, turn.usedLlm);
       } else {
-        this.pushAssistant(turn.replyText, false);
+        this.pushAssistant(turn.replyText, false, turn.usedLlm);
       }
       if (turn.usedLlm && !turn.offlineFallback) {
         this.statusLine = `规划完成 · ${this.dataSourceBadge}`;
@@ -552,6 +555,16 @@ struct ChatPage {
         }
         .width('100%')
         .padding({ left: 8, right: 12, top: AppLayout.headerTop(), bottom: 6 })
+
+        Text(AI_CONTENT_NOTICE)
+          .id('ai-content-notice')
+          .fontSize(12)
+          .fontColor(AppTheme.ink)
+          .padding(10)
+          .width('100%')
+          .backgroundColor(AppTheme.accentSoft)
+          .borderRadius(12)
+          .margin({ bottom: 8 })
 
         // messages
         Scroll() {
@@ -787,6 +800,17 @@ struct ChatPage {
           .width('100%')
           .textAlign(b.role === 'user' ? TextAlign.End : TextAlign.Start)
 
+        if (b.aiGenerated) {
+          Text(AI_CONTENT_LABEL)
+            .id('ai-content-label-' + b.id)
+            .fontSize(13)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(AppTheme.link)
+            .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+            .backgroundColor(AppTheme.accentSoft)
+            .borderRadius(6)
+        }
+
         Text(b.text)
           .fontSize(14)
           .fontColor(AppTheme.ink)
@@ -795,7 +819,19 @@ struct ChatPage {
           .textAlign(TextAlign.Start)
           .maxLines(40)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .copyOption(CopyOptions.LocalDevice)
+          .copyOption(b.aiGenerated ? CopyOptions.None : CopyOptions.LocalDevice)
+
+        if (b.aiGenerated) {
+          Button('复制（含 AI 标识）', { type: ButtonType.Capsule })
+            .id('ai-copy-' + b.id)
+            .fontSize(12)
+            .height(32)
+            .fontColor(AppTheme.link)
+            .backgroundColor(AppTheme.accentSoft)
+            .onClick(() => {
+              ShareService.copyText(labeledAiCopy(b.text), '已复制，已保留 AI 生成标识');
+            })
+        }
       }
       .layoutWeight(1)
       .constraintSize({ minWidth: 0 })

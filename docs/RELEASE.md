@@ -132,3 +132,18 @@ Verification: release build and APP/HAP signature checks passed. The unsigned HA
 from the same release build was installed in the emulator; launcher accessibility
 reported the exact full label `MeetAgent接驾优化`. The launcher tile may visually
 ellipsize the name because of its width; the installed label is not shortened.
+
+## AI review correction — build 3
+
+VersionName remains `1.0.0`; versionCode is `1000002`, buildVersion `3`.
+Read [AI_REVIEW.md](AI_REVIEW.md) before resubmitting: visible labels are implemented,
+while safety assessment/approval remains publisher work. Genuine live-service label screenshots
+were captured in the emulator and exported alongside the package for publisher review.
+Never submit the native mock-server test screenshot as production evidence.
+
+The packager includes `AI_REVIEW.md` and, when present, public review evidence from
+`~/Downloads/meet-agent-harmony/ai-review-evidence-build<buildVersion>/` (PNG/JPG/JPEG
+and README only). Prepare fresh evidence for each build; never place mock-server captures
+or credentials there. Build 3 passed 22 host checks and all 6 native smoke tests, including
+AI reply labels and successful clipboard writes with attribution. Live DeepSeek reply
+screenshots were visually checked. Physical-phone AGC installation remains unverified.

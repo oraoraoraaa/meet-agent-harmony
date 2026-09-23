@@ -1,4 +1,5 @@
 // Exercises real selections rather than production demo fixtures.
+import { ShareService } from '../../../main/ets/services/session/ShareService';
 import { SettingsStore } from '../../../main/ets/services/settings/SettingsStore';
 import { application } from '@kit.AbilityKit';
 import { describe, it, expect } from '@ohos/hypium';
@@ -109,6 +110,39 @@ export default function mapSmokeTest(): void {
         await (await driver.findComponent(ON.type('Scroll'))).scrollToBottom();
         expect(await driver.waitForComponent(ON.text('确认并锁定所选方案'), 5000)).not().assertNull();
         expect(await driver.findComponent(ON.id('agent-progress'))).assertNull();
+      } finally {
+        await SettingsStore.save(ability.context, saved);
+      }
+    });
+    it('AI replies show disclosure and copy preserves attribution', 0, async () => {
+      // Requires scripts/test_ai_label_server.py and hdc rport tcp:18766 tcp:18766.
+      const delegator = abilityDelegatorRegistry.getAbilityDelegator();
+      const context = await application.createModuleContext(delegator.getAppContext().getApplicationContext(), 'entry');
+      const ability = await delegator.getCurrentTopAbility();
+      const saved = await SettingsStore.load(ability.context);
+      const configured = saved.clone();
+      configured.llmMode = 'proxy';
+      configured.proxyBaseUrl = 'http://127.0.0.1:18766';
+      const driver: Driver = Driver.create();
+      try {
+        await (await driver.findComponent(ON.text('设置').within(ON.type('Column')))).click();
+        await SettingsStore.save(ability.context, configured);
+        await (await driver.waitForComponent(ON.text('助手'), 5000)).click();
+        expect(await driver.waitForComponent(ON.id('ai-content-notice'), 5000)).not().assertNull();
+        await (await driver.waitForComponent(ON.text('帮我规划会合，我可以骑车'), 5000)).click();
+        for (let attempt = 0; attempt < 90; attempt++) {
+          await driver.delayMs(1000);
+          if (await driver.findComponent(ON.id('agent-progress')) === null) break;
+        }
+        const scroll = await driver.findComponent(ON.type('Scroll'));
+        expect(await scroll.scrollSearch(ON.text('人工智能生成内容'))).not().assertNull();
+        await driver.screenCap(context.filesDir + '/meetagent-ai-label-test.png');
+        await (await scroll.scrollSearch(ON.text('复制（含 AI 标识）'))).click();
+        for (let attempt = 0; attempt < 30 && !ShareService.lastCopiedText.includes('标识验证测试回复'); attempt++) {
+          await driver.delayMs(100);
+        }
+        expect(ShareService.lastCopiedText.startsWith('【人工智能生成内容 · MeetAgent接驾优化】')).assertTrue();
+        expect(ShareService.lastCopiedText.includes('标识验证测试回复')).assertTrue();
       } finally {
         await SettingsStore.save(ability.context, saved);
       }
