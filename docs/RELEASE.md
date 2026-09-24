@@ -147,3 +147,29 @@ and README only). Prepare fresh evidence for each build; never place mock-server
 or credentials there. Build 3 passed 22 host checks and all 6 native smoke tests, including
 AI reply labels and successful clipboard writes with attribution. Live DeepSeek reply
 screenshots were visually checked. Physical-phone AGC installation remains unverified.
+
+## 文件包 MD5 或 SHA-1
+
+This value is calculated from the **exact package file being submitted**. For this
+release, use the signed `.app` below, not the certificate, profile, icon, symbols ZIP,
+or an unsigned HAP. If the form asks for MD5 or SHA-1, paste the corresponding hexadecimal
+value only (without the filename or `MD5:` prefix). `SHA256SUMS.txt` contains SHA-256,
+which is a different algorithm and must not be pasted into an MD5/SHA-1 field.
+
+Build 3 (`1.0.0`, versionCode `1000002`), calculated on 2026-09-24:
+
+- Package: `/Users/rinalic/Downloads/meet-agent-harmony/releases/release-1.0.0-build3/meet-agent-harmony-default-signed.app`
+- MD5: `9656c893afc47dacef8b40402168d56e`
+- SHA-1: `353aed73b112e716ea9d94aa380e0895a56101af`
+- The same values are saved beside the package in `PACKAGE_HASHES.txt`.
+
+On macOS, calculate these values for each new release:
+
+```bash
+md5 "/absolute/path/to/meet-agent-harmony-default-signed.app"
+shasum -a 1 "/absolute/path/to/meet-agent-harmony-default-signed.app"
+```
+
+Replace the path with the actual final upload file. Recalculate after rebuilding,
+re-signing or replacing the package; these recorded values apply only to the existing
+build 3 file. No rebuild is needed to obtain its checksums.
