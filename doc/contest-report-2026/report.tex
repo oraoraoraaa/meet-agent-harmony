@@ -1,0 +1,60 @@
+% 编译：./build.sh；字体使用本机宋体，不随报告分发商业字体。
+\documentclass[UTF8,a4paper,zihao=5,fontset=none,twoside]{ctexart}
+\usepackage{fontspec}
+\IfFontExistsTF{SimSun}{\setCJKmainfont[AutoFakeBold=2.5]{SimSun}}{\setCJKmainfont[BoldFont={Songti SC Bold}]{Songti SC}}
+\setmainfont{Times New Roman}
+\setCJKmonofont{Songti SC}
+\usepackage[a4paper,top=2.5cm,bottom=2.5cm,left=3cm,right=3cm,headheight=14pt,headsep=\dimexpr1cm-14pt\relax,footskip=1cm,bindingoffset=0cm]{geometry}
+\usepackage{setspace,graphicx,booktabs,tabularx,array,caption,float,fancyhdr,tikz,enumitem,hyperref}
+\usetikzlibrary{arrows.meta,positioning,calc}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\renewcommand{\tabularxcolumn}[1]{>{\raggedright\arraybackslash}p{#1}}
+\singlespacing
+\setlength{\parindent}{2em}
+\setlength{\parskip}{3pt}
+\ctexset{section={format=\zihao{3}\bfseries,number=\chinese{section},aftername=、,beforeskip=12pt,afterskip=10pt},subsection={format=\zihao{4}\bfseries,beforeskip=9pt,afterskip=5pt},subsubsection={format=\zihao{-4}\bfseries},paragraph={format=\zihao{5}\bfseries}}
+\captionsetup{font={normalsize},labelfont=bf,labelsep=quad,skip=6pt}
+\setlist{nosep,leftmargin=2em}
+\definecolor{ink}{HTML}{183449}
+\definecolor{blue}{HTML}{287DB4}
+\definecolor{pale}{HTML}{EFF5F8}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[C]{\zihao{5}MeetAgent 会合助手\quad 作品说明文档}
+\fancyfoot[LE,RO]{\zihao{5}\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\hypersetup{hidelinks,pdftitle={作品说明文档：MeetAgent 会合助手},pdfauthor={李祥熙}}
+\newcommand{\shot}[3]{\begin{minipage}[t]{0.46\textwidth}\centering\includegraphics[height=11.2cm,width=\linewidth,keepaspectratio]{assets/#1}\par\vspace{5pt}\textbf{#2}\par #3\end{minipage}}
+\begin{document}
+\begin{center}
+{\zihao{2}\bfseries 作品说明文档}\par\vspace{7pt}
+{\zihao{2}\bfseries MeetAgent · 会合助手}\par\vspace{9pt}
+{\zihao{3}\bfseries 李祥熙}\par\vspace{6pt}
+队伍：为了看Miku演唱会特前来拿奖金\par
+HarmonyOS 智能会合规划应用\par
+2026 年 9 月
+\end{center}
+\section{创意描述}
+综合司机路线、乘客可用出行方式与时间偏好，比较原地等待和移动会合方案，通过 AI 理解需求并解释结果，帮助双方确定会合地点。
+\section{设计稿与交互流程}
+\subsection{产品定位}
+会合助手是一款面向司机与乘客接送场景的鸿蒙应用。用户在行程开始前输入双方位置和乘客出行偏好，应用比较不同会合点及出行方式，提供双方预计用时、路线和会合地点。确认后，用户可以分享方案并打开地图导航。
+\subsection{操作流程}
+应用设有地图、助手、行程和设置四个入口。地图用于选点与路线展示，助手用于自然语言输入，行程页保存已确认方案。普通规划和智能助手均使用相同的路线与方案比较能力。
+\begin{figure}[H]\centering
+\begin{tikzpicture}[font=\zihao{5},box/.style={draw=blue,fill=pale,rounded corners=3pt,text width=3.55cm,minimum height=1.4cm,align=center},arr/.style={-{Latex},thick,ink}]
+\node[box](a){输入双方位置\\搜索 / 地图选点};
+\node[box,right=0.55cm of a](b){设置乘客偏好\\方式 / 步行上限};
+\node[box,right=0.55cm of b](c){生成会合方案\\路线与用时比较};
+\node[box,below=0.65cm of c](d){查看方案详情\\地图 / 分段行程};
+\node[box,left=0.55cm of d](e){确认并锁定方案\\保存会合地点};
+\node[box,left=0.55cm of e](f){执行会合方案\\复制分享 / 打开地图};
+\draw[arr](a)--(b);\draw[arr](b)--(c);\draw[arr](c)--(d);\draw[arr](d)--(e);\draw[arr](e)--(f);
+\end{tikzpicture}
+\caption{会合规划的主要操作流程}
+\end{figure}
+\subsection{界面组织}
+位置输入与路线展示以地图为中心；步行、骑行、公共交通和原地等待以方案卡片呈现，便于比较。选择公共交通方案后，页面展示乘客分段行程。确认方案后，行程页集中显示会合点、双方路线及用时。
+\clearpage
+\section{介绍文档}
+\input{introduction.tex}
+\end{document}
